@@ -1,0 +1,5 @@
+pypi_frontend/static/dist
+node_modules
+*.egg-info
+venv
+
