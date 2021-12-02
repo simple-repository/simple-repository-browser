@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "page.html" %}
 
 {% block page_banner %}
 {% endblock page_banner %}
@@ -9,5 +9,7 @@
 
 
 {% block page_content %}
-{{ detail }}
+<div class="container">
+    {{ detail }}
+</div>
 {% endblock page_content %}

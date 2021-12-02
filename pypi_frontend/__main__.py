@@ -75,7 +75,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
     return templates.TemplateResponse(
-
         "error.html",
         {
             "request": request,
@@ -85,10 +84,32 @@ async def http_exception_handler(request, exc):
     )
 
 
+async def catch_exceptions_middleware(request: Request, call_next):
+    # For example: invalid type in a parameter.
+    try:
+        return await call_next(request)
+    except Exception:
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "detail": "Internal server error",
+            },
+            status_code=500,
+        )
+
+app.middleware('http')(catch_exceptions_middleware)
+
+
 @app.get("/project/{project_name}", response_class=HTMLResponse, name='project')
-# NOTE THAT THIS ENDPOINT IS BASICALLY THE SAME AS THE LATEST SPECIFIC RELEASE.
-async def read_items(request: Request, project_name: str):
+async def project_latest_release(request: Request, project_name: str):
     return await release_result(request, project_name)
+
+
+@app.get("/project/{project_name}/{release}", response_class=HTMLResponse, name='project_release')
+async def project_w_specific_release(request: Request, project_name: str, release: str):
+    return await release_result(request, project_name, release)
+
 
 async def release_result(request: Request, project_name: str, version: typing.Optional[str] = None):
     index: PackageIndex = request.app.state.full_index
@@ -101,11 +122,16 @@ async def release_result(request: Request, project_name: str, version: typing.Op
 
     if version is None:
         # Choose the latest stable release.
+        releases = prj.releases()
+        if not releases:
+            raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
         # TODO: Needs to handle latest *stable* release.
         release = prj.releases()[-1]
     else:
-        # TODO: Could raise.
-        release = prj.release(version)
+        try:
+            release = prj.release(version)
+        except ValueError:  # TODO: make this exception specific
+            raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
     from .fetch_description import package_info
     with request.app.state.cache as cache:
@@ -127,39 +153,6 @@ async def release_result(request: Request, project_name: str, version: typing.Op
     )
 
 
-@app.get("/project/{project_name}/{release}", response_class=HTMLResponse, name='project_release')
-async def read_items(request: Request, project_name: str, release: str):
-    return await release_result(request, project_name, release)
-    # index: PackageIndex = request.app.state.full_index
-    # try:
-    #     prj = index.project(project_name)
-    # except:
-    #     return '404 - project not found'
-    #
-    # version = release
-    # # TODO: Could raise.
-    # release = prj.release(version)
-    #
-    # from .fetch_description import package_info
-    # with request.app.state.cache as cache:
-    #     key = ('pkg-info', prj.name, release.version)
-    #     if key in cache:
-    #         info = cache[key]
-    #     else:
-    #         info = package_info(release)
-    #         cache[key] = info
-    #
-    # return templates.TemplateResponse(
-    #     "release.html",
-    #     {
-    #         "request": request,
-    #         "project": prj,
-    #         "release": release,
-    #         "release_info": info,
-    #     },
-    # )
-    return f"testing {project_name} {request.app.state.index} {prj.name}"
-
 
 from pypil.in_memory.project import InMemoryProject, InMemoryProjectRelease, InMemoryProjectFile
 from pypil.in_memory.index import InMemoryPackageIndex
@@ -178,7 +171,6 @@ pkgs = [
     )
 ]
 index = InMemoryPackageIndex(pkgs)
-
 
 app.state.index = index
 
