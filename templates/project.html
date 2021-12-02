@@ -1,0 +1,36 @@
+{% extends "page.html" %}
+
+{% block page_banner %}
+<div class="col-md-6" style="padding-bottom: 3em; padding-top: 2em">
+<h1> {{ project.name }} {{ release.version }}</h1>
+    <br>
+<span class="pip-command">pip install {{ project.name }}</span>
+</div>
+
+{% endblock page_banner %}
+
+
+{% block banner_split %}
+{{ release_info.summary or "No summary available for the {} project".format(project.name) }}
+{% endblock banner_split %}
+
+
+{% block page_content %}
+    <div class="container">
+      <div class="row">
+
+        <div class="col-md-3">
+          <a href="{{ url_for('project', project_name=project.name) }}">{{ project.name }}</a>
+
+          <ul>
+          {% for release in project.releases()|reverse %}
+            <li><a href="{{ url_for('project_release', project_name=project.name, release=release.version) }}">{{ release.version }}</a></li>
+          {% endfor %}
+          </ul>
+        </div>
+      <div class="col-md-9">
+          {{ release_info.description|safe or "No description available" }}
+      </div>
+      </div>
+    </div>
+{% endblock page_content %}

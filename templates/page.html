@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{# Like base, but with a search bar in the top nav -#}
+
+{% block navbar_left %}
+            <form action="{{ url_for('search') }}" type="GET">
+              <input type="text" name="name" value="{{ search_query or '' }}" placeholder="Search projects" >
+            </form>
+{% endblock %}

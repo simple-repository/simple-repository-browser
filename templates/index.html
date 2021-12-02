@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block page_banner %}
+          <div class="container">
+            <div class="col-md-10 mx-auto">
+              <h1 class="jumbotron-heading" style="padding: 50px 50px;">Find, install and publish Python packages with the Python Package Index</h1>
+            </div>
+
+            <form action="{{ url_for('search') }}" type="GET" >
+
+                <div class="col-md-4 mx-auto">
+                  <div class="input-group ">
+                    <div class="form-outline"  style="width: 100%;">
+                      <input type="search" name="name" class="form-control" placeholder="Search projects" />
+                    </div>
+
+                  </div>
+                </div>
+
+            </form>
+            <br><br>
+          </div>
+{% endblock page_banner %}
+
+{% block banner_split %}
+          <div class="col-md-8 mx-auto">
+            <div class="row">
+
+<!--                <p class="col-md-3">-->
+<!--                342,532 projects-->
+<!--                </p>-->
+<!--                <p class="col-md-3">-->
+<!--                3,055,593 releases-->
+<!--                </p>-->
+<!--                <p class="col-md-3">-->
+<!--                5,225,365 files-->
+<!--                </p>-->
+<!--                <p class="col-md-3">-->
+<!--                554,074 users-->
+<!--                </p>-->
+              </div>
+            </div>
+{% endblock banner_split %}

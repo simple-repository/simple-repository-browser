@@ -17,8 +17,13 @@ with (HERE / 'README.md').open('rt') as fh:
 REQUIREMENTS: dict = {
     'core': [
         'aiohttp',
+        'bleach',
+        'diskcache',
+        'docutils',
         'jinja2',
-        'pypil',
+        'markdown',
+        'packaging',
+        'pypil[simple]',
         'uvicorn',
     ],
     'test': [

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Python package index</title>
+</head>
+  <body>
+
+  <div style="background-color: #0073b7; border-bottom: 1px solid #0067a3;">
+    <div class="container" id="site-header">
+      <nav class="navbar navbar-expand-lg navbar-light container" >
+
+      <a class="navbar-brand" href="{{ url_for('index') }}" style="font-size: xx-large; color: white; font-weight: bolder">
+          <img src="{{ url_for('static:images', path='/logo-small.95de8436.svg') }}"> Acc-PyPI
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            {% block navbar_left %}
+            {% endblock %}
+  <!--        <li class="nav-item">-->
+  <!--          <a class="nav-link disabled">Disabled</a>-->
+  <!--        </li>-->
+        </ul>
+        <div class="d-flex">
+          {% block navbar_right %}
+            <a class="nav-link" href="#">About</a>
+          {% endblock %}
+        </div>
+      </div>
+
+      </nav>
+    </div>
+  </div>
+
+      <main role="main">
+
+        <section class="jumbotron" style="background-color: #006dad; color: white ; padding: 0px; margin: 0px;" id="page-banner">
+            <div class="container">
+            {% block page_banner %}
+            {% endblock page_banner %}
+            </div>
+        </section>
+
+        <section class="jumbotron" style="background-color: #ececec; color: #464646; border-bottom: 1px solid #d3d3d3; padding: 1em; margin-bottom: 1em;" id="banner-split">
+            <div class="container">
+            {% block banner_split %}
+          <div class="col-md-8 mx-auto">
+            <div class="row">
+
+                <p class="col-md-3">
+                342,532 projects
+                </p>
+                <p class="col-md-3">
+                3,055,593 releases
+                </p>
+                <p class="col-md-3">
+                5,225,365 files
+                </p>
+                <p class="col-md-3">
+                554,074 users
+                </p>
+              </div>
+            </div>
+            {% endblock banner_split %}
+            </div>
+        </section>
+
+          {% block page_content %}
+          {% endblock page_content %}
+
+      </main>
+
+      <footer class="text-muted">
+      <div class="container">
+        <p class="float-right">
+<!--          <a href="#">Back to top</a>-->
+        </p>
+        <p></p>
+      </div>
+    </footer>
+
+
+
+  <script src="{{ url_for('static', path='/bundle.js') }}"></script>
+  </body>
+</html>

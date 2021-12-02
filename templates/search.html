@@ -1,0 +1,49 @@
+{% extends "page.html" %}
+
+{% block page_banner %}
+{% endblock page_banner %}
+
+
+{% block banner_split %}
+{% endblock banner_split %}
+
+
+{% macro package_card(content) -%}
+<a href="{{ url_for('project', project_name=content[0]) }}">
+    <div class="card" style="margin: 1em;">
+    <div class="card-body">
+        <img src="{{ url_for('static:images', path='/white-cube.8c3a6fe9.svg') }}" style="padding: 0 1em 0 0.5em;">
+        {{ content[0] }}
+    </div>
+    </div>
+    </a>
+{%- endmacro %}
+
+{% block page_content %}
+    <div class="container">
+      <div class="row">
+<!--        <div class="col-md-3"></div>-->
+          <div class="col-md-9 mx-auto">
+
+
+            {% if exact %}
+                Exact match found:
+                {{ package_card(exact) }}
+            {% else %}
+              No exact match found. Were you expecting one? If so, visit the <a href="{{ url_for('project', project_name=search_query) }}">"{{ search_query }}" project page</a>
+              to have the index updated automatically.
+              <br><br>
+
+            {% endif %}
+
+              Found {{ results|length }} results
+            <br>
+
+            {% for result in results %}
+                {{ package_card(result) }}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+{% endblock page_content %}

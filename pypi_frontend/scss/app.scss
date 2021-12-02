@@ -1,1 +1,36 @@
+
+// Limit the width as seen on pypi.
+$container-max-widths: (
+  sm: 540px,
+  md: 720px,
+  lg: 960px,
+  xl: 1000px,
+  xxl: 1090px
+);
+
 @import "~bootstrap/scss/bootstrap";
+
+.navbar {
+   background-color: #0073b7;
+}
+.nav-link {
+   color: white;
+   padding: 32px 15px;
+}
+
+
+a:hover, a:visited, a:link, a:active
+{
+    text-decoration: none;
+}
+
+
+.pip-command {
+   font-family: Source Code Pro, monospace;
+   font-weight: 500;
+   font-size: 1.2rem;
+   background-color: rgba(0, 0, 0, .15);
+   padding: 8px;
+   border: 1px dotted hsla(0, 0%, 100%, .4);
+   line-height: 30px;
+}

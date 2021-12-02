@@ -8,3 +8,6 @@ to write your content.
 ## Purpose of this project
 ## Getting started
 ##
+
+npm install
+npm run build
