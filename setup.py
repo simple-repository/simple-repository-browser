@@ -46,7 +46,6 @@ REQUIREMENTS: dict = {
 
 setup(
     name='pypi-frontend',
-    version="0.0.1.dev0",
 
     author='Phil Elson',
     author_email='philip.elson@cern.ch',
