@@ -181,13 +181,15 @@ def update_summary(conn, name, summary):
         ''', (summary, name))
 
 
-def make_app(cache_dir: Path = Path.cwd() / 'cache', index_url=None) -> fastapi.FastAPI:
+def make_app(cache_dir: Path = Path.cwd() / 'cache', index_url=None, prefix=None) -> fastapi.FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None)
     build_app(app)
 
     kwargs = {}
     if index_url is not None:
         kwargs.update({'source_url': index_url})
+
+    # TODO: There is no longer a reason that this state should be separate from build_app.
     app.state.full_index = _pypil.SimplePackageIndex(**kwargs)
     app.state.index = app.state.full_index
 
@@ -200,4 +202,8 @@ def make_app(cache_dir: Path = Path.cwd() / 'cache', index_url=None) -> fastapi.
 
     fetch_projects.create_table(con)
 
+    if prefix is not None:
+        base_app = FastAPI(docs_url=None, redoc_url=None)
+        base_app.mount(prefix, app)
+        app = base_app
     return app
