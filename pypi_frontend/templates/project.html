@@ -33,17 +33,63 @@
 {% block page_content %}
     <div class="container">
       <div class="row">
-
         <div class="col-md-3">
-          <a href="{{ url_for('project', project_name=project.name) }}">{{ project.name }}</a>
-          <ul>
-          {% for release in project.releases()|reverse %}
-            <li><a href="{{ url_for('project_release', project_name=project.name, release=release.version) }}">{{ release.version }}</a></li>
-          {% endfor %}
-          </ul>
+          <div class="d-grid gap-2 d-md-block page-navigation">
+            <strong>Navigation</strong>
+            <button class="btn btn-primary col-md-12 rounded-0 description text-start" type="button" data-purpose="page-select">
+              <i class="fa fa-align-left fa-fw"></i>
+              Description
+            </button>
+            <button class="btn btn-link col-md-12 rounded-0 releases text-start" type="button" data-purpose="page-select">
+              <i class="fa fa-history fa-fw"></i>
+                Releases
+            </button>
+            <button class="btn btn-link col-md-12 rounded-0 files text-start" type="button" data-purpose="page-select">
+              <i class="fa fa-download fa-fw"></i>
+              Download files
+            </button>
+          </div>
+
+          <div>
+<!--            <strong>Meta</strong>-->
+<!--            <div data-source="author"></div>-->
+<!--            <div data-source="maintainer"></div>-->
+          </div>
         </div>
-      <div class="col-md-9" data-source="description">
-      </div>
+        <div class="col-md-9">
+          <div class="row">
+            <div id="description-page" data-purpose="page-switch" data-source="description">
+              <button class="btn btn-primary" type="button" disabled>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Loading...
+              </button>
+            </div>
+          </div>
+          <div id="releases-page" data-purpose="page-switch" data-source="releases">
+          {% for release in project.releases()|reverse %}
+            <a href="{{ url_for('project_release', project_name=project.name, release=release.version) }}">
+                <div class="card" style="margin: 1em;">
+                  <div class="card-body">
+                    <img src="{{ url_for('static', path='/images/white-cube.8c3a6fe9.svg') }}" style="padding: 0 1em 0 0.5em;" >
+                    {{ release.version }}
+                  </div>
+                </div>
+            </a>
+          {% endfor %}
+          </div>
+          <div id="files-page" data-purpose="page-switch" data-source="files">
+            {% for file in release.files()|sort(attribute='filename') %}
+              <a href="{{ file.url }}">
+                  <div class="card" style="margin: 1em;">
+                    <div class="card-body">
+                      <img src="{{ url_for('static', path='/images/white-cube.8c3a6fe9.svg') }}" style="padding: 0 1em 0 0.5em;" >
+                      {{ file.filename }}
+                    </div>
+                  </div>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
       </div>
     </div>
 {% endblock page_content %}
@@ -53,17 +99,49 @@
 <script src="{{ url_for('static', path='/js/pypi.project.js') }}"></script>
 <script>
   $.getJSON("{{ url_for('api_project_release', project_name=project.name, release=release.version) }}", function( data ) {
-
+    console.log("Raw data recv: ", data);
     date = new Date(data['info']['creation_date']);
-    if(!isNaN(date.getTime())) {
+    if(!isNaN(date.getTime()) && date.getFullYear() > 1990) {
         date = date.toLocaleString('default', { month: 'short' }) + ' ' + date.getDate() + ', ' + date.getFullYear();
     } else {
         date = "Unknown";
     }
      $('[data-source="release_date"]').text('Released: ' + date);
-     $('[data-source="summary"]').text(data['info']['summary']);
-     $('[data-source="description"]').html(data['info']['description']);
+     $('[data-source="summary"]').text(data['info']['summary'] || 'No summary available' );
+     $('[data-source="description"]').html(data['info']['description'] || 'No description found.');
 
+     $('[data-source="description"]').html(data['info']['releases']);
+
+<!--     $('[data-source="author"]').html(data['info']['author']);-->
+<!--     $('[data-source="maintainer"]').html(data['info']['maintainer']);-->
   });
+
+function show_page(page_class){
+  $('button[data-purpose="page-select"]').addClass('btn-link').removeClass('btn-primary')
+  $('button[data-purpose="page-select"].' + page_class).addClass('btn-primary').removeClass('btn-link')
+
+  $('div[data-purpose="page-switch"]').addClass('d-none');
+  $('#' + page_class + '-page').removeClass('d-none').removeClass('d-none').removeClass('d-none');
+}
+
+$('button.releases').click(
+  function() {
+    show_page('releases');
+  }
+)
+
+$('button.description').click(
+  function() {
+    show_page('description');
+  }
+)
+
+$('button.files').click(
+  function() {
+    show_page('files');
+  }
+)
+show_page('description');
+
 </script>
 {% endblock extra_footer %}

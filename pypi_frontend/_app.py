@@ -106,7 +106,6 @@ def build_app(app: fastapi.FastAPI) -> None:
 
     app.middleware('http')(catch_exceptions_middleware)
 
-
     @app.get("/project/{project_name}", response_class=HTMLResponse, name='project')
     async def project_latest_release(request: Request, project_name: str):
         return await release_result(request, project_name)
@@ -115,8 +114,40 @@ def build_app(app: fastapi.FastAPI) -> None:
     async def project_w_specific_release(request: Request, project_name: str, release: str, recache: bool = False):
         return await release_result(request, project_name, release, recache=recache)
 
+    async def release_result(request: Request, project_name: str, version: typing.Optional[str] = None, recache: bool = False):
+        index: _pypil.SimplePackageIndex = request.app.state.full_index
+        try:
+            prj = index.project(project_name)
+        except _pypil.PackageNotFound:
+            # TODO: This should remove an item from the database, if it previously existed.
+            raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
+
+        if version is None:
+            releases = prj.releases()
+            if not releases:
+                raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
+
+            # Choose the latest stable release.
+            # TODO: Needs to handle latest *stable* release.
+            release = prj.releases()[-1]
+        else:
+            try:
+                release = prj.release(version)
+            except ValueError:  # TODO: make this exception specific
+                raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
+
+        return templates.TemplateResponse(
+            "project.html",
+            {
+                "request": request,
+                "project": prj,
+                "latest_version": None,
+                "release": release,
+            },
+        )
+
     @app.get("/api/project/{project_name}/{release}", response_class=JSONResponse, name='api_project_release')
-    async def project_w_specific_release(request: Request, project_name: str, release: str, recache: bool = False):
+    async def release_json(request: Request, project_name: str, release: str, recache: bool = False):
         # return await release_result(request, project_name, release, recache=recache)
         index: _pypil.SimplePackageIndex = request.app.state.full_index
         try:
@@ -220,50 +251,17 @@ def build_app(app: fastapi.FastAPI) -> None:
             "vulnerabilities": []
         }
 
-    async def release_result(request: Request, project_name: str, version: typing.Optional[str] = None, recache: bool = False):
-        index: _pypil.SimplePackageIndex = request.app.state.full_index
-        try:
-            prj = index.project(project_name)
-        except _pypil.PackageNotFound:
-            # TODO: This should remove an item from the database, if it previously existed.
-            raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
-        if version is None:
-            releases = prj.releases()
-            if not releases:
-                raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
-
-            # Choose the latest stable release.
-            # TODO: Needs to handle latest *stable* release.
-            release = prj.releases()[-1]
-        else:
-            try:
-                release = prj.release(version)
-            except ValueError:  # TODO: make this exception specific
-                raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
-
-        return templates.TemplateResponse(
-            "project.html",
-            {
-                "request": request,
-                "project": prj,
-                "latest_version": None,
-                "release": release,
-            },
-        )
-
-
-    # @app.on_event("startup")
-    # @repeat_every(
-    #     seconds=60 * 60 * 24 * 7,  # Each week.
-    #     raise_exceptions=False,
-    #     wait_first=False,  # TODO: Make sure that this runs when we first start, but not if we already have data.
-    # )
+    @app.on_event("startup")
+    @repeat_every(
+        seconds=60 * 60 * 24 * 7,  # Each week.
+        raise_exceptions=False,
+        wait_first=True,  # TODO: Make sure that this runs when we first start, but not if we already have data.
+    )
     async def refetch_full_index() -> None:
         await asyncio.sleep(15)  # Let the app properly start before we do any work
         # We periodically want to refresh the projects database to make sure we are up-to-date.
         await fetch_projects.fully_populate_db(app.state.projects_db_connection, app.state.full_index)
-
 
 
 def update_summary(conn, name, summary):
