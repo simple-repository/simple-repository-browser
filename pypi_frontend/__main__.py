@@ -18,10 +18,11 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--logs-dir", type=str, default=str(pwd / 'logs'))
     parser.add_argument("--cache-dir", type=str, default=str(pwd / 'cache'))
+    parser.add_argument("--index-url", type=str, default=None)
 
 
 def handler(args: dict) -> None:
-    app = _app.make_app(cache_dir=Path(args.cache_dir))
+    app = _app.make_app(cache_dir=Path(args.cache_dir), index_url=args.index_url)
     Path(args.logs_dir).mkdir(exist_ok=True, parents=True)
     bind = f'{args.host}:{args.port}'
     print(f'Starting application on http://{bind}')

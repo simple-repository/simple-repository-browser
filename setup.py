@@ -35,7 +35,7 @@ REQUIREMENTS: dict = {
         'pytest',
     ],
     'dev': [
-        # 'requirement-for-development-purposes-only',
+        'build',
     ],
     'doc': [
         'sphinx',
