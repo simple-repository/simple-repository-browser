@@ -21,12 +21,16 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def handler(args: dict) -> None:
-    # app = _app.make_app(cache_dir=args.cache_dir)
+    app = _app.make_app(cache_dir=Path(args.cache_dir))
     Path(args.logs_dir).mkdir(exist_ok=True, parents=True)
+    bind = f'{args.host}:{args.port}'
+    print(f'Starting application on http://{bind}')
+    print(f'Cache in {args.cache_dir}')
+    print(f'Logs in {args.logs_dir}')
     Application(
-        app=_app.app,
+        app=app,
         options={
-            'bind': f'{args.host}:{args.port}',
+            'bind': bind,
             "accesslog": f"{args.logs_dir}/access.log",
             "errorlog": f"{args.logs_dir}/error.log",
             "worker_class": "uvicorn.workers.UvicornWorker",
