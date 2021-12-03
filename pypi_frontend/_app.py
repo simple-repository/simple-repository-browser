@@ -37,6 +37,15 @@ def build_app(app: fastapi.FastAPI) -> None:
             },
         )
 
+    @app.get("/about", response_class=HTMLResponse, name='about')
+    async def read_items(request: Request):
+        return templates.TemplateResponse(
+            "about.html",
+            {
+                "request": request,
+            },
+        )
+
     @app.get("/search", response_class=HTMLResponse, name='search')
     async def read_items(request: Request, name: str, page: typing.Optional[int] = 0):
         name = _pypil.PackageName(name).normalized
@@ -159,12 +168,12 @@ def build_app(app: fastapi.FastAPI) -> None:
         )
 
 
-    @app.on_event("startup")
-    @repeat_every(
-        seconds=60 * 60 * 24 * 7,  # Each week.
-        raise_exceptions=False,
-        wait_first=False,  # TODO: Make sure that this runs when we first start, but not if we already have data.
-    )
+    # @app.on_event("startup")
+    # @repeat_every(
+    #     seconds=60 * 60 * 24 * 7,  # Each week.
+    #     raise_exceptions=False,
+    #     wait_first=False,  # TODO: Make sure that this runs when we first start, but not if we already have data.
+    # )
     async def refetch_full_index() -> None:
         await asyncio.sleep(15)  # Let the app properly start before we do any work
         # We periodically want to refresh the projects database to make sure we are up-to-date.

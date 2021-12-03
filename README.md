@@ -1,22 +1,17 @@
 # pypi-frontend
 
-SHORT DESCRIPTION OF PROJECT
+A frontend to a simple package index ([PEP503](https://www.python.org/dev/peps/pep-0503/))
 
-You can use [Github-flavored Markdown](https://guides.github.com/features/mastering-markdown/)
-to write your content.
 
-## Purpose of this project
-## Getting started
-##
+## Development
 
+See the Dockerfile for canonical instructions. They approximately look like:
 
 ```
-uvicorn pypi_frontend._app:app --reload
-
-npm install
+npm install --include=dev
 npm run build
+pip install -e .[dev]
 ```
-
 
 ## Deployment
 
@@ -40,6 +35,4 @@ Promote this new version to pro (once tested), and restart the acc-pypi-frontend
 ```
 systemctrl restart acc-pypi-frontend
 ```
-
-
 

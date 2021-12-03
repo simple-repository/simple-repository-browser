@@ -1,12 +1,27 @@
 {% extends "page.html" %}
 
+
+{% block title %}
+{{ project.name }} · {{ super() }}
+{% endblock title %}
+
 {% block page_banner %}
-<div class="col-md-6" style="padding-bottom: 3em; padding-top: 2em">
+<div class="row" style="padding-bottom: 3em; padding-top: 2em">
+<div class="col-md-6">
 <h1> {{ project.name }} {{ release.version }}</h1>
     <br>
 <span class="pip-command">pip install {{ project.name }}</span>
 </div>
 
+<div class="offset-md-2 col-md-4 text-end">
+    <br><br><br>
+    <!-- Here will go the "latest" (or not latest/release candidate) badge. -->
+
+    {% if release_info.release_date %}
+    Released: {{ release_info.release_date.strftime('%b %-d, %Y') }}
+    {% endif %}
+</div>
+    </div>
 {% endblock page_banner %}
 
 
@@ -21,7 +36,6 @@
 
         <div class="col-md-3">
           <a href="{{ url_for('project', project_name=project.name) }}">{{ project.name }}</a>
-
           <ul>
           {% for release in project.releases()|reverse %}
             <li><a href="{{ url_for('project_release', project_name=project.name, release=release.version) }}">{{ release.version }}</a></li>

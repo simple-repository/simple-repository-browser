@@ -1,7 +1,11 @@
+import contextlib
 import dataclasses
+import datetime
 import logging
+import tarfile
 import tempfile
 import typing
+import zipfile
 
 import aiohttp
 import bleach
@@ -15,10 +19,13 @@ from . import _pypil
 class PackageInfo:
     summary: str
     description: str
+    author: typing.Optional[str]
+    maintainer: typing.Optional[str]
+    release_date: typing.Optional[datetime.datetime]
 
 
 async def fetch_file(url, dest):
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         async with session.get(url,) as r:
             try:
                 r.raise_for_status()
@@ -31,6 +38,41 @@ async def fetch_file(url, dest):
                     if not chunk:
                         break
                     fd.write(chunk)
+
+
+class _ZipfileTimeTracker(zipfile.ZipFile):
+    def read(self, name):
+        info = self.getinfo(name)
+        t = datetime.datetime(*info.date_time)
+        _ZipfileTimeTracker.captured_time = t
+        return super().read(name)
+
+
+class _TarfileTimeTracker(tarfile.TarFile):
+    def extractfile(self, name):
+        t = self.getmember(name).mtime
+        _TarfileTimeTracker.captured_time = datetime.datetime.fromtimestamp(t)
+        return super().extractfile(name)
+
+
+class ArchiveTimestampCapture:
+    def __init__(self):
+        self.timestamp = None
+
+    @contextlib.contextmanager
+    def patch_archive_classes(self):
+        """
+        Patch zipfile and tarfile to capture the timestamp of any opened files.
+
+        """
+        tarfile.TarFile, orig_tarfile = _TarfileTimeTracker, tarfile.TarFile
+        zipfile.ZipFile, orig_zipfile = _ZipfileTimeTracker, zipfile.ZipFile
+        _ZipfileTimeTracker.captured_time = _TarfileTimeTracker.captured_time = None
+        try:
+            yield
+            self.timestamp = _ZipfileTimeTracker.captured_time or _TarfileTimeTracker.captured_time
+        finally:
+            zipfile.ZipFile, tarfile.TarFile = orig_zipfile, orig_tarfile
 
 
 async def package_info(
@@ -64,7 +106,11 @@ async def package_info(
         tmp.flush()
         tmp.seek(0)
         try:
-            info = archive_type(tmp.name)
+            # Capture the timestamp of the file that pkginfo opens so that we
+            # can estimate the release date.
+            ts_capture = ArchiveTimestampCapture()
+            with ts_capture.patch_archive_classes():
+                info = archive_type(tmp.name)
         except ValueError as err:
             logging.warning(f'Unable to open {file.url}: { str(err) }')
             return None
@@ -72,7 +118,13 @@ async def package_info(
         description = generate_safe_description_html(info)
 
         # TODO: More metadata could be extracted here.
-        return PackageInfo(info.summary or '', description)
+        return PackageInfo(
+            summary=info.summary or '',
+            description=description,
+            author=info.author,
+            maintainer=info.maintainer,
+            release_date=ts_capture.timestamp,
+        )
 
 
 def generate_safe_description_html(package_info: pkginfo.Distribution):
@@ -117,9 +169,9 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
 
 
 async def _devel_to_be_turned_into_test():
-    index = _pypil.SimplePackageIndex()
+    index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch:8000/simple')
 
-    prj = index.project('pyjapc')
+    prj = index.project('pylogbook')
     releases = prj.releases()
     print(releases[-1])
     summaries = {}
@@ -128,6 +180,7 @@ async def _devel_to_be_turned_into_test():
         info = await package_info(release)
         if info:
             summaries[release.version] = info.summary
+            print(info.maintainer, info.author)
             break
     print(summaries)
 

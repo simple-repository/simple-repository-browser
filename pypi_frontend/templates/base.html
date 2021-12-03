@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Python package index</title>
-    <script async src="{{ url_for('static', path='/js/site.js') }}"></script>
+    {% block head %}
+    <title>{% block title %}Python package index{% endblock title %}</title>
+    <script src="{{ url_for('static', path='/js/site.js') }}"></script>
+    {% block extra_head %}
+    {% endblock extra_head %}
+    {% endblock head %}
 </head>
   <body class="d-flex flex-column min-vh-100">
 
@@ -28,7 +32,7 @@
         </ul>
         <div class="d-flex">
           {% block navbar_right %}
-            <a class="nav-link" href="#">About</a>
+            <a class="nav-link" href="{{ url_for('about') }}">About</a>
           {% endblock %}
         </div>
       </div>
