@@ -3,7 +3,7 @@
 <head>
     {% block head %}
     <title>{% block title %}Python package index{% endblock title %}</title>
-    <script src="{{ url_for('static', path='/js/site.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/pypi.core.js') }}"></script>
     {% block extra_head %}
     {% endblock extra_head %}
     {% endblock head %}
@@ -87,6 +87,8 @@
         </p>
         <p></p>
       </div>
+      {% block extra_footer %}
+      {% endblock extra_footer %}
     </footer>
   </body>
 </html>

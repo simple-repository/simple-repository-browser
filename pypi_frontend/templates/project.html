@@ -1,32 +1,32 @@
 {% extends "page.html" %}
 
-
 {% block title %}
 {{ project.name }} · {{ super() }}
 {% endblock title %}
 
 {% block page_banner %}
 <div class="row" style="padding-bottom: 3em; padding-top: 2em">
-<div class="col-md-6">
-<h1> {{ project.name }} {{ release.version }}</h1>
+  <div class="col-md-6">
+    <h1> {{ project.name }} {{ release.version }}</h1>
     <br>
-<span class="pip-command">pip install {{ project.name }}</span>
-</div>
+    <span class="pip-command" id="pip-command">pip install {{ project.name }}</span>
+  </div>
 
-<div class="offset-md-2 col-md-4 text-end">
+  <div class="offset-md-2 col-md-4 text-end">
     <br><br><br>
     <!-- Here will go the "latest" (or not latest/release candidate) badge. -->
 
-    {% if release_info.release_date %}
-    Released: {{ release_info.release_date.strftime('%b %-d, %Y') }}
-    {% endif %}
+    <span data-source="release_date">
+    </span>
+  </div>
 </div>
-    </div>
 {% endblock page_banner %}
 
 
 {% block banner_split %}
-{{ release_info.summary or "No summary available for the {} project".format(project.name) }}
+<div data-source="summary">
+    &nbsp;
+</div>
 {% endblock banner_split %}
 
 
@@ -42,9 +42,28 @@
           {% endfor %}
           </ul>
         </div>
-      <div class="col-md-9">
-          {{ release_info.description|safe or "No description available" }}
+      <div class="col-md-9" data-source="description">
       </div>
       </div>
     </div>
 {% endblock page_content %}
+
+
+{% block extra_footer %}
+<script src="{{ url_for('static', path='/js/pypi.project.js') }}"></script>
+<script>
+  $.getJSON("{{ url_for('api_project_release', project_name=project.name, release=release.version) }}", function( data ) {
+
+    date = new Date(data['info']['creation_date']);
+    if(!isNaN(date.getTime())) {
+        date = date.toLocaleString('default', { month: 'short' }) + ' ' + date.getDate() + ', ' + date.getFullYear();
+    } else {
+        date = "Unknown";
+    }
+     $('[data-source="release_date"]').text('Released: ' + date);
+     $('[data-source="summary"]').text(data['info']['summary']);
+     $('[data-source="description"]').html(data['info']['description']);
+
+  });
+</script>
+{% endblock extra_footer %}

@@ -1,4 +1,4 @@
-pypi_frontend/static/js/site.js*
+pypi_frontend/static/js
 pypi_frontend/_version.py
 node_modules
 *.egg-info
@@ -6,6 +6,7 @@ venv
 *.sqlite
 cache
 logs
+
 
 __pycache__
 

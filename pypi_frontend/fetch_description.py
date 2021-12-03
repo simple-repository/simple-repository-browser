@@ -19,9 +19,9 @@ from . import _pypil
 class PackageInfo:
     summary: str
     description: str
-    author: typing.Optional[str]
-    maintainer: typing.Optional[str]
-    release_date: typing.Optional[datetime.datetime]
+    author: typing.Optional[str] = None
+    maintainer: typing.Optional[str] = None
+    release_date: typing.Optional[datetime.datetime] = None
 
 
 async def fetch_file(url, dest):
@@ -75,6 +75,10 @@ class ArchiveTimestampCapture:
             zipfile.ZipFile, tarfile.TarFile = orig_zipfile, orig_tarfile
 
 
+EMPTY_PKG_INFO = PackageInfo(
+        '', '',
+    )
+
 async def package_info(
         release: _pypil.ProjectRelease,
 ) -> typing.Optional[PackageInfo]:
@@ -89,6 +93,7 @@ async def package_info(
     )
 
     if not files:
+        logging.debug(f"no files found for {release.version}")
         return None
     file = files[0]
     logging.info(f'Downloading {file.filename} from {file.url}')
