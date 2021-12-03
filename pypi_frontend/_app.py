@@ -14,6 +14,7 @@ from fastapi_utils.tasks import repeat_every
 # from pypil.core.package_name import PackageName
 
 from . import _pypil
+from . import __version__
 
 from . import fetch_projects
 
@@ -189,12 +190,11 @@ app.state.cache = Cache(str(pwd/'.cache'))
 con = sqlite3.connect(pwd/'.cache/projects.sqlite')
 app.state.projects_db_connection = con
 
+
+app.state.version = __version__
+
 fetch_projects.create_table(con)
 
-
-import logging
-
-logging.basicConfig(level=logging.INFO)
 
 @app.on_event("startup")
 @repeat_every(

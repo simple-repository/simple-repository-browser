@@ -3,4 +3,6 @@ Documentation for the pypi_frontend package
 
 """
 
-__version__ = "0.0.1.dev0"
+from . import _version
+
+__version__ = _version.version

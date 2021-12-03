@@ -1,4 +1,7 @@
 import argparse
+import logging
+
+from ._gunicorn import Application
 from . import _app
 
 
@@ -14,7 +17,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def handler(args: dict) -> None:
-    from ._gunicorn import Application
+
     Application(
         app=_app.app,
         options={
@@ -31,4 +34,5 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     main()

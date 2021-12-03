@@ -9,7 +9,10 @@ to write your content.
 ## Getting started
 ##
 
-uvicorn pypi_frontend.__main__:app --reload
+
+```
+uvicorn pypi_frontend._app:app --reload
 
 npm install
 npm run build
+```

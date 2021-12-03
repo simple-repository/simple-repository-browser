@@ -4,7 +4,7 @@
     <title>Python package index</title>
     <script async src="{{ url_for('static', path='/js/site.js') }}"></script>
 </head>
-  <body>
+  <body class="d-flex flex-column min-vh-100">
 
   <div style="background-color: #0073b7; border-bottom: 1px solid #0067a3;">
     <div class="container" id="site-header">
@@ -75,10 +75,11 @@
 
       </main>
 
-      <footer class="text-muted">
-      <div class="container">
+      <footer class="text-muted mt-auto">
+      <div class="container text-center">
         <p class="float-right">
 <!--          <a href="#">Back to top</a>-->
+            PyPI frontend v{{ request.app.state.version }}
         </p>
         <p></p>
       </div>

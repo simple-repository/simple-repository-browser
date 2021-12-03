@@ -1,3 +1,5 @@
+# NOTE: No internal package imports here. This module could be extracted.
+
 import fastapi
 import gunicorn.app.base as _gunicorn_base
 
