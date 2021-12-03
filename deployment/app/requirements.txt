@@ -1,0 +1,46 @@
+### generated_by: acc-py app lock
+### base_python: 2020.11
+### reqdist_hash: 45c23c2514fd7fa65f28e0de86fe6f1b0cf0b2768c681171125a7125bc73cd80
+aiohttp==3.8.1
+aiosignal==1.2.0
+anyio==3.4.0
+asgiref==3.4.1
+async-timeout==4.0.1
+asynctest==0.13.0
+attrs==21.2.0
+beautifulsoup4==4.10.0
+bleach==4.1.0
+charset-normalizer==2.0.8
+click==8.0.3
+diskcache==5.3.0
+docutils==0.18.1
+fastapi==0.70.0
+fastapi-utils==0.2.1
+frozenlist==1.2.0
+greenlet==1.1.2
+gunicorn==20.1.0
+h11==0.12.0
+idna==3.3
+importlib-metadata==4.8.2
+Jinja2==3.0.3
+Markdown==3.3.6
+MarkupSafe==2.0.1
+multidict==5.2.0
+packaging==21.3
+pkginfo==1.8.2
+pydantic==1.8.2
+pyparsing==3.0.6
+pypi-frontend
+pypi-simple==0.9.0
+requests==2.26.0
+six==1.16.0
+sniffio==1.2.0
+soupsieve==2.3.1
+SQLAlchemy==1.4.27
+starlette==0.16.0
+typing-extensions==4.0.1
+urllib3==1.26.7
+uvicorn==0.15.0
+webencodings==0.5.1
+yarl==1.7.2
+zipp==3.6.0

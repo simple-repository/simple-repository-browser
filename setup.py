@@ -22,6 +22,7 @@ REQUIREMENTS: dict = {
         'docutils',
         'fastapi',
         'fastapi-utils',
+        'gunicorn',
         'jinja2',
         'markdown',
         'packaging',

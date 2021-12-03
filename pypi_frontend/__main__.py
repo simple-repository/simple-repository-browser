@@ -206,3 +206,8 @@ async def refetch_full_index() -> None:
     await asyncio.sleep(60)  # 60 seconds delay before we do the work.
     # We periodically want to refresh the projects database to make sure we are up-to-date.
     await fetch_projects.fully_populate_db(app.state.projects_db_connection, app.state.full_index)
+
+
+if __name__ == '__main__':
+    from ._gunicorn import Application
+    Application(app=app, options={}).run()
