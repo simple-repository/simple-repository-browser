@@ -1,6 +1,7 @@
-from ._pypil import PackageName
+import asyncio
 import sqlite3
 
+from ._pypil import PackageName
 
 
 def create_table(connection):
@@ -16,7 +17,11 @@ def create_table(connection):
 async def fully_populate_db(connection, index):
     con = connection
     print('Fetching names from index')
-    project_names = [(PackageName(project).normalized, project) for project in index.project_names()]
+
+    loop = asyncio.get_event_loop()
+    non_canonical_project_names = await loop.run_in_executor(None, index.project_names)
+
+    project_names = [(PackageName(project).normalized, project) for project in non_canonical_project_names]
     print('Inserting all new names (if any)')
     with con as cursor:
         for canonical_name, name in project_names:

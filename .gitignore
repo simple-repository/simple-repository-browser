@@ -4,7 +4,8 @@ node_modules
 *.egg-info
 venv
 *.sqlite
-.cache
+cache
+logs
 
 __pycache__
 

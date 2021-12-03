@@ -203,6 +203,5 @@ fetch_projects.create_table(con)
     wait_first=False,  # TODO: Make sure that this runs when we first start, but not if we already have data.
 )
 async def refetch_full_index() -> None:
-    await asyncio.sleep(60)  # 60 seconds delay before we do the work.
     # We periodically want to refresh the projects database to make sure we are up-to-date.
     await fetch_projects.fully_populate_db(app.state.projects_db_connection, app.state.full_index)
