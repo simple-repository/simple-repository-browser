@@ -20,10 +20,14 @@ REQUIREMENTS: dict = {
         'bleach',
         'diskcache',
         'docutils',
+        'fastapi',
+        'fastapi-utils',
         'jinja2',
         'markdown',
         'packaging',
-        'pypil[simple]',
+        'pkginfo',
+        'pypi_simple',
+        # 'pypil[simple]',
         'uvicorn',
     ],
     'test': [
@@ -56,6 +60,14 @@ setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
+    # include_package_data=True,
+    package_data={
+        '': [
+            'static/*/*',
+            'static/*',
+            'templates/*',
+        ],
+    },
 
     install_requires=REQUIREMENTS['core'],
     extras_require={

@@ -11,12 +11,13 @@
 {% macro package_card(content) -%}
 <a href="{{ url_for('project', project_name=content[0]) }}">
     <div class="card" style="margin: 1em;">
-    <div class="card-body">
-        <img src="{{ url_for('static:images', path='/white-cube.8c3a6fe9.svg') }}" style="padding: 0 1em 0 0.5em;">
+      <div class="card-body">
+        <img src="{{ url_for('static', path='/images/white-cube.8c3a6fe9.svg') }}" style="padding: 0 1em 0 0.5em;" >
         {{ content[0] }}
+<!--        {{ content[2] }}-->
+      </div>
     </div>
-    </div>
-    </a>
+</a>
 {%- endmacro %}
 
 {% block page_content %}
@@ -25,18 +26,16 @@
 <!--        <div class="col-md-3"></div>-->
           <div class="col-md-9 mx-auto">
 
-
             {% if exact %}
                 Exact match found:
                 {{ package_card(exact) }}
-            {% else %}
+            {% elif search_query %}
               No exact match found. Were you expecting one? If so, visit the <a href="{{ url_for('project', project_name=search_query) }}">"{{ search_query }}" project page</a>
               to have the index updated automatically.
               <br><br>
-
             {% endif %}
 
-              Found {{ results|length }} results
+              Found {{ results_count }} results
             <br>
 
             {% for result in results %}

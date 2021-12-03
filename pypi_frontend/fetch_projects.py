@@ -1,65 +1,78 @@
+from ._pypil import PackageName
 import sqlite3
-con = sqlite3.connect('../.cache/projects.sqlite')
-
-with con as cursor:
-    cursor.execute(
-        '''CREATE TABLE IF NOT EXISTS projects
-        (canonical_name text unique, preferred_name text, summary text, description_html text)
-        '''
-    )
 
 
-from pypil.simple.index import SimplePackageIndex
-index = SimplePackageIndex()
 
-
-from pypil.in_memory.project import InMemoryProject, InMemoryProjectRelease, InMemoryProjectFile
-from pypil.in_memory.index import InMemoryPackageIndex
-from pypil.core.package_name import PackageName
-
-
-pkgs = [
-    InMemoryProject(
-        name=PackageName('pkg-a'),
-        releases=InMemoryProjectRelease.build_from_files([
-            InMemoryProjectFile('', version='1.2.3b0'),
-            InMemoryProjectFile('', version='1.2.1'),
-            # InMemoryPackageRelease(version='1.2.1', dist_metadata='wheel...'),
-            InMemoryProjectFile('', version='0.9'),
-        ]),
-    )
-]
-# index = InMemoryPackageIndex(pkgs)
-
-
-from pypil.core.package_name import PackageName
-
-if False:
-    cursor = con.cursor()
-    for i, project in enumerate(index.project_names()):
-        con.execute(
-            "insert OR IGNORE into projects(canonical_name, preferred_name, summary, description_html) values (?, ?, ?, ?)",
-            (PackageName(project).normalized, project, '', ''),
+def create_table(connection):
+    con = connection
+    with con as cursor:
+        cursor.execute(
+            '''CREATE TABLE IF NOT EXISTS projects
+            (canonical_name text unique, preferred_name text, summary text, description_html text)
+            '''
         )
-        # print(project)
-        # if i > 1000:
-        #     break
-    con.commit()
 
 
+async def fully_populate_db(connection, index):
+    con = connection
+    print('Fetching names from index')
+    project_names = [(PackageName(project).normalized, project) for project in index.project_names()]
+    print('Inserting all new names (if any)')
+    with con as cursor:
+        for canonical_name, name in project_names:
+            cursor.execute(
+                "insert OR IGNORE into projects(canonical_name, preferred_name, summary, description_html) values (?, ?, ?, ?)",
+                (canonical_name, name, '', ''),
+            )
 
-name = 'cartop'
-with con as cur:
-    # exact = cur.execute("SELECT * FROM projects WHERE canonical_name == ?", (f'{name}',)).fetchone()
-    # results = cur.execute("SELECT * FROM projects WHERE canonical_name LIKE ? LIMIT 100", (f'%{name}%', )).fetchall()
-    results = cur.execute("SELECT * FROM projects", ).fetchall()
+    print('Fetching names from db')
+    with con as cursor:
+        db_canonical_names = {row[0] for row in cursor.execute("SELECT canonical_name FROM projects", ).fetchall()}
 
-# from Levenshtein import ratio
-#
-# results = sorted(results, key=lambda result: ratio(name, result[0]), reverse=True)
-# for result in results:
-#     print(result[0])
-#
-# print(exact)
+    index_canonical_names = {normed_name for normed_name, _ in project_names}
+    names_in_db_no_longer_in_index = db_canonical_names - index_canonical_names
 
-print(len(results))
+    if names_in_db_no_longer_in_index:
+        print(
+            f'Removing the following { len(names_in_db_no_longer_in_index) } names from the database:\n   '
+            + "\n   ".join(names_in_db_no_longer_in_index[:2000])
+        )
+    with con as cursor:
+        for name in names_in_db_no_longer_in_index:
+            cursor.execute(
+                '''
+                DELETE FROM projects
+                WHERE canonical_name == ?;
+                ''',
+                (name, ),
+            ),
+    print('DB synchronised with index')
+
+
+async def _devel_to_be_turned_into_test():
+    con = sqlite3.connect('../.cache/projects.sqlite')
+
+    create_table(con)
+
+    from ._pypil import SimplePackageIndex
+
+    index = SimplePackageIndex()
+
+    index = SimplePackageIndex(source_url='http://cwe-513-vpl337.cern.ch:8000/simple/')
+
+    if False:
+        import asyncio
+        asyncio.run(fully_populate_db(con, index))
+
+    name = 'cartop'
+    with con as cur:
+        # exact = cur.execute("SELECT * FROM projects WHERE canonical_name == ?", (f'{name}',)).fetchone()
+        # results = cur.execute("SELECT * FROM projects WHERE canonical_name LIKE ? LIMIT 100", (f'%{name}%', )).fetchall()
+        [count] = cur.execute("SELECT COUNT(canonical_name) FROM projects", ).fetchone()
+
+    print(count)
+
+
+if __name__ == '__main__':
+    import asyncio
+    asyncio.run(_devel_to_be_turned_into_test())

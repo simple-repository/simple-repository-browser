@@ -1,29 +1,35 @@
+import asyncio
+from pathlib import Path
 import typing
+import sqlite3
 
+import fastapi
+from diskcache import Cache
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi_utils.tasks import repeat_every
+# from pypil.core.index import PackageIndex
+# from pypil.core.package_name import PackageName
+
+from . import _pypil
+
+from . import fetch_projects
 
 
 app = FastAPI(docs_url=None, redoc_url=None)
 
-from pathlib import Path
+
 here = Path(__file__).absolute().parent
-print(here)
-print(here / "static" / "dist")
-app.mount("/static", StaticFiles(directory=here / "static" / "dist"), name="static")
-
-app.mount("/static-img", StaticFiles(directory=here / "static" / "images"), name="static:images")
-
-# app.mount(
-#     "/warehouse/static",
-#     StaticFiles(directory="warehouse/warehouse/static"),
-#     name="warehouse:static",
-# )
+pwd = Path.cwd()
 
 
-templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory=here / "static"), name="static")
+
+# app.mount("/static-img", StaticFiles(directory=here / "static" / "images"), name="static:images")
+
+templates = Jinja2Templates(directory=str(here / "templates"))
 
 
 @app.get("/", response_class=HTMLResponse, name='index')
@@ -36,24 +42,22 @@ async def read_items(request: Request):
     )
 
 
-from pypil.core.index import PackageIndex, PackageIndexContainer
-
-
-
 @app.get("/search", response_class=HTMLResponse, name='search')
 async def read_items(request: Request, name: str, page: typing.Optional[int] = 0):
-    index: PackageIndex = request.app.state.index
-    name = PackageName(name).normalized
+    name = _pypil.PackageName(name).normalized
 
     page_size = 50
     offset = page * page_size
 
     with app.state.projects_db_connection as cursor:
-        exact = cursor.execute("SELECT * FROM projects WHERE canonical_name == ?", (f'{name}',)).fetchone()
+        exact = cursor.execute('SELECT * FROM projects WHERE canonical_name == ?', (f'{name}',)).fetchone()
         results = cursor.execute(
             "SELECT * FROM projects WHERE canonical_name LIKE ? OR summary LIKE ? LIMIT ? OFFSET ?",
             (f'%{name}%', f'%{name}%', page_size, offset)
         ).fetchall()
+
+    # TODO: This shouldn't include the pagination.
+    n_results = len(results)
 
     # Drop the duplicate.
     if exact in results:
@@ -66,7 +70,7 @@ async def read_items(request: Request, name: str, page: typing.Optional[int] = 0
             "search_query": name,
             "exact": exact,
             "results": results,
-            # "results_count": n_results
+            "results_count": n_results
         },
     )
 
@@ -107,24 +111,24 @@ async def project_latest_release(request: Request, project_name: str):
 
 
 @app.get("/project/{project_name}/{release}", response_class=HTMLResponse, name='project_release')
-async def project_w_specific_release(request: Request, project_name: str, release: str):
-    return await release_result(request, project_name, release)
+async def project_w_specific_release(request: Request, project_name: str, release: str, recache: bool = False):
+    return await release_result(request, project_name, release, recache=recache)
 
 
-async def release_result(request: Request, project_name: str, version: typing.Optional[str] = None):
-    index: PackageIndex = request.app.state.full_index
-    from pypil.core.index import PackageNotFound
+async def release_result(request: Request, project_name: str, version: typing.Optional[str] = None, recache: bool = False):
+    index: _pypil.SimplePackageIndex = request.app.state.full_index
     try:
         prj = index.project(project_name)
-    except PackageNotFound:
+    except _pypil.PackageNotFound:
         # TODO: This should remove an item from the database, if it previously existed.
         raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
     if version is None:
-        # Choose the latest stable release.
         releases = prj.releases()
         if not releases:
             raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
+
+        # Choose the latest stable release.
         # TODO: Needs to handle latest *stable* release.
         release = prj.releases()[-1]
     else:
@@ -133,65 +137,72 @@ async def release_result(request: Request, project_name: str, version: typing.Op
         except ValueError:  # TODO: make this exception specific
             raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
+    # TODO:
+    is_latest = False
+
     from .fetch_description import package_info
     with request.app.state.cache as cache:
         key = ('pkg-info', prj.name, release.version)
-        if key in cache:
+        if key in cache and not recache:
             release_info = cache[key]
         else:
+            if recache:
+                print('Recaching')
             release_info = await package_info(release)
             cache[key] = release_info
+
+            if is_latest:
+                update_summary(request.app.state.projects_db_connection, project_name, release_info.summary)
 
     return templates.TemplateResponse(
         "project.html",
         {
             "request": request,
             "project": prj,
+            "latest_version": None,
             "release": release,
             "release_info": release_info,
         },
     )
 
 
+def update_summary(conn, name, summary):
+    with conn as cursor:
+        cursor.execute('''
+        UPDATE projects
+        SET summary = ?
+        WHERE canonical_name == ?;
+        ''', (summary, name))
 
-from pypil.in_memory.project import InMemoryProject, InMemoryProjectRelease, InMemoryProjectFile
-from pypil.in_memory.index import InMemoryPackageIndex
-from pypil.core.package_name import PackageName
 
+# def make_app() -> fastapi.FastAPI:
+# app = fastapi.FastAPI()
 
-pkgs = [
-    InMemoryProject(
-        name=PackageName('pkg-a'),
-        releases=InMemoryProjectRelease.build_from_files([
-            InMemoryProjectFile('', version='1.2.3b0'),
-            InMemoryProjectFile('', version='1.2.1'),
-            # InMemoryPackageRelease(version='1.2.1', dist_metadata='wheel...'),
-            InMemoryProjectFile('', version='0.9'),
-        ]),
-    )
-]
-index = InMemoryPackageIndex(pkgs)
+# app.mount('/', )
 
-app.state.index = index
-
-from pypil.simple.index import SimplePackageIndex
-app.state.full_index = SimplePackageIndex()
+app.state.full_index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch:8000/simple/')
+# app.state.full_index = _pypil.SimplePackageIndex()
 app.state.index = app.state.full_index
 
-from diskcache import Cache
+app.state.cache = Cache(str(pwd/'.cache'))
 
-app.state.cache = Cache('.cache')
-
-
-import sqlite3
-con = sqlite3.connect('.cache/projects.sqlite')
+con = sqlite3.connect(pwd/'.cache/projects.sqlite')
 app.state.projects_db_connection = con
 
-# Create table
-cursor = app.state.projects_db_connection.cursor()
+fetch_projects.create_table(con)
 
-cursor.execute(
-    '''CREATE TABLE IF NOT EXISTS projects
-    (canonical_name text unique, preferred_name text, summary text, description_html text)
-    '''
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+@app.on_event("startup")
+@repeat_every(
+    seconds=60 * 60 * 24 * 7,  # Each week.
+    raise_exceptions=False,
+    wait_first=False,  # TODO: Make sure that this runs when we first start, but not if we already have data.
 )
+async def refetch_full_index() -> None:
+    await asyncio.sleep(60)  # 60 seconds delay before we do the work.
+    # We periodically want to refresh the projects database to make sure we are up-to-date.
+    await fetch_projects.fully_populate_db(app.state.projects_db_connection, app.state.full_index)

@@ -3,8 +3,8 @@ const path = require('path');
 module.exports = {
   entry: './pypi_frontend/app.js',
   output: {
-    filename: 'bundle.js',
-    path: path.resolve(__dirname, './pypi_frontend/static/dist')
+    filename: 'site.js',
+    path: path.resolve(__dirname, './pypi_frontend/static/js/')
   },
   resolve: {
     extensions: [".ts", ".js"],

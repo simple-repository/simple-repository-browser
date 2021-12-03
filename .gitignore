@@ -1,6 +1,11 @@
-pypi_frontend/static/dist
+pypi_frontend/static/js/site.js*
 node_modules
 *.egg-info
 venv
 *.sqlite
+.cache
+
+__pycache__
+
+.idea
 

@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Python package index</title>
+    <script async src="{{ url_for('static', path='/js/site.js') }}"></script>
 </head>
   <body>
 
@@ -10,7 +11,7 @@
       <nav class="navbar navbar-expand-lg navbar-light container" >
 
       <a class="navbar-brand" href="{{ url_for('index') }}" style="font-size: xx-large; color: white; font-weight: bolder">
-          <img src="{{ url_for('static:images', path='/logo-small.95de8436.svg') }}"> Acc-PyPI
+          <img src="{{ url_for('static', path='/images/logo-small.95de8436.svg') }}"> Acc-PyPI
       </a>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -82,9 +83,5 @@
         <p></p>
       </div>
     </footer>
-
-
-
-  <script src="{{ url_for('static', path='/bundle.js') }}"></script>
   </body>
 </html>
