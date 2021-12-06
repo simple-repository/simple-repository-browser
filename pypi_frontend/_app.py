@@ -10,10 +10,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi_utils.tasks import repeat_every
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import _pypil
 from . import __version__
 
+from .fetch_description import package_info, EMPTY_PKG_INFO
 from . import fetch_projects
 
 
@@ -78,7 +80,7 @@ def build_app(app: fastapi.FastAPI) -> None:
             },
         )
 
-    from starlette.exceptions import HTTPException as StarletteHTTPException
+
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request, exc):
         return templates.TemplateResponse(
@@ -111,15 +113,17 @@ def build_app(app: fastapi.FastAPI) -> None:
         return await release_result(request, project_name)
 
     @app.get("/project/{project_name}/{release}", response_class=HTMLResponse, name='project_release')
-    async def project_w_specific_release(request: Request, project_name: str, release: str, recache: bool = False):
-        return await release_result(request, project_name, release, recache=recache)
+    async def project_w_specific_release(request: Request, project_name: str, release: str):
+        return await release_result(request, project_name, release)
 
-    async def release_result(request: Request, project_name: str, version: typing.Optional[str] = None, recache: bool = False):
+    async def release_result(request: Request, project_name: str, version: typing.Optional[str] = None):
         index: _pypil.SimplePackageIndex = request.app.state.full_index
+        canonical_name = _pypil.PackageName(project_name).normalized
         try:
             prj = index.project(project_name)
+            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, prj.name, prj.name)
         except _pypil.PackageNotFound:
-            # TODO: This should remove an item from the database, if it previously existed.
+            fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
         if version is None:
@@ -128,7 +132,7 @@ def build_app(app: fastapi.FastAPI) -> None:
                 raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
             # Choose the latest stable release.
-            # TODO: Needs to handle latest *stable* release.
+            # TODO: Needs to handle latest *stable* release - currently could get RCs.
             release = prj.releases()[-1]
         else:
             try:
@@ -148,12 +152,12 @@ def build_app(app: fastapi.FastAPI) -> None:
 
     @app.get("/api/project/{project_name}/{release}", response_class=JSONResponse, name='api_project_release')
     async def release_json(request: Request, project_name: str, release: str, recache: bool = False):
-        # return await release_result(request, project_name, release, recache=recache)
         index: _pypil.SimplePackageIndex = request.app.state.full_index
         try:
             prj = index.project(project_name)
+            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, prj.name, prj.name)
         except _pypil.PackageNotFound:
-            # TODO: This should remove an item from the database, if it previously existed.
+            fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
         version = release
@@ -174,7 +178,6 @@ def build_app(app: fastapi.FastAPI) -> None:
         # TODO:
         is_latest = False
 
-        from .fetch_description import package_info, EMPTY_PKG_INFO
         with request.app.state.cache as cache:
             key = ('pkg-info', prj.name, release.version)
             if key in cache and not recache:
@@ -186,7 +189,7 @@ def build_app(app: fastapi.FastAPI) -> None:
                 cache[key] = release_info
 
                 if is_latest:
-                    update_summary(request.app.state.projects_db_connection, project_name, release_info.summary)
+                    fetch_projects.update_summary(request.app.state.projects_db_connection, project_name, release_info.summary)
         if release_info is None:
             release_info = EMPTY_PKG_INFO
         return {
@@ -251,26 +254,16 @@ def build_app(app: fastapi.FastAPI) -> None:
             "vulnerabilities": []
         }
 
-
     @app.on_event("startup")
     @repeat_every(
         seconds=60 * 60 * 24 * 7,  # Each week.
         raise_exceptions=False,
-        wait_first=True,  # TODO: Make sure that this runs when we first start, but not if we already have data.
+        wait_first=False,  # TODO: Make sure that this runs when we first start, but not if we already have data.
     )
     async def refetch_full_index() -> None:
-        await asyncio.sleep(15)  # Let the app properly start before we do any work
-        # We periodically want to refresh the projects database to make sure we are up-to-date.
+        await asyncio.sleep(60 * 30)  # Let the app properly start (30mn) before we do any work
+        # We periodically want to refresh the project database to make sure we are up-to-date.
         await fetch_projects.fully_populate_db(app.state.projects_db_connection, app.state.full_index)
-
-
-def update_summary(conn, name, summary):
-    with conn as cursor:
-        cursor.execute('''
-        UPDATE projects
-        SET summary = ?
-        WHERE canonical_name == ?;
-        ''', (summary, name))
 
 
 def make_app(cache_dir: Path = Path.cwd() / 'cache', index_url=None, prefix=None) -> fastapi.FastAPI:

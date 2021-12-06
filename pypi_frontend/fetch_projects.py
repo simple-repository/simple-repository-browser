@@ -14,6 +14,28 @@ def create_table(connection):
         )
 
 
+def insert_if_missing(connection, canonical_name, preferred_name):
+    with connection as cursor:
+        cursor.execute(
+            "insert OR IGNORE into projects(canonical_name, preferred_name, summary, description_html) values (?, ?, ?, ?)",
+            (canonical_name, preferred_name, '', ''),
+        )
+
+
+def remove_if_found(connection, canonical_name):
+    with connection as cursor:
+        cursor.execute('DELETE FROM projects where canonical_name = ?;', (canonical_name,)).fetchone()
+
+
+def update_summary(conn, name, summary):
+    with conn as cursor:
+        cursor.execute('''
+        UPDATE projects
+        SET summary = ?
+        WHERE canonical_name == ?;
+        ''', (summary, name))
+
+
 async def fully_populate_db(connection, index):
     con = connection
     print('Fetching names from index')
