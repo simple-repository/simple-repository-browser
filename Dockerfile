@@ -25,5 +25,5 @@ COPY --from=py_builder /opt/src/dist /opt/src/dist
 RUN pip install /opt/src/dist/* 
 
 WORKDIR /opt/pypi-frontend/
-CMD uvicorn pypi_frontend.__main__:app --host 0.0.0.0
+CMD uvicorn pypi_frontend._develop:app --host 0.0.0.0
 
