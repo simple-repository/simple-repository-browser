@@ -29,6 +29,7 @@ REQUIREMENTS: dict = {
         'pkginfo',
         'pypi_simple',
         # 'pypil[simple]',
+        'readme-renderer[md]',
         'uvicorn',
     ],
     'test': [
