@@ -2,6 +2,7 @@ import contextlib
 import dataclasses
 import datetime
 import logging
+import os.path
 import tarfile
 import tempfile
 import typing
@@ -9,8 +10,9 @@ import zipfile
 
 import aiohttp
 import bleach
-import markdown
 import pkginfo
+import readme_renderer.markdown
+import readme_renderer.rst
 
 from . import _pypil
 
@@ -102,7 +104,9 @@ async def package_info(
     # Limiting ourselves to wheels and sdists is the 80-20 rule.
     archive_type = pkginfo.Wheel if is_wheel else pkginfo.SDist
 
-    with tempfile.NamedTemporaryFile(suffix='.whl') as tmp:
+    with tempfile.NamedTemporaryFile(
+            suffix=os.path.splitext(file.filename)[1],
+    ) as tmp:
         try:
             await fetch_file(file.url, tmp.name)
         except IOError as err:
@@ -137,15 +141,12 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
     # https://packaging.python.org/specifications/core-metadata
     description_type = package_info.description_content_type or 'text/x-rst'
     raw_description = package_info.description or ''
-    if description_type == 'text/x-rst':
-        from docutils.core import publish_parts
-        description = publish_parts(raw_description, writer_name='html')['body']
-        # Interesting case: numpy 1.21.4
-        # Interesting case pyjapc/2.0.6 (no documentation)
-    elif description_type == 'text/markdown':
 
-        description = markdown.markdown(raw_description)
-        # Interesting case: cartopy 0.20.1
+    if description_type == 'text/x-rst':
+        return readme_renderer.rst.render(raw_description)
+
+    elif description_type == 'text/markdown':
+        return readme_renderer.markdown.render(raw_description)
     else:
         # Plain, or otherwise.
         description = raw_description
