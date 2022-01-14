@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import dataclasses
 import datetime
@@ -18,6 +19,13 @@ from . import _pypil
 
 
 @dataclasses.dataclass
+class FileInfo:
+    #: Size, in bytes, of the compressed file.
+    size: int
+    created: datetime.datetime
+
+
+@dataclasses.dataclass
 class PackageInfo:
     summary: str
     description: str
@@ -26,6 +34,7 @@ class PackageInfo:
     maintainer: typing.Optional[str] = None
     release_date: typing.Optional[datetime.datetime] = None
     project_urls: typing.Dict[str, typing.Tuple[str, ...]] = dataclasses.field(default_factory=dict)
+    files_info: typing.Dict[str, FileInfo] = dataclasses.field(default_factory=dict)
 
 
 async def fetch_file(url, dest):
@@ -99,6 +108,31 @@ async def package_info(
     if not files:
         logging.debug(f"no files found for {release.version}")
         return None
+
+    files_info = {}
+    limited_concurrency = asyncio.Semaphore(10)
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        async def semaphored_head(filename, url):
+            async with limited_concurrency:
+                return (
+                    filename,
+                    await session.head(url, allow_redirects=True, ssl=False, headers={}),
+                )
+        coros = [
+            semaphored_head(file.filename, file.url)
+            for file in files
+        ]
+        for coro in asyncio.as_completed(coros):
+            filename, response = await coro
+            last_modified = datetime.datetime.strptime(
+                response.headers['Last-Modified'],
+                '%a, %d %b %Y %H:%M:%S %Z',
+            )
+            files_info[filename] = FileInfo(
+                size=int(response.headers['Content-Length']),
+                created=last_modified,
+            )
+
     file = files[0]
     logging.info(f'Downloading {file.filename} from {file.url}')
 
@@ -137,6 +171,7 @@ async def package_info(
             maintainer=info.maintainer,
             release_date=ts_capture.timestamp,
             project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
+            files_info=files_info,
         )
 
 
