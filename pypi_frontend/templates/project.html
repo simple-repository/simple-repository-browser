@@ -163,21 +163,33 @@ function show_page(page_class){
 $('button.releases').click(
   function() {
     show_page('releases');
+    history.replaceState( {} , 'Releases', '{{ url_for('project_release', project_name=project.name, release=release.version) }}/releases' );
   }
 )
 
 $('button.description').click(
   function() {
     show_page('description');
+    history.replaceState( {} , 'Description', '{{ url_for('project_release', project_name=project.name, release=release.version) }}/description' );
   }
 )
 
 $('button.files').click(
   function() {
     show_page('files');
+    history.replaceState( {} , 'Files', '{{ url_for('project_release', project_name=project.name, release=release.version) }}/files' );
   }
 )
-show_page('description');
+
+  var url_parts = window.location.href.split('/')
+  last_part = url_parts[url_parts.length - 1]
+  if (last_part == 'files') {
+    show_page('files');
+  } else if (last_part == 'releases') {
+    show_page('releases');
+  } else {
+    show_page('description');
+  }
 
 </script>
 {% endblock extra_footer %}

@@ -1,4 +1,7 @@
 import asyncio
+from enum import Enum
+import logging
+import traceback
 from pathlib import Path
 import typing
 import sqlite3
@@ -20,6 +23,12 @@ from . import fetch_projects
 
 
 here = Path(__file__).absolute().parent
+
+
+class ProjectPageSection(str, Enum):
+    description = "description"
+    releases = "releases"
+    files = "files"
 
 
 def build_app(app: fastapi.FastAPI) -> None:
@@ -96,7 +105,8 @@ def build_app(app: fastapi.FastAPI) -> None:
         # For example: invalid type in a parameter.
         try:
             return await call_next(request)
-        except Exception:
+        except Exception as err:
+            logging.error(traceback.format_exc())
             return templates.TemplateResponse(
                 "error.html",
                 {
@@ -109,11 +119,21 @@ def build_app(app: fastapi.FastAPI) -> None:
     app.middleware('http')(catch_exceptions_middleware)
 
     @app.get("/project/{project_name}", response_class=HTMLResponse, name='project')
-    async def project_latest_release(request: Request, project_name: str):
+    async def project_latest_release(
+            request: Request,
+            project_name: str,
+    ):
         return await release_result(request, project_name)
 
     @app.get("/project/{project_name}/{release}", response_class=HTMLResponse, name='project_release')
-    async def project_w_specific_release(request: Request, project_name: str, release: str):
+    @app.get("/project/{project_name}/{release}/{page_section}", response_class=HTMLResponse, name='project_release')
+    async def project_w_specific_release(
+            request: Request,
+            project_name: str,
+            release: str,
+            page_section: typing.Optional[ProjectPageSection] = ProjectPageSection.description,
+    ):
+        _ = page_section  # Handled in javascript.
         return await release_result(request, project_name, release)
 
     async def release_result(request: Request, project_name: str, version: typing.Optional[str] = None):
