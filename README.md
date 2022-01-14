@@ -8,8 +8,10 @@ A frontend to a simple package index ([PEP503](https://www.python.org/dev/peps/p
 See the Dockerfile for canonical instructions. They approximately look like:
 
 ```
-npm install --include=dev
-npm run build
+pushd javascript
+  npm install --include=dev
+  npm run build
+popd
 pip install -e .[dev]
 ```
 
