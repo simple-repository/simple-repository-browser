@@ -4,6 +4,9 @@
     {% block head %}
     <title>{% block title %}Python package index{% endblock title %}</title>
     <script src="{{ url_for('static', path='/js/pypi.core.js') }}"></script>
+
+    <link rel="icon" href="{{ url_for('static', path='/images/favicon.6a76275d.ico') }}" type="image/x-icon">
+
     {% block extra_head %}
     {% endblock extra_head %}
     {% endblock head %}
