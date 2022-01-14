@@ -21,9 +21,11 @@ from . import _pypil
 class PackageInfo:
     summary: str
     description: str
+    url: str
     author: typing.Optional[str] = None
     maintainer: typing.Optional[str] = None
     release_date: typing.Optional[datetime.datetime] = None
+    project_urls: typing.Dict[str, typing.Tuple[str, ...]] = dataclasses.field(default_factory=dict)
 
 
 async def fetch_file(url, dest):
@@ -78,7 +80,7 @@ class ArchiveTimestampCapture:
 
 
 EMPTY_PKG_INFO = PackageInfo(
-        '', '',
+        '', '', '',
     )
 
 async def package_info(
@@ -130,9 +132,11 @@ async def package_info(
         return PackageInfo(
             summary=info.summary or '',
             description=description,
+            url=info.home_page,
             author=info.author,
             maintainer=info.maintainer,
             release_date=ts_capture.timestamp,
+            project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
         )
 
 
