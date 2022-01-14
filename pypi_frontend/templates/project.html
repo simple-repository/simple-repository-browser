@@ -58,10 +58,12 @@
                   Homepage
                 </a>
               </button>
-
-<!--            <strong>Meta</strong>-->
-<!--            <div data-source="author"></div>-->
-<!--            <div data-source="maintainer"></div>-->
+          </div>
+          <hr/>
+          <div>
+              <strong>Meta</strong>
+              <div data-source="author"></div>
+              <div data-source="maintainer"></div>
           </div>
         </div>
         <div class="col-md-9">
@@ -120,8 +122,13 @@ function humanFileSize(size) {
 
      $('[data-source="description"]').html(data['info']['releases']);
 
-<!--     $('[data-source="author"]').html(data['info']['author']);-->
-<!--     $('[data-source="maintainer"]').html(data['info']['maintainer']);-->
+     if (data['info']['author']) {
+       $('[data-source="author"]').html(`<strong>Author: </strong> ${data['info']['author']}`)
+     }
+     if (data['info']['maintainer']) {
+       $('[data-source="maintainer"]').html(`<strong>Maintainer: </strong> ${data['info']['maintainer']}`)
+     }
+
      $('[data-source="home_page"]').attr('href', data['info']['home_page'])
 
      // Handle project URLs
