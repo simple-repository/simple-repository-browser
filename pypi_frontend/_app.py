@@ -212,7 +212,11 @@ def build_app(app: fastapi.FastAPI) -> None:
                     fetch_projects.update_summary(request.app.state.projects_db_connection, project_name, release_info.summary)
         if release_info is None:
             release_info = EMPTY_PKG_INFO
-        return {
+        # https://packaging.python.org/en/latest/specifications/core-metadata/
+        # https://peps.python.org/pep-0566/
+        # https://peps.python.org/pep-0621/
+        # But also, the JSON API in practice.
+        meta = {
             "info": {
                 "author": release_info.author,
                 "author_email": "",
@@ -268,6 +272,7 @@ def build_app(app: fastapi.FastAPI) -> None:
             "urls": [],
             "vulnerabilities": []
         }
+        return meta
 
     @app.on_event("startup")
     @repeat_every(
