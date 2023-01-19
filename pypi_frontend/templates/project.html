@@ -52,12 +52,6 @@
           <hr/>
           <div id="project_urls">
             <strong>Project Links</strong>
-              <button class="btn btn-link col-md-12 rounded-0 files text-start">
-                <a href="" data-source="home_page">
-                  <i class="fa fa-align-left fa-home"></i>
-                  Homepage
-                </a>
-              </button>
           </div>
           <hr/>
           <div>
@@ -125,11 +119,10 @@ function humanFileSize(size) {
      if (data['info']['author']) {
        $('[data-source="author"]').html(`<strong>Author: </strong> ${data['info']['author']}`)
      }
+
      if (data['info']['maintainer']) {
        $('[data-source="maintainer"]').html(`<strong>Maintainer: </strong> ${data['info']['maintainer']}`)
      }
-
-     $('[data-source="home_page"]').attr('href', data['info']['home_page'])
 
      // Handle project URLs
      // https://github.com/pypa/warehouse/blob/64102a6a41f024e54bc0cfe52201d44bc80afd17/warehouse/templates/packaging/detail.html
@@ -141,7 +134,15 @@ function humanFileSize(size) {
         "Tracker": "fa-bug",
         "Bug Tracker": "fa-bug",
         "Changelog": "fa-scroll",
+        "Homepage": "fa-home",
      };
+     project_urls = data['info']['project_urls'];
+     // Put Homepage last in the object (so that it is rendered first).
+     if (project_urls['Homepage']) {
+       home = project_urls['Homepage'];
+       delete project_urls['Homepage'];
+       project_urls['Homepage'] = home;
+     }
      // URLS to be reversed as per https://stackoverflow.com/a/56243786/741316
      [].concat(Object.keys(data['info']['project_urls'])).reverse().forEach(function(name) {
        var url = data['info']['project_urls'][name]

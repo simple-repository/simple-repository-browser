@@ -2,6 +2,8 @@ import asyncio
 import contextlib
 import dataclasses
 import datetime
+import email.parser
+import email.policy
 import logging
 import os.path
 import tarfile
@@ -162,8 +164,26 @@ async def package_info(
 
         description = generate_safe_description_html(info)
 
+        # If there is email information, but not a name in the "author" or "maintainer"
+        # attribute, extract this information from the first person's email address.
+        # Will take something like ``"Ivan" foo@cern.ch`` and extract the "Ivan" part.
+        def extract_usernames(emails):
+            names = []
+            parsed = email.parser.Parser(policy=email.policy.default).parsestr(
+                f'To: {info.author_email}',
+            )
+            for address in parsed['to'].addresses:
+                names.append(address.display_name)
+            return ', '.join(names)
+
+        if not info.author and info.author_email:
+            info.author = extract_usernames(info.author_email)
+
+        if not info.maintainer and info.maintainer_email:
+            info.maintainer = extract_usernames(info.maintainer_email)
+
         # TODO: More metadata could be extracted here.
-        return PackageInfo(
+        pkg = PackageInfo(
             summary=info.summary or '',
             description=description,
             url=info.home_page,
@@ -173,6 +193,12 @@ async def package_info(
             project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
             files_info=files_info,
         )
+
+        # Ensure that a Homepage exists in the project urls
+        if pkg.url and 'Homepage' not in pkg.project_urls:
+            pkg.project_urls['Homepage'] = pkg.url
+
+        return pkg
 
 
 def generate_safe_description_html(package_info: pkginfo.Distribution):
