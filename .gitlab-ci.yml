@@ -1,0 +1,68 @@
+include:
+ - project: acc-co/devops/python/acc-py-gitlab-ci-templates
+   file: v2/python.gitlab-ci.yml
+
+
+variables:
+  project_name: pypi_frontend
+  PY_VERSION: '3.7'
+
+
+fetch_external_deps:
+  image: registry.cern.ch/docker.io/library/node:15
+  stage: build
+  script:
+    - cd javascript
+    - npm install --include=dev
+    - npm run build
+  artifacts:
+    paths:
+     - pypi_frontend/static/js
+
+build_wheel:
+  needs:
+    - fetch_external_deps
+  stage: build
+  extends: .acc_py_build_wheel
+
+
+freeze_wheel:
+  # Inject the lockfiles from the source directory into the wheel
+  stage: build
+  needs:
+    - build_wheel
+  # NOTE: use a "_ci" image with the same tag as your Dockerfile
+  image: registry.cern.ch/acc/acc-py_cc7_ci:2021.12
+  script:
+    # Figure out the wheel to install, compatible with this python version.
+    - python -m pip wheel ${project_name}
+      --no-deps --no-index
+      --find-links ${project_root}/dist/
+      --wheel-dir ${project_root}/.wheel-to-deploy
+    # Lock the wheel using the existing lock-files.
+    - acc-py -vv app lock ${project_root}/.wheel-to-deploy/*.whl
+  artifacts:
+    paths:
+      - ${project_root}/.wheel-to-deploy/*.whl
+
+
+build_and_publish_container_image:
+  # Build a container image with Kaniko, for more details see
+  # https://gitlab.cern.ch/gitlabci-examples/build_docker_image
+  stage: deploy
+  image:
+    name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
+    entrypoint: ['']
+  before_script:
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    # Extract the version (according to setuptools-scm) from one of the wheels.
+    - export VERSION=$(cd ${project_root}/.wheel-to-deploy/ && ls -1 *.whl | head -n 1 | cut -d'-' -f2 | tr + .)
+    - echo $VERSION
+  script:
+    - mkdir -p ${project_root}/context/
+    - cp -r ${project_root}/.wheel-to-deploy ${project_root}/context/
+    - echo "Publishing ${CI_REGISTRY_IMAGE}:${VERSION}"
+    - /kaniko/executor
+      --context ${project_root}/context
+      --dockerfile ${project_root}/deployment/Dockerfile
+      --destination "${CI_REGISTRY_IMAGE}:${VERSION}"
