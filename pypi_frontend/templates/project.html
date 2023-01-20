@@ -66,6 +66,10 @@
               <i class="fa fa-download fa-fw"></i>
               Download files
             </button>
+            <button class="btn btn-link col-md-12 rounded-0 dependencies text-start" type="button" data-purpose="page-select">
+              <i class="fa fa-sitemap fa-fw"></i>
+              Dependencies
+            </button>
           </div>
           <hr/>
           <div id="project_urls">
@@ -76,6 +80,7 @@
               <strong>Meta</strong>
               <div data-source="author"></div>
               <div data-source="maintainer"></div>
+              <div data-source="requires_python"></div>
           </div>
         </div>
         <div class="col-md-9">
@@ -104,6 +109,9 @@
             <div id="project_files">
             </div>
           </div>
+          <div id="dependencies-page" data-purpose="page-switch">
+            <ul id="dependencies"></ul>
+          </div>
         </div>
       </div>
     </div>
@@ -121,7 +129,6 @@ function humanFileSize(size) {
 };
 
   $.getJSON("{{ url_for('api_project_release', project_name=project.name, release=release.version) }}", function( data ) {
-    console.log("Raw data recv: ", data);
     date = new Date(data['info']['creation_date']);
     if(!isNaN(date.getTime()) && date.getFullYear() > 1990) {
         date = date.toLocaleString('default', { month: 'short' }) + ' ' + date.getDate() + ', ' + date.getFullYear();
@@ -140,6 +147,25 @@ function humanFileSize(size) {
 
      if (data['info']['maintainer']) {
        $('[data-source="maintainer"]').html(`<strong>Maintainer: </strong> ${data['info']['maintainer']}`)
+     }
+
+     if (data['info']['requires_python']) {
+       $('[data-source="requires_python"]').html(`<strong>Requires Python: </strong> ${data['info']['requires_python']}`)
+     }
+
+     if (data['info']['requires_dist'].length > 0) {
+       deps_ul = $('#dependencies');
+
+       data['info']['requires_dist'].forEach(
+               function(requirement) {
+                 parts = requirement.split(/[\>\<\=\!\;\[\~\s]+/);
+                 dep_name = parts[0];
+                 url = `{{ url_for('project', project_name='${dep_name}') }}`;
+                 deps_ul.append(`
+                    <li><a href="${url}">${requirement}</a></li>
+                 `);
+               }
+       );
      }
 
      // Handle project URLs
@@ -225,12 +251,21 @@ $('button.files').click(
   }
 )
 
+$('button.dependencies').click(
+  function() {
+    show_page('dependencies');
+    history.replaceState( {} , 'Releases', '{{ url_for('project_release', project_name=project.name, release=release.version) }}/dependencies' );
+  }
+)
+
   var url_parts = window.location.href.split('/')
   last_part = url_parts[url_parts.length - 1]
   if (last_part == 'files') {
     show_page('files');
   } else if (last_part == 'releases') {
     show_page('releases');
+  } else if (last_part == 'dependencies') {
+    show_page('dependencies');
   } else {
     show_page('description');
   }

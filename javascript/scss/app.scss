@@ -46,6 +46,7 @@ nav a:hover {
    padding: 8px;
    border: 1px dotted hsla(0, 0%, 100%, .4);
    line-height: 30px;
+   white-space: nowrap;  // Long pip commands shouldn't wrap
 }
 
 .pip-command a, .pip-command a:hover {

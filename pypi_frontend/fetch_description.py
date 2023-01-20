@@ -4,6 +4,8 @@ import dataclasses
 import datetime
 import email.parser
 import email.policy
+import html
+import importlib_metadata
 import logging
 import os.path
 import tarfile
@@ -37,6 +39,41 @@ class PackageInfo:
     release_date: typing.Optional[datetime.datetime] = None
     project_urls: typing.Dict[str, typing.Tuple[str, ...]] = dataclasses.field(default_factory=dict)
     files_info: typing.Dict[str, FileInfo] = dataclasses.field(default_factory=dict)
+    requires_python: typing.Optional[str] = None
+    requires_dist: typing.Sequence[str] = ()
+
+
+
+class SDist(pkginfo.SDist):
+    def read(self):
+        fqn = os.path.abspath(
+            os.path.normpath(self.filename))
+
+        archive, names, read_file = self._get_archive(fqn)
+
+        try:
+            tuples = [x.split('/') for x in names if 'PKG-INFO' in x]
+            schwarz = sorted([(-len(x), x) for x in tuples])
+
+            for path in [x[1] for x in schwarz]:
+                candidate = '/'.join(path)
+                data = read_file(candidate)
+                if b'Metadata-Version' in data:
+                    reqs = '/'.join(path[:-1] + ['requires.txt'])
+                    if reqs in names:
+                        contents = read_file(reqs).decode()
+                        # Private method to read the pkg-info metadata from the sdist.
+                        r = importlib_metadata.Distribution._convert_egg_info_reqs_to_simple_reqs(
+                            importlib_metadata.Sectioned.read(contents),
+                        )
+                        data = data.decode().split('\n')
+                        inject = [f'Requires-Dist: {req}' for req in r]
+                        data[2:2] = inject
+                        data = '\n'.join(data).encode('utf-8')
+                    return data
+        finally:
+            archive.close()
+
 
 
 async def fetch_file(url, dest):
@@ -140,7 +177,7 @@ async def package_info(
 
     is_wheel = file.filename.endswith('.whl')
     # Limiting ourselves to wheels and sdists is the 80-20 rule.
-    archive_type = pkginfo.Wheel if is_wheel else pkginfo.SDist
+    archive_type = pkginfo.Wheel if is_wheel else SDist
 
     with tempfile.NamedTemporaryFile(
             suffix=os.path.splitext(file.filename)[1],
@@ -192,6 +229,8 @@ async def package_info(
             release_date=ts_capture.timestamp,
             project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
             files_info=files_info,
+            requires_python=info.requires_python,
+            requires_dist=info.requires_dist,
         )
 
         # Ensure that a Homepage exists in the project urls
@@ -242,8 +281,8 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
 async def _devel_to_be_turned_into_test():
     index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
 
-    # prj = index.project('pylogbook')
-    prj = index.project('acc-py-pip-config')
+    prj = index.project('pylogbook')
+    # prj = index.project('acc-py-pip-config')
     releases = prj.releases()
     print(releases)
     for release in releases:

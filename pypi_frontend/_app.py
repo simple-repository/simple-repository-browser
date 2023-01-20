@@ -29,6 +29,7 @@ class ProjectPageSection(str, Enum):
     description = "description"
     releases = "releases"
     files = "files"
+    dependencies = "dependencies"
 
 
 def build_app(app: fastapi.FastAPI) -> None:
@@ -202,7 +203,7 @@ def build_app(app: fastapi.FastAPI) -> None:
         # https://packaging.python.org/en/latest/specifications/core-metadata/
         # https://peps.python.org/pep-0566/
         # https://peps.python.org/pep-0621/
-        # But also, the JSON API in practice.
+        # But also, the JSON API in practice https://warehouse.pypa.io/api-reference/json.html.
         meta = {
             "info": {
                 "author": release_info.author,
@@ -225,8 +226,8 @@ def build_app(app: fastapi.FastAPI) -> None:
                 "platform": "",
                 # Note on project-urls: https://stackoverflow.com/a/56243786/741316
                 "project_urls": release_info.project_urls,
-                "requires_dist": None,
-                "requires_python": None,
+                "requires_dist": release_info.requires_dist,
+                "requires_python": release_info.requires_python,
                 "summary": release_info.summary,
                 "version": release.version,
                 "yanked": False,
