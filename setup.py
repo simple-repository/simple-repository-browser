@@ -50,7 +50,7 @@ setup(
 
     author='Phil Elson',
     author_email='philip.elson@cern.ch',
-    description='SHORT DESCRIPTION OF PROJECT',
+    description='A frontend for a simple pypi index',
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     url='',
