@@ -12,4 +12,4 @@ FROM registry.cern.ch/acc/acc-py_cc7:2020.11
 
 COPY --from=builder /opt/apps/ /opt/apps/
 
-CMD [ "/opt/apps/*/latest/exec/default-executable" ]
+CMD [ "/opt/apps/pypi-frontend/latest/exec/default-executable" ]
