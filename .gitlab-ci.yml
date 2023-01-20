@@ -61,6 +61,7 @@ build_and_publish_container_image:
   script:
     - mkdir -p ${project_root}/context/
     - cp -r ${project_root}/.wheel-to-deploy ${project_root}/context/
+    - echo "Publishing ${CI_REGISTRY_IMAGE}:${VERSION}"
     - /kaniko/executor
       --context ${project_root}/context
       --dockerfile ${project_root}/deployment/Dockerfile
