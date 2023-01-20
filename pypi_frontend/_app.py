@@ -146,14 +146,10 @@ def build_app(app: fastapi.FastAPI) -> None:
             fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
-        if version is None:
-            releases = prj.releases()
-            if not releases:
-                raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
+        latest_release = prj.latest_release()
 
-            # Choose the latest stable release.
-            # TODO: Needs to handle latest *stable* release - currently could get RCs.
-            release = prj.releases()[-1]
+        if version is None:
+            release = latest_release
         else:
             try:
                 release = prj.release(version)
@@ -167,6 +163,7 @@ def build_app(app: fastapi.FastAPI) -> None:
                 "project": prj,
                 "latest_version": None,
                 "release": release,
+                "latest_release": latest_release,  # Note: May be the same a release.
             },
         )
 
@@ -181,22 +178,12 @@ def build_app(app: fastapi.FastAPI) -> None:
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
         version = release
-        if version is None:
-            releases = prj.releases()
-            if not releases:
-                raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
+        try:
+            release = prj.release(version)
+        except ValueError:  # TODO: make this exception specific
+            raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
-            # Choose the latest stable release.
-            # TODO: Needs to handle latest *stable* release.
-            release = prj.releases()[-1]
-        else:
-            try:
-                release = prj.release(version)
-            except ValueError:  # TODO: make this exception specific
-                raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
-
-        # TODO:
-        is_latest = False
+        is_latest = release == prj.latest_release()
 
         with request.app.state.cache as cache:
             key = ('pkg-info', prj.name, release.version)
