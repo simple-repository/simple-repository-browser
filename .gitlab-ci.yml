@@ -66,3 +66,10 @@ build_and_publish_container_image:
       --context ${project_root}/context
       --dockerfile ${project_root}/deployment/Dockerfile
       --destination "${CI_REGISTRY_IMAGE}:${VERSION}"
+
+publish_wheel:
+  extends: .acc_py_publish
+  before_script:
+    - mkdir -p dist
+    - cp ${project_root}/.wheel-to-deploy ./dist/
+    - !reference [.acc_py_publish, before_script]
