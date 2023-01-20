@@ -64,6 +64,9 @@ class Project:
     def __init__(self, name: PackageName, releases: typing.List[ProjectRelease]):
         self.name = name
 
+        if not releases:
+            raise ValueError(f"Project {name} has no releases")
+
         self._releases = sorted(
             releases,
             key=lambda release: packaging.version.parse(release.version),
@@ -71,6 +74,15 @@ class Project:
 
     def releases(self) -> typing.List[ProjectRelease]:
         return self._releases
+
+    def latest_release(self):
+        # Use the pip logic to determine the latest release. First, pick the greatest non-dev version,
+        # and if nothing, fall back to the greatest dev version.
+        for release in self._releases[::-1]:
+            if not packaging.version.parse(release.version).is_devrelease:
+                return release
+        else:
+            return self._releases[-1]
 
     def release(self, version: str):
         # Suboptimal default search.

@@ -34,7 +34,7 @@ a:hover, a:visited, a:link, a:active
    text-decoration: none;
 }
 
-a:hover {
+nav a:hover {
    text-decoration: underline;
 }
 
@@ -46,4 +46,51 @@ a:hover {
    padding: 8px;
    border: 1px dotted hsla(0, 0%, 100%, .4);
    line-height: 30px;
+}
+
+.pip-command a, .pip-command a:hover {
+   color: white;
+}
+
+footer {
+   background-color: #0073b7;
+   color: white;
+   padding: 2em;
+}
+
+footer.text-muted.mt-auto {
+   color: white !important;
+   margin-top: 2em !important;
+}
+
+.btn-primary, .btn-primary:hover, .btn-primary:active, .btn-primary:focus {
+   background-color: #0073b7;
+   border-color: #0073b7;
+   box-shadow: none;  // On focus otherwise
+}
+
+dev#page-content a:hover {
+   color: #0073b7;
+}
+
+
+a.status-badge {
+   font-weight: 400;
+   line-height: 1.4;
+   border: 1px solid hsla(0, 0%, 100%, .5);
+   border-radius: 3px;
+   box-sizing: border-box;
+   display: inline-flex;
+   font-size: .8rem;
+   min-height: 40px;
+   padding: 12px;
+   color: #fff;
+}
+
+a.status-badge--bad {
+   background-color: #d52d40;
+}
+
+a.status-badge--good {
+   background-color: #148024;
 }

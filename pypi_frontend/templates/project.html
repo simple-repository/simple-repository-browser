@@ -9,13 +9,31 @@
   <div class="col-md-6">
     <h1> {{ project.name }} {{ release.version }}</h1>
     <br>
-    <span class="pip-command" id="pip-command">pip install {{ project.name }}</span>
+    {% if latest_release == release %}
+    <span class="pip-command" id="pip-command">pip install {{ project.name }}
+      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ release.version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
+    </span>
+    {% else %}
+    <span class="pip-command" id="pip-command">pip install {{ project.name }}=={{ release.version }}
+      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ release.version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
+    </span>
+    {% endif %}
   </div>
 
   <div class="offset-md-2 col-md-4 text-end">
-    <br><br><br>
-    <!-- Here will go the "latest" (or not latest/release candidate) badge. -->
-
+    <br>
+    {% if latest_release == release %}
+    <a class="status-badge status-badge--good" href="">
+      <i class="fa fa-check fa-fw"></i>&nbsp
+        <span>Latest version</span>
+    </a>
+    {% else %}
+    <a class="status-badge status-badge--bad" href="{{ url_for('project_release', project_name=project.name, release=latest_release.version) }}">
+      <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
+        <span>Newer version available ({{ latest_release.version }})</span>
+    </a>
+    {% endif %}
+    <br><br>
     <span data-source="release_date">
     </span>
   </div>
@@ -31,7 +49,7 @@
 
 
 {% block page_content %}
-    <div class="container">
+    <div class="container" id="page-content">
       <div class="row">
         <div class="col-md-3">
           <div class="d-grid gap-2 d-md-block page-navigation">

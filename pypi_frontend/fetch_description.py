@@ -240,10 +240,14 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
 
 
 async def _devel_to_be_turned_into_test():
-    index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch:8000/simple')
+    index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
 
-    prj = index.project('pylogbook')
+    # prj = index.project('pylogbook')
+    prj = index.project('acc-py-pip-config')
     releases = prj.releases()
+    print(releases)
+    for release in releases:
+        print(release.version)
     print(releases[-1])
     summaries = {}
     for release in releases[::-1]:
