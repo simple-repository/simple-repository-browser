@@ -1,4 +1,3 @@
-import asyncio
 from enum import Enum
 import logging
 import traceback
@@ -11,8 +10,8 @@ from diskcache import Cache
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from fastapi_utils.tasks import repeat_every
+import jinja2
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import _pypil
@@ -32,25 +31,73 @@ class ProjectPageSection(str, Enum):
     dependencies = "dependencies"
 
 
-def build_app(app: fastapi.FastAPI) -> None:
-    # TODO: Make this more configurable, so that we can implement our own
-    #  overrides of endpoints (and templates). For example, there should be no
-    #  Acc-Py mentioned in the base template.
-    app.mount("/static", StaticFiles(directory=here / "static"), name="static")
+class Customiser:
+    # A class which can be overridden in order to customise the behaviour of
+    # the underlying webapp.
 
-    templates = Jinja2Templates(directory=str(here / "templates"))
+    @classmethod
+    def template_loader(cls) -> jinja2.BaseLoader:
+        return jinja2.FileSystemLoader(here / "templates")
+
+    @classmethod
+    def templates(cls) -> jinja2.Environment:
+        loader = cls.template_loader()
+        templates = jinja2.Environment(loader=loader)
+
+        @jinja2.pass_context
+        def url_for(context: dict, name: str, **path_params: typing.Any) -> str:
+            request = context["request"]
+            return request.url_for(name, **path_params)
+
+        templates.globals['url_for'] = url_for
+        return templates
+
+    @classmethod
+    def prepare_static(cls, app) -> None:
+        app.mount("/static", StaticFiles(directory=here / "static"), name="static")
+
+    @classmethod
+    def add_exception_middleware(cls, app):
+        async def catch_exceptions_middleware(request: Request, call_next):
+            # For example: invalid type in a parameter.
+            try:
+                return await call_next(request)
+            except Exception as err:
+                logging.error(traceback.format_exc())
+                return HTMLResponse(
+                    cls.templates().get_template('error.html').render(
+                    **{
+                        "request": request,
+                        "detail": "Internal server error",
+                    },
+                    ),
+                    status_code=500,
+                )
+
+        app.middleware('http')(catch_exceptions_middleware)
+
+    @classmethod
+    def decorate(cls, fn):
+        # A hook to allow tweaking of endpoints (e.g. based on function name).
+        return fn
+
+
+def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
+    customiser.prepare_static(app)
+    templates = customiser.templates()
+    customiser.add_exception_middleware(app)
 
     @app.get("/", response_class=HTMLResponse, name='index')
-    async def read_items(request: Request):
-        return templates.TemplateResponse(
-            "index.html",
-            {
+    async def index_page(request: Request):
+        return templates.get_template('index.html').render(
+            **{
                 "request": request,
             },
         )
 
     @app.get("/about", response_class=HTMLResponse, name='about')
-    async def read_items(request: Request):
+    @customiser.decorate
+    async def about_page(request: Request):
 
         with request.app.state.projects_db_connection as cursor:
             [n_packages] = cursor.execute('SELECT COUNT(canonical_name) FROM projects').fetchone()
@@ -63,9 +110,8 @@ def build_app(app: fastapi.FastAPI) -> None:
                     packages_w_dist_info.add(name)
             n_packages_w_dist_info = len(packages_w_dist_info)
 
-        return templates.TemplateResponse(
-            "about.html",
-            {
+        return templates.get_template('about.html').render(
+            **{
                 "request": request,
                 "n_packages": n_packages,
                 "n_dist_info": n_dist_info,
@@ -74,7 +120,8 @@ def build_app(app: fastapi.FastAPI) -> None:
         )
 
     @app.get("/search", response_class=HTMLResponse, name='search')
-    async def read_items(request: Request, name: str, page: typing.Optional[int] = 0):
+    @customiser.decorate
+    async def search_page(request: Request, name: str, page: typing.Optional[int] = 0):
         name = _pypil.PackageName(name).normalized
 
         page_size = 50
@@ -94,9 +141,8 @@ def build_app(app: fastapi.FastAPI) -> None:
         if exact in results:
             results.remove(exact)
 
-        return templates.TemplateResponse(
-            "search.html",
-            {
+        return templates.get_template("search.html").render(
+            **{
                 "request": request,
                 "search_query": name,
                 "exact": exact,
@@ -106,52 +152,40 @@ def build_app(app: fastapi.FastAPI) -> None:
         )
 
     @app.exception_handler(StarletteHTTPException)
+    @customiser.decorate
     async def http_exception_handler(request, exc):
-        return templates.TemplateResponse(
-            "error.html",
-            {
-                "request": request,
-                "detail": exc.detail,
-            },
+        return HTMLResponse(
+            templates.get_template("error.html").render(
+                **{
+                    "request": request,
+                    "detail": exc.detail,
+                },
+            ),
             status_code=exc.status_code,
         )
 
-    async def catch_exceptions_middleware(request: Request, call_next):
-        # For example: invalid type in a parameter.
-        try:
-            return await call_next(request)
-        except Exception as err:
-            logging.error(traceback.format_exc())
-            return templates.TemplateResponse(
-                "error.html",
-                {
-                    "request": request,
-                    "detail": "Internal server error",
-                },
-                status_code=500,
-            )
-
-    app.middleware('http')(catch_exceptions_middleware)
-
     @app.get("/project/{project_name}", response_class=HTMLResponse, name='project')
-    async def project_latest_release(
+    @customiser.decorate
+    async def project_page__latest_release(
             request: Request,
             project_name: str,
     ):
-        return await release_result(request, project_name)
+        return await project_page__common_impl(request, project_name)
 
     @app.get("/project/{project_name}/{release}", response_class=HTMLResponse, name='project_release')
     @app.get("/project/{project_name}/{release}/{page_section}", response_class=HTMLResponse, name='project_release')
-    async def project_w_specific_release(
+    @customiser.decorate
+    async def project_page__specific_release(
             request: Request,
             project_name: str,
             release: str,
             page_section: typing.Optional[ProjectPageSection] = ProjectPageSection.description,
     ):
         _ = page_section  # Handled in javascript.
-        return await release_result(request, project_name, release)
+        return await project_page__common_impl(request, project_name, release)
 
-    async def release_result(request: Request, project_name: str, version: typing.Optional[str] = None):
+    @customiser.decorate
+    async def project_page__common_impl(request: Request, project_name: str, version: typing.Optional[str] = None) -> str:
         index: _pypil.SimplePackageIndex = request.app.state.full_index
         canonical_name = _pypil.PackageName(project_name).normalized
         try:
@@ -170,20 +204,19 @@ def build_app(app: fastapi.FastAPI) -> None:
                 release = prj.release(version)
             except ValueError:  # TODO: make this exception specific
                 raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
-
-        return templates.TemplateResponse(
-            "project.html",
-            {
+        return templates.get_template("project.html").render(
+            **{
                 "request": request,
                 "project": prj,
                 "latest_version": None,
                 "release": release,
-                "latest_release": latest_release,  # Note: May be the same a release.
+                "latest_release": latest_release,  # Note: May be the same release.
             },
         )
 
     @app.get("/api/project/{project_name}/{release}", response_class=JSONResponse, name='api_project_release')
-    async def release_json(request: Request, project_name: str, release: str, recache: bool = False):
+    @customiser.decorate
+    async def release_api__json(request: Request, project_name: str, release: str, recache: bool = False):
         index: _pypil.SimplePackageIndex = request.app.state.full_index
         try:
             prj = index.project(project_name)
@@ -282,15 +315,20 @@ def build_app(app: fastapi.FastAPI) -> None:
         raise_exceptions=False,
         wait_first=False,  # TODO: Make sure that this runs when we first start, but not if we already have data.
     )
+    @customiser.decorate
     async def refetch_full_index() -> None:
         await asyncio.sleep(60 * 30)  # Let the app properly start (30mn) before we do any work
         # We periodically want to refresh the project database to make sure we are up-to-date.
         await fetch_projects.fully_populate_db(app.state.projects_db_connection, app.state.full_index)
 
 
-def make_app(cache_dir: Path = Path.cwd() / 'cache', index_url=None, prefix=None) -> fastapi.FastAPI:
+def make_app(
+        cache_dir: Path = Path.cwd() / 'cache',
+        index_url=None, prefix=None,
+        customiser: Customiser = Customiser,
+) -> fastapi.FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None)
-    build_app(app)
+    build_app(app, customiser=customiser)
 
     kwargs = {}
     if index_url is not None:
