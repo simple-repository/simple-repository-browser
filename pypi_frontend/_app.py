@@ -1,3 +1,4 @@
+import asyncio
 from enum import Enum
 import logging
 import traceback
@@ -10,7 +11,6 @@ from diskcache import Cache
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi_utils.tasks import repeat_every
 import jinja2
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -37,7 +37,10 @@ class Customiser:
 
     @classmethod
     def template_loader(cls) -> jinja2.BaseLoader:
-        return jinja2.FileSystemLoader(here / "templates")
+        # Load the base directory directly (referencable as "index.html") as well as keeping the
+        # base namespace "base/index.html". In this way, others can override specific pages
+        # (e.g. index.html) but still extend from "base/index.html".
+        return jinja2.FileSystemLoader([here / "templates", here / "templates" / "base"])
 
     @classmethod
     def templates(cls) -> jinja2.Environment:
@@ -102,6 +105,9 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
     @app.get("/about", response_class=HTMLResponse, name='about')
     @customiser.decorate
     async def about_page(request: Request):
+
+        if app.state.periodic_reindexing_task is None:
+            app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
 
         with request.app.state.projects_db_connection as cursor:
             [n_packages] = cursor.execute('SELECT COUNT(canonical_name) FROM projects').fetchone()
@@ -194,7 +200,7 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
         canonical_name = _pypil.PackageName(project_name).normalized
         try:
             prj = index.project(project_name)
-            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, prj.name, prj.name)
+            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, canonical_name, prj.name)
         except _pypil.PackageNotFound:
             fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
@@ -314,12 +320,12 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
         }
         return meta
 
-    @app.on_event("startup")
-    @repeat_every(
-        seconds=60 * 60 * 24,  # Each day.
-        raise_exceptions=False,
-        wait_first=False,
-    )
+    async def run_reindex_periodically(frequency_seconds: int) -> None:
+        # Tried using startup hooks, worked on dev, didn't work in prod (seemingly the same setup)
+        while True:
+            await refetch_full_index()
+            await asyncio.sleep(frequency_seconds)
+
     @customiser.decorate
     async def refetch_full_index() -> None:
         # We periodically want to refresh the project database to make sure we are up-to-date.
@@ -341,6 +347,8 @@ def make_app(
     # TODO: There is no longer a reason that this state should be separate from build_app.
     app.state.full_index = _pypil.SimplePackageIndex(**kwargs)
     app.state.index = app.state.full_index
+
+    app.state.periodic_reindexing_task = None
 
     app.state.cache = Cache(str(cache_dir/'diskcache'))
 
