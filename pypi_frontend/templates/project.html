@@ -82,6 +82,11 @@
               <div data-source="maintainer"></div>
               <div data-source="requires_python"></div>
           </div>
+          <hr/>
+          <div id="classifiers">
+              <strong>Classifiers</strong>
+              <br>
+          </div>
         </div>
         <div class="col-md-9">
           <div class="row">
@@ -165,6 +170,35 @@ function humanFileSize(size) {
                     <li><a href="${url}">${requirement}</a></li>
                  `);
                }
+       );
+     }
+
+     if (data['info']['classifiers'].length > 0) {
+       classifiers_div = $('#classifiers');
+       classifiers = data['info']['classifiers'];
+
+       const classifier_groups = classifiers.reduce((groups, item) => {
+          group_value = item.split('::')[0].trim();
+          const group = (groups[group_value] || []);
+          group.push(item);
+          groups[group_value] = group;
+          return groups;
+       }, {});
+
+       Object.keys(classifier_groups).sort().forEach(
+         function(top_level_classifier) {
+           classifiers_div.append(`<br><h6>${top_level_classifier}</h6>`);
+           ul = classifiers_div.append('<ul >');
+           classifier_groups[top_level_classifier].forEach(
+             function (classifier) {
+               f = classifier.indexOf('::') + 2
+               remainder = classifier.slice(f).trim();
+               ul.append(`
+                 <li>${remainder}</li>
+               `);
+             }
+           );
+         }
        );
      }
 

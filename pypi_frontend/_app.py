@@ -222,7 +222,7 @@ def build_app(app: fastapi.FastAPI) -> None:
             "info": {
                 "author": release_info.author,
                 "author_email": "",
-                "classifiers": [],
+                "classifiers": release_info.classifiers,
                 "creation_date": release_info.release_date.isoformat() if release_info.release_date else None,
                 "description": release_info.description,
                 "description_content_type": None,
