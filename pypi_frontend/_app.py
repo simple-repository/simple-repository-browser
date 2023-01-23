@@ -278,12 +278,11 @@ def build_app(app: fastapi.FastAPI) -> None:
 
     @app.on_event("startup")
     @repeat_every(
-        seconds=60 * 60 * 24 * 7,  # Each week.
+        seconds=60 * 60 * 24,  # Each day.
         raise_exceptions=False,
-        wait_first=False,  # TODO: Make sure that this runs when we first start, but not if we already have data.
+        wait_first=False,
     )
     async def refetch_full_index() -> None:
-        await asyncio.sleep(60 * 30)  # Let the app properly start (30mn) before we do any work
         # We periodically want to refresh the project database to make sure we are up-to-date.
         await fetch_projects.fully_populate_db(app.state.projects_db_connection, app.state.full_index)
 
