@@ -280,64 +280,6 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
     return description
 
 
-class SourceContext:
-    # A class to identify the source of a package. This should be a configuration item, and not included in the core repository.
-
-    def __init__(self):
-        self._internal = _pypil.SimplePackageIndex(
-            source_url='http://acc-py-repo.cern.ch/repository/py-release-local/simple'
-        )
-        self._external = _pypil.SimplePackageIndex(
-            source_url='http://acc-py-repo.cern.ch/repository/py-thirdparty-remote/simple'
-        )
-
-    def pkg_same(self, pkg_a: _pypil.Project, pkg_b: _pypil.Project):
-        # We don't use equality, as a difference in source results in a difference in URL prefix
-        # in the underlying ProjectFiles.url.
-
-        if pkg_a.name != pkg_b.name:
-            return False
-
-        releases_a = pkg_a.releases()
-        releases_b = pkg_b.releases()
-
-        if len(releases_a) != len(releases_b):
-            return False
-
-        for release_a, release_b in zip(releases_a, releases_b):
-            if release_a.version != release_b.version:
-                return False
-
-            files_a, files_b = release_a.files(), release_b.files()
-            if len(files_a) != len(files_b):
-                return False
-
-            for file_a, file_b in zip(files_a, files_b):
-                if file_a.filename != file_b.filename:
-                    return False
-
-        return True
-
-    async def determine_source(self, prj: _pypil.Project) -> typing.Sequence[str]:
-        try:
-            internal_pkg = self._internal.project(prj.name)
-        except _pypil.PackageNotFound:
-            return ['PyPI.org']
-
-        if self.pkg_same(prj, internal_pkg):
-            return ['Acc-PyPI']
-
-        try:
-            external_pkg = self._external.project(prj.name)
-        except _pypil.PackageNotFound:
-            # We don't know... (this shouldn't happen!)
-            return []
-        if prj == external_pkg:
-            return ['PyPI.org']
-
-        return ['PyPI.org', 'Acc-PyPI']
-
-
 async def _devel_to_be_turned_into_test():
     index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
 
@@ -357,17 +299,6 @@ async def _devel_to_be_turned_into_test():
             print(info.maintainer, info.author)
             print('Classifiers', info.classifiers)
             break
-
-    sc = SourceContext()
-    sources = await sc.determine_source(prj)
-    print('SOURCES:', sources)
-
-    if False:
-        numpy = index.project('numpy')
-        print("numpy:", await sc.determine_source(numpy))
-
-        jpype = index.project('jpype1')
-        print("jpype:", await sc.determine_source(jpype))
 
     print(summaries)
 
