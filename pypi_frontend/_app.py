@@ -51,10 +51,25 @@ def build_app(app: fastapi.FastAPI) -> None:
 
     @app.get("/about", response_class=HTMLResponse, name='about')
     async def read_items(request: Request):
+
+        with request.app.state.projects_db_connection as cursor:
+            [n_packages] = cursor.execute('SELECT COUNT(canonical_name) FROM projects').fetchone()
+
+        with request.app.state.cache as cache:
+            n_dist_info = len(cache)
+            packages_w_dist_info = set()
+            for cache_type, name, version in cache:
+                if cache_type == 'pkg-info':
+                    packages_w_dist_info.add(name)
+            n_packages_w_dist_info = len(packages_w_dist_info)
+
         return templates.TemplateResponse(
             "about.html",
             {
                 "request": request,
+                "n_packages": n_packages,
+                "n_dist_info": n_dist_info,
+                "n_packages_w_dist_info": n_packages_w_dist_info,
             },
         )
 
@@ -89,7 +104,6 @@ def build_app(app: fastapi.FastAPI) -> None:
                 "results_count": n_results
             },
         )
-
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request, exc):
