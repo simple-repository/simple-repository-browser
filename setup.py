@@ -28,7 +28,7 @@ REQUIREMENTS: dict = {
         'markdown',
         'packaging',
         'pkginfo',
-        'pypi_simple',
+        'pypi_simple>=1.0.*',
         # 'pypil[simple]',
         'readme-renderer[md]',
         'uvicorn',

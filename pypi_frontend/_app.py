@@ -17,7 +17,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import _pypil
 from . import __version__
 
-from .fetch_description import package_info, EMPTY_PKG_INFO
+from .fetch_description import package_info, EMPTY_PKG_INFO, PackageInfo
 from . import fetch_projects
 
 
@@ -51,6 +51,10 @@ class Customiser:
 
         templates.globals['url_for'] = url_for
         return templates
+
+    @classmethod
+    async def release_info_retrieved(cls, project: _pypil.Project, package_info: PackageInfo):
+        pass
 
     @classmethod
     def prepare_static(cls, app) -> None:
@@ -241,6 +245,7 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
                 if recache:
                     print('Recaching')
                 release_info = await package_info(release)
+                await customiser.release_info_retrieved(prj, release_info)
                 cache[key] = release_info
 
                 if is_latest:

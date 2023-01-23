@@ -28,6 +28,14 @@ class ProjectFile:
         self.version = version
         self.filename = filename
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(url={self.url}, version={self.version}, filename={self.filename})'
+
+    def __eq__(self, other):
+        if not isinstance(other, ProjectFile):
+            return NotImplemented
+        return (self.url, self.version, self.filename) == (other.url, other.version, other.filename)
+
 
 class ProjectRelease:
     """
@@ -44,14 +52,22 @@ class ProjectRelease:
         return self._files
 
     @classmethod
-    def build_from_files(cls, files: typing.List[ProjectFile]) -> typing.List["ProjectRelease"]:
+    def build_from_files(cls, files: typing.Tuple[ProjectFile]) -> typing.Tuple["ProjectRelease"]:
         versions = {}
         for k, g in groupby(files, lambda file: file.version):
             versions.setdefault(k, []).extend(list(g))
         releases = []
         for version, files in versions.items():
             releases.append(cls(version, files))
-        return releases
+        return tuple(releases)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(version={repr(self.version)}, files={repr(self.files())}'
+
+    def __eq__(self, other):
+        if not isinstance(other, ProjectRelease):
+            return NotImplemented
+        return (self.version, self.files()) == (other.version, other.files())
 
 
 class Project:
@@ -61,18 +77,18 @@ class Project:
     A project contains multiple releases.
 
     """
-    def __init__(self, name: PackageName, releases: typing.List[ProjectRelease]):
+    def __init__(self, name: PackageName, releases: typing.Tuple[ProjectRelease]):
         self.name = name
 
         if not releases:
             raise ValueError(f"Project {name} has no releases")
 
-        self._releases = sorted(
+        self._releases = tuple(sorted(
             releases,
             key=lambda release: packaging.version.parse(release.version),
-        )
+        ))
 
-    def releases(self) -> typing.List[ProjectRelease]:
+    def releases(self) -> typing.Tuple[ProjectRelease]:
         return self._releases
 
     def latest_release(self):
@@ -93,19 +109,27 @@ class Project:
         assert len(results) == 1
         return results[0]
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(name={repr(self.name)}, releases={repr(self.releases())})'
+
+    def __eq__(self, other):
+        if not isinstance(other, Project):
+            return NotImplemented
+        return (self.name, self.releases()) == (other.name, other.releases())
+
 
 class SimplePackageIndex:
     """A project index with data coming from a simple (PEP 503) source"""
     def __init__(self, source_url: str = 'https://pypi.org/simple'):
         self._source_url = source_url
 
-    def project_names(self) -> typing.List[PackageName]:
+    def project_names(self) -> typing.Tuple[PackageName]:
         # TODO: Use code from grouping-service to allow (async) streaming of projects.
         simple = PyPISimple(self._source_url)
         result = []
         for name in simple.stream_project_names():
             result.append(PackageName(name))
-        return result
+        return tuple(result)
 
     def project(self, name: PackageName) -> Project:
         simple = PyPISimple(self._source_url)
@@ -115,7 +139,9 @@ class SimplePackageIndex:
 
         return Project(
             name=name,
-            releases=ProjectRelease.build_from_files([
-                ProjectFile(pkg.url, pkg.version, pkg.filename) for pkg in page.packages
-            ]),
+            releases=ProjectRelease.build_from_files(
+                tuple(
+                    ProjectFile(pkg.url, pkg.version, pkg.filename) for pkg in page.packages
+                ),
+            ),
         )
