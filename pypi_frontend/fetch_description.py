@@ -36,6 +36,7 @@ class PackageInfo:
     url: str
     author: typing.Optional[str] = None
     maintainer: typing.Optional[str] = None
+    classifiers: typing.Sequence[str] = ()
     release_date: typing.Optional[datetime.datetime] = None
     project_urls: typing.Dict[str, typing.Tuple[str, ...]] = dataclasses.field(default_factory=dict)
     files_info: typing.Dict[str, FileInfo] = dataclasses.field(default_factory=dict)
@@ -226,6 +227,7 @@ async def package_info(
             url=info.home_page,
             author=info.author,
             maintainer=info.maintainer,
+            classifiers=info.classifiers,
             release_date=ts_capture.timestamp,
             project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
             files_info=files_info,
@@ -295,6 +297,7 @@ async def _devel_to_be_turned_into_test():
         if info:
             summaries[release.version] = info.summary
             print(info.maintainer, info.author)
+            print('Classifiers', info.classifiers)
             break
     print(summaries)
 
