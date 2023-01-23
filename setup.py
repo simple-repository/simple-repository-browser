@@ -23,6 +23,7 @@ REQUIREMENTS: dict = {
         'fastapi',
         'fastapi-utils',
         'gunicorn',
+        'importlib_metadata>=6.*',
         'jinja2',
         'markdown',
         'packaging',
@@ -56,7 +57,7 @@ setup(
     url='',
 
     packages=find_packages(),
-    python_requires='~=3.7',
+    python_requires='~=3.9',
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
