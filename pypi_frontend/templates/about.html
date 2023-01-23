@@ -2,8 +2,14 @@
 
 {% block page_content %}
 <section>
-<div class="container">
-This PyPI frontend is developed at <a href="https://gitlab.cern.ch/acc-co/devops/python/prototypes/simple-pypi-frontend">https://gitlab.cern.ch/acc-co/devops/python/prototypes/simple-pypi-frontend</a>
+    <div class="container">
+        <p>
+            This PyPI frontend is developed at <a href="https://gitlab.cern.ch/acc-co/devops/python/prototypes/simple-pypi-frontend">https://gitlab.cern.ch/acc-co/devops/python/prototypes/simple-pypi-frontend</a>
+        </p>
+        <p>
+            There are {{ "{:,}".format(n_packages) }} packages in the index, and metadata for {{ "{:,}".format(n_dist_info) }} distributions cached.
+        </p>
     </div>
 </section>
+
 {% endblock page_content %}
