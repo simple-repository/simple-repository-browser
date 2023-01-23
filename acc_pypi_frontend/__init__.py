@@ -15,7 +15,7 @@ class AccPyCustomiser(base.Customiser):
     @classmethod
     def template_loader(cls) -> jinja2.BaseLoader:
         templates_dir = here / 'templates'
-        return jinja2.FileSystemLoader([templates_dir, base.here / 'templates'])
+        return jinja2.FileSystemLoader([templates_dir, base.here / 'templates' / 'base', base.here / 'templates'])
 
     @classmethod
     async def release_info_retrieved(cls, project: _pypil.Project, pkg_info: base.PackageInfo) -> None:

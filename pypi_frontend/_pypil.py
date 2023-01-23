@@ -70,6 +70,14 @@ class ProjectRelease:
         return (self.version, self.files()) == (other.version, other.files())
 
 
+def safe_version(version_str) -> packaging.version.Version:
+    try:
+        # Seen with pyserial and "pyserial-py3k-2.5.win32.exe"
+        return packaging.version.parse(version_str)
+    except packaging.version.InvalidVersion:
+        return packaging.version.parse('0.0rc0')
+
+
 class Project:
     """
     Represents a Python "project" such as numpy or matplotlib.
@@ -85,7 +93,7 @@ class Project:
 
         self._releases = tuple(sorted(
             releases,
-            key=lambda release: packaging.version.parse(release.version),
+            key=lambda release: safe_version(release.version),
         ))
 
     def releases(self) -> typing.Tuple[ProjectRelease]:
@@ -95,7 +103,7 @@ class Project:
         # Use the pip logic to determine the latest release. First, pick the greatest non-dev version,
         # and if nothing, fall back to the greatest dev version.
         for release in self._releases[::-1]:
-            if not packaging.version.parse(release.version).is_devrelease:
+            if not safe_version(release.version).is_devrelease:
                 return release
         else:
             return self._releases[-1]
