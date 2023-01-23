@@ -1,4 +1,5 @@
 import argparse
+import importlib
 import logging
 from pathlib import Path
 
@@ -20,10 +21,24 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--cache-dir", type=str, default=str(pwd / 'cache'))
     parser.add_argument("--index-url", type=str, default=None)
     parser.add_argument("--url-prefix", type=str, default=None)
+    parser.add_argument('--customiser', type=str, default="pypi_frontend._app:Customiser")
+
+
+def load_customiser(name: str) -> _app.Customiser:
+    mod_name, class_name = name.split(':', 1)
+    module = importlib.import_module(mod_name)
+    cls = getattr(module, class_name)
+    return cls
 
 
 def handler(args: dict) -> None:
-    app = _app.make_app(cache_dir=Path(args.cache_dir), index_url=args.index_url, prefix=args.url_prefix)
+    customiser = load_customiser(args.customiser)
+    app = _app.make_app(
+        cache_dir=Path(args.cache_dir),
+        index_url=args.index_url,
+        prefix=args.url_prefix,
+        customiser=customiser,
+    )
     Path(args.logs_dir).mkdir(exist_ok=True, parents=True)
     bind = f'{args.host}:{args.port}'
     print(f'Starting application on http://{bind}')
