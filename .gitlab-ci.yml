@@ -5,7 +5,7 @@ include:
 
 variables:
   project_name: pypi_frontend
-  PY_VERSION: '3.7'
+  PY_VERSION: '3.9'
 
 
 fetch_external_deps:
