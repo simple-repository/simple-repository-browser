@@ -52,17 +52,20 @@ async def fully_populate_db(connection, index):
                 (canonical_name, name, '', ''),
             )
 
-    print('Fetching names from db')
     with con as cursor:
         db_canonical_names = {row[0] for row in cursor.execute("SELECT canonical_name FROM projects", ).fetchall()}
 
     index_canonical_names = {normed_name for normed_name, _ in project_names}
-    names_in_db_no_longer_in_index = db_canonical_names - index_canonical_names
 
+    if not index_canonical_names:
+        print("No names found on the index. Not removing from the database, as this is likely a problem with the index.")
+        return
+
+    names_in_db_no_longer_in_index = db_canonical_names - index_canonical_names
     if names_in_db_no_longer_in_index:
         print(
             f'Removing the following { len(names_in_db_no_longer_in_index) } names from the database:\n   '
-            + "\n   ".join(names_in_db_no_longer_in_index[:2000])
+            + "\n   ".join(list(names_in_db_no_longer_in_index)[:2000])
         )
     with con as cursor:
         for name in names_in_db_no_longer_in_index:
@@ -72,7 +75,7 @@ async def fully_populate_db(connection, index):
                 WHERE canonical_name == ?;
                 ''',
                 (name, ),
-            ),
+            )
     print('DB synchronised with index')
 
 
