@@ -28,7 +28,7 @@
         <span>Latest version</span>
     </a>
     {% else %}
-    <a class="status-badge status-badge--bad" href="{{ url_for('project_release', project_name=project.name, release=latest_release.version) }}">
+    <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_release.version) }}">
       <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
         <span>Newer version available ({{ latest_release.version }})</span>
     </a>
@@ -99,7 +99,7 @@
           </div>
           <div id="releases-page" data-purpose="page-switch" data-source="releases">
           {% for release in project.releases()|reverse %}
-            <a href="{{ url_for('project_release', project_name=project.name, release=release.version) }}">
+            <a href="{{ url_for('project_version', project_name=project.name, version=release.version) }}">
                 <div class="card" style="margin: 1em;">
                   <div class="card-body">
                     <img src="{{ url_for('static', path='/images/white-cube.8c3a6fe9.svg') }}" style="padding: 0 1em 0 0.5em;" >
@@ -133,7 +133,7 @@ function humanFileSize(size) {
     return ( size / Math.pow(1024, i) ).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
 };
 
-  $.getJSON("{{ url_for('api_project_release', project_name=project.name, release=release.version) }}", function( data ) {
+  $.getJSON("{{ url_for('api_project_version', project_name=project.name, version=release.version) }}", function( data ) {
     date = new Date(data['info']['creation_date']);
     if(!isNaN(date.getTime()) && date.getFullYear() > 1990) {
         date = date.toLocaleString('default', { month: 'short' }) + ' ' + date.getDate() + ', ' + date.getFullYear();
@@ -267,28 +267,28 @@ function show_page(page_class){
 $('button.releases').click(
   function() {
     show_page('releases');
-    history.replaceState( {} , 'Releases', '{{ url_for('project_release', project_name=project.name, release=release.version) }}/releases' );
+    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=release.version) }}/releases' );
   }
 )
 
 $('button.description').click(
   function() {
     show_page('description');
-    history.replaceState( {} , 'Description', '{{ url_for('project_release', project_name=project.name, release=release.version) }}/description' );
+    history.replaceState( {} , 'Description', '{{ url_for('project_version', project_name=project.name, version=release.version) }}/description' );
   }
 )
 
 $('button.files').click(
   function() {
     show_page('files');
-    history.replaceState( {} , 'Files', '{{ url_for('project_release', project_name=project.name, release=release.version) }}/files' );
+    history.replaceState( {} , 'Files', '{{ url_for('project_version', project_name=project.name, version=release.version) }}/files' );
   }
 )
 
 $('button.dependencies').click(
   function() {
     show_page('dependencies');
-    history.replaceState( {} , 'Releases', '{{ url_for('project_release', project_name=project.name, release=release.version) }}/dependencies' );
+    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=release.version) }}/dependencies' );
   }
 )
 

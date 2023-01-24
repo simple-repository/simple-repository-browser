@@ -1,7 +1,11 @@
+import asyncio
 from pathlib import Path
 import typing
 
+import fastapi
 import jinja2
+import packaging.specifiers
+import packaging.requirements
 import pypi_simple
 
 import pypi_frontend._app as base
@@ -25,6 +29,19 @@ class AccPyCustomiser(base.Customiser):
         for source in await sc.determine_source(project):
             extra_classifiers.append(f'Package index :: {source}')
         pkg_info.classifiers = tuple(pkg_info.classifiers) + tuple(extra_classifiers)
+
+    @classmethod
+    async def crawl_recursively(cls, app: fastapi.FastAPI, normalized_project_names_to_crawl: typing.Set[str]) -> None:
+        # Add all of the release-local packages to the set of names that need to be crawled.
+        internal_index = _pypil.SimplePackageIndex(
+            source_url='http://acc-py-repo.cern.ch/repository/py-release-local/simple'
+        )
+
+        packages_for_reindexing = set(
+            str(pkg_name.normalized) for pkg_name in internal_index.project_names()
+        )
+
+        await super().crawl_recursively(app, normalized_project_names_to_crawl | packages_for_reindexing)
 
 
 class SourceContext:
@@ -68,7 +85,7 @@ class SourceContext:
     async def determine_source(self, prj: _pypil.Project) -> typing.Sequence[str]:
         try:
             internal_pkg = self._internal.project(prj.name)
-        except (_pypil.PackageNotFound, pypi_simple.client.NoSuchProjectError):
+        except _pypil.PackageNotFound:
             return ['PyPI.org']
 
         if self.pkg_same(prj, internal_pkg):

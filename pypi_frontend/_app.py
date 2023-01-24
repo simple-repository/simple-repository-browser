@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import jinja2
+import packaging.requirements
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import _pypil
@@ -88,8 +89,91 @@ class Customiser:
         # A hook to allow tweaking of endpoints (e.g. based on function name).
         return fn
 
+    @classmethod
+    async def fetch_pkg_info(cls, app: fastapi.FastAPI, prj: _pypil.Project, release: _pypil.ProjectRelease, force_recache: bool) -> typing.Optional[PackageInfo]:
+        is_latest = release == prj.latest_release()
+        with app.state.cache as cache:
+            key = ('pkg-info', prj.name, release.version)
+            if key in cache and not force_recache:
+                release_info = cache[key]
+            else:
+                if force_recache:
+                    print('Recaching')
 
-def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
+                fetch_projects.insert_if_missing(
+                    app.state.projects_db_connection,
+                    prj.name.normalized,
+                    prj.name,
+                )
+
+                release_info = await package_info(release)
+                await cls.release_info_retrieved(prj, release_info)
+                cache[key] = release_info
+
+                if is_latest:
+
+                    fetch_projects.update_summary(
+                        app.state.projects_db_connection,
+                        prj.name, release_info.summary,
+                    )
+        return release_info
+
+    @classmethod
+    async def refetch_hook(cls, app: fastapi.FastAPI) -> None:
+        # A hook, that can take as long as it likes to execute (asynchronously), which
+        # gets called when the periodic reindexing occurs.
+        # We periodically want to refresh the project database to make sure we are up-to-date.
+        # await fetch_projects.fully_populate_db(
+        #     app.state.projects_db_connection,
+        #     app.state.full_index,
+        # )
+        with app.state.cache as cache:
+            packages_w_dist_info = set()
+            for cache_type, name, version in cache:
+                if cache_type == 'pkg-info':
+                    packages_w_dist_info.add(name)
+        await cls.crawl_recursively(app, packages_w_dist_info)
+
+    @classmethod
+    async def crawl_recursively(cls, app: fastapi.FastAPI, normalized_project_names_to_crawl: typing.Set[str]) -> None:
+        seen = set()
+        packages_for_reindexing = set(normalized_project_names_to_crawl)
+        full_index = app.state.full_index
+
+        while packages_for_reindexing - seen:
+            remaining_packages = packages_for_reindexing - seen
+            pkg_name = remaining_packages.pop()
+            print(
+                f"Index iteration loop. Looking at {pkg_name}, with {len(remaining_packages)} remaining ({len(seen)} having been completed)")
+            seen.add(pkg_name)
+            try:
+                prj = full_index.project(pkg_name)
+            except _pypil.PackageNotFound:
+                # faulthandler
+                continue
+
+            latest = prj.latest_release()
+            # Don't bother fetching devrelease only projects.
+            if _pypil.safe_version(latest.version).is_devrelease:
+                continue
+
+            release_info = await cls.fetch_pkg_info(app, prj, latest, force_recache=False)
+            if release_info is None:
+                continue
+
+            for dist in release_info.requires_dist:
+                try:
+                    dep_name = packaging.requirements.Requirement(dist).name
+                except packaging.requirements.InvalidRequirement:
+                    # See https://discuss.python.org/t/pip-supporting-non-pep508-dependency-specifiers/23107.
+                    continue
+                packages_for_reindexing.add(dep_name)
+
+            # Don't DOS the service, we aren't in a rush here.
+            await asyncio.sleep(0.01)
+
+
+def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None:
     customiser.prepare_static(app)
     templates = customiser.templates()
     customiser.add_exception_middleware(app)
@@ -107,6 +191,8 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
     async def about_page(request: Request):
 
         if app.state.periodic_reindexing_task is None:
+            # Note that on_event('startup') does not reliably get called in our production
+            # environment (unclear why not, as it does in local development).
             app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
 
         with request.app.state.projects_db_connection as cursor:
@@ -135,6 +221,7 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
         name = _pypil.PackageName(name).normalized
 
         page_size = 50
+        page = page or 0
         offset = page * page_size
 
         with request.app.state.projects_db_connection as cursor:
@@ -182,17 +269,17 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
     ):
         return await project_page__common_impl(request, project_name)
 
-    @app.get("/project/{project_name}/{release}", response_class=HTMLResponse, name='project_release')
-    @app.get("/project/{project_name}/{release}/{page_section}", response_class=HTMLResponse, name='project_release')
+    @app.get("/project/{project_name}/{version}", response_class=HTMLResponse, name='project_version')
+    @app.get("/project/{project_name}/{version}/{page_section}", response_class=HTMLResponse, name='project_version_section')
     @customiser.decorate
     async def project_page__specific_release(
             request: Request,
             project_name: str,
-            release: str,
+            version: str,
             page_section: typing.Optional[ProjectPageSection] = ProjectPageSection.description,
     ):
         _ = page_section  # Handled in javascript.
-        return await project_page__common_impl(request, project_name, release)
+        return await project_page__common_impl(request, project_name, version)
 
     @customiser.decorate
     async def project_page__common_impl(request: Request, project_name: str, version: typing.Optional[str] = None) -> str:
@@ -202,6 +289,11 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
             prj = index.project(project_name)
             fetch_projects.insert_if_missing(request.app.state.projects_db_connection, canonical_name, prj.name)
         except _pypil.PackageNotFound:
+            # Tidy up the cache if the project is no longer found.
+            with request.app.state.cache as cache:
+                for key in list(cache):
+                    if key[:2] == ('pkg-info', canonical_name):
+                        cache.pop(key)
             fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
@@ -224,38 +316,24 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
             },
         )
 
-    @app.get("/api/project/{project_name}/{release}", response_class=JSONResponse, name='api_project_release')
+    @app.get("/api/project/{project_name}/{version}", response_class=JSONResponse, name='api_project_version')
     @customiser.decorate
-    async def release_api__json(request: Request, project_name: str, release: str, recache: bool = False):
+    async def release_api__json(request: Request, project_name: str, version: str, recache: bool = False):
         index: _pypil.SimplePackageIndex = request.app.state.full_index
         try:
             prj = index.project(project_name)
-            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, prj.name, prj.name)
+            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, prj.name.normalized, prj.name)
         except _pypil.PackageNotFound:
-            fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
+            fetch_projects.remove_if_found(request.app.state.projects_db_connection, _pypil.PackageName(project_name).normalized)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
-        version = release
         try:
             release = prj.release(version)
         except ValueError:  # TODO: make this exception specific
             raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
-        is_latest = release == prj.latest_release()
+        release_info = await customiser.fetch_pkg_info(app, prj, release, force_recache=recache)
 
-        with request.app.state.cache as cache:
-            key = ('pkg-info', prj.name, release.version)
-            if key in cache and not recache:
-                release_info = cache[key]
-            else:
-                if recache:
-                    print('Recaching')
-                release_info = await package_info(release)
-                await customiser.release_info_retrieved(prj, release_info)
-                cache[key] = release_info
-
-                if is_latest:
-                    fetch_projects.update_summary(request.app.state.projects_db_connection, project_name, release_info.summary)
         if release_info is None:
             release_info = EMPTY_PKG_INFO
         # https://packaging.python.org/en/latest/specifications/core-metadata/
@@ -322,20 +400,23 @@ def build_app(app: fastapi.FastAPI, customiser: Customiser) -> None:
 
     async def run_reindex_periodically(frequency_seconds: int) -> None:
         # Tried using startup hooks, worked on dev, didn't work in prod (seemingly the same setup)
+        print("Starting the reindexing loop")
         while True:
-            await refetch_full_index()
+            try:
+                await customiser.refetch_hook(app)
+            except Exception as err:
+                logging.exception(err, exc_info=True)
             await asyncio.sleep(frequency_seconds)
 
-    @customiser.decorate
-    async def refetch_full_index() -> None:
-        # We periodically want to refresh the project database to make sure we are up-to-date.
-        await fetch_projects.fully_populate_db(app.state.projects_db_connection, app.state.full_index)
+    @app.on_event('startup')
+    async def create_task():
+        app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
 
 
 def make_app(
         cache_dir: Path = Path.cwd() / 'cache',
         index_url=None, prefix=None,
-        customiser: Customiser = Customiser,
+        customiser: typing.Type[Customiser] = Customiser,
 ) -> fastapi.FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None)
     build_app(app, customiser=customiser)
