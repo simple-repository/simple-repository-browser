@@ -102,11 +102,11 @@ class Customiser:
                 )
 
                 release_info = await package_info(release)
-                await cls.release_info_retrieved(prj, release_info)
+                if release_info is not None:
+                    await cls.release_info_retrieved(prj, release_info)
                 cache[key] = release_info
 
-                if is_latest:
-
+                if is_latest and release_info is not None:
                     fetch_projects.update_summary(
                         app.state.projects_db_connection,
                         name=prj.name.normalized,
@@ -153,7 +153,8 @@ class Customiser:
 
             latest = prj.latest_release()
             # Don't bother fetching devrelease only projects.
-            if _pypil.safe_version(latest.version).is_devrelease:
+            vn = _pypil.safe_version(latest.version)
+            if vn.is_devrelease or vn.is_prerelease:
                 continue
 
             release_info = await cls.fetch_pkg_info(app, prj, latest, force_recache=False)
@@ -339,6 +340,8 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
 
         if release_info is None:
             release_info = EMPTY_PKG_INFO
+            release._files = ()  # crcmod as an example.
+
         # https://packaging.python.org/en/latest/specifications/core-metadata/
         # https://peps.python.org/pep-0566/
         # https://peps.python.org/pep-0621/

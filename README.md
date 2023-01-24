@@ -29,10 +29,10 @@ Then, copy the built wheel to acc-py-repo.cern.ch. On that machine:
 
 ```
 source /opt/acc-py/base/2020.11/setup.sh
-acc-py app deploy /path/to/wheel
+acc-py app deploy /path/to/wheel --deploy-base /opt/acc-py/apps/
 ```
 
-Promote this new version to pro (once tested), and restart the acc-pypi-frontend service:
+Restart the acc-pypi-frontend service:
 
 ```
 systemctrl restart acc-pypi-frontend

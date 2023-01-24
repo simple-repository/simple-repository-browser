@@ -245,10 +245,10 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
     description_type = package_info.description_content_type or 'text/x-rst'
     raw_description = package_info.description or ''
 
-    if description_type == 'text/x-rst':
+    if description_type == 'text/x-rst' or description_type.startswith('text/x-rst;'):
         return readme_renderer.rst.render(raw_description)
 
-    elif description_type == 'text/markdown':
+    elif description_type == 'text/markdown' or description_type.startswith('text/markdown;'):  # Seen longer form with orjson
         return readme_renderer.markdown.render(raw_description)
     else:
         # Plain, or otherwise.
@@ -280,14 +280,18 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
 async def _devel_to_be_turned_into_test():
     index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
 
-    prj = index.project('pylogbook')
-    prj = index.project('pyreadline')
-    prj = index.project('vme-boards')
-    # prj = index.project('acc-py-pip-config')
+    prj = index.project('pylogbook')  # An internal only project
+    # prj = index.project('pyreadline')  # exe files.
+    # prj = index.project('vme-boards')  # Unusual/unparsable filename
+    # prj = index.project('crcmod')  # No useful format (msi only)
+    # prj = index.project('testcontainers') # Latest is an rc release
+    # prj = index.project('cernsso')  # Has no files (but a release)
+    prj = index.project('orjson')  # Has a different content type header for the readme
+
     releases = prj.releases()
     for release in releases:
         print('V: ', release.version)
-    print(releases[-1])
+    print('Latest:', prj.latest_release())
     summaries = {}
     for release in releases[::-1]:
         print(release.version, release.files())

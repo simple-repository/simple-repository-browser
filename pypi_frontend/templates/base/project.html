@@ -126,12 +126,11 @@
 {% block extra_footer %}
 <script src="{{ url_for('static', path='/js/pypi.project.js') }}"></script>
 <script>
+  function humanFileSize(size) {
+      var i = Math.floor( Math.log(size) / Math.log(1024) );
+      return ( size / Math.pow(1024, i) ).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
+  };
 
-
-function humanFileSize(size) {
-    var i = Math.floor( Math.log(size) / Math.log(1024) );
-    return ( size / Math.pow(1024, i) ).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
-};
 
   $.getJSON("{{ url_for('api_project_version', project_name=project.name, version=release.version) }}", function( data ) {
     date = new Date(data['info']['creation_date']);
@@ -209,11 +208,21 @@ function humanFileSize(size) {
         "Documentation": "fa-book",
         "Source": "fa-code-branch",
         "Source Code": "fa-code-branch",
+        "Code": "fa-code-branch",
         "Tracker": "fa-bug",
+        "Issues": "fa-bug",
         "Bug Tracker": "fa-bug",
+        "Discussions": "fa-comments",
         "Changelog": "fa-scroll",
         "Homepage": "fa-home",
      };
+
+     desired_name = Object.keys(special_icons);
+     desired_name.forEach(function(key) {
+        special_icons[key.toLowerCase()] = special_icons[key];
+       }
+     )
+
      project_urls = data['info']['project_urls'];
      // Put Homepage last in the object (so that it is rendered first).
      if (project_urls['Homepage']) {
@@ -225,8 +234,8 @@ function humanFileSize(size) {
      [].concat(Object.keys(data['info']['project_urls'])).reverse().forEach(function(name) {
        var url = data['info']['project_urls'][name]
        fa_icon = 'fa-link'
-       if (name in special_icons) {
-         fa_icon = special_icons[name]
+       if (name.toLowerCase() in special_icons) {
+         fa_icon = special_icons[name.toLowerCase()]
        }
        $('#project_urls').append(`
 
