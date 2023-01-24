@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import sqlite3
 
 from ._pypil import PackageName
@@ -9,7 +10,7 @@ def create_table(connection):
     with con as cursor:
         cursor.execute(
             '''CREATE TABLE IF NOT EXISTS projects
-            (canonical_name text unique, preferred_name text, summary text, description_html text)
+            (canonical_name text unique, preferred_name text, summary text, release_date timestamp, release_version text)
             '''
         )
 
@@ -17,23 +18,23 @@ def create_table(connection):
 def insert_if_missing(connection, canonical_name, preferred_name):
     with connection as cursor:
         cursor.execute(
-            "insert OR IGNORE into projects(canonical_name, preferred_name, summary, description_html) values (?, ?, ?, ?)",
-            (canonical_name, preferred_name, '', ''),
+            "INSERT OR IGNORE into projects(canonical_name, preferred_name) values (?, ?)",
+            (canonical_name, preferred_name),
         )
 
 
 def remove_if_found(connection, canonical_name):
     with connection as cursor:
-        cursor.execute('DELETE FROM projects where canonical_name = ?;', (canonical_name,)).fetchone()
+        cursor.execute('DELETE FROM projects where canonical_name = ?;', (canonical_name,))
 
 
-def update_summary(conn, name, summary):
+def update_summary(conn, name: str, summary: str, release_date: datetime.datetime, release_version: str):
     with conn as cursor:
         cursor.execute('''
         UPDATE projects
-        SET summary = ?
+        SET summary = ?, release_date = ?, release_version = ?
         WHERE canonical_name == ?;
-        ''', (summary, name))
+        ''', (summary, release_date, release_version, name))
 
 
 async def fully_populate_db(connection, index):
@@ -48,8 +49,8 @@ async def fully_populate_db(connection, index):
     with con as cursor:
         for canonical_name, name in project_names:
             cursor.execute(
-                "insert OR IGNORE into projects(canonical_name, preferred_name, summary, description_html) values (?, ?, ?, ?)",
-                (canonical_name, name, '', ''),
+                "INSERT OR IGNORE into projects(canonical_name, preferred_name) values (?, ?)",
+                (canonical_name, name),
             )
 
     with con as cursor:

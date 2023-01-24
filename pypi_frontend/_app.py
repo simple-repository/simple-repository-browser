@@ -114,7 +114,10 @@ class Customiser:
 
                     fetch_projects.update_summary(
                         app.state.projects_db_connection,
-                        prj.name, release_info.summary,
+                        name=prj.name.normalized,
+                        summary=release_info.summary,
+                        release_date=release_info.release_date,
+                        release_version=release.version,
                     )
         return release_info
 
@@ -123,10 +126,10 @@ class Customiser:
         # A hook, that can take as long as it likes to execute (asynchronously), which
         # gets called when the periodic reindexing occurs.
         # We periodically want to refresh the project database to make sure we are up-to-date.
-        # await fetch_projects.fully_populate_db(
-        #     app.state.projects_db_connection,
-        #     app.state.full_index,
-        # )
+        await fetch_projects.fully_populate_db(
+            app.state.projects_db_connection,
+            app.state.full_index,
+        )
         with app.state.cache as cache:
             packages_w_dist_info = set()
             for cache_type, name, version in cache:
@@ -225,9 +228,13 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         offset = page * page_size
 
         with request.app.state.projects_db_connection as cursor:
-            exact = cursor.execute('SELECT * FROM projects WHERE canonical_name == ?', (f'{name}',)).fetchone()
+            fields = 'canonical_name, summary, release_version, release_date'
+            exact = cursor.execute(
+                'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?',
+                (name,)
+            ).fetchone()
             results = cursor.execute(
-                "SELECT * FROM projects WHERE canonical_name LIKE ? OR summary LIKE ? LIMIT ? OFFSET ?",
+                "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name LIKE ? OR summary LIKE ? LIMIT ? OFFSET ?",
                 (f'%{name}%', f'%{name}%', page_size, offset)
             ).fetchall()
 
@@ -433,7 +440,13 @@ def make_app(
 
     app.state.cache = Cache(str(cache_dir/'diskcache'))
 
-    con = sqlite3.connect(cache_dir/'projects.sqlite')
+    con = sqlite3.connect(
+        cache_dir/'projects.sqlite',
+        # For datetimes https://stackoverflow.com/a/1830499/741316
+        detect_types=sqlite3.PARSE_DECLTYPES,
+    )
+    # For name based row access https://stackoverflow.com/a/2526294/741316.
+    con.row_factory = sqlite3.Row
     app.state.projects_db_connection = con
 
     app.state.version = __version__
