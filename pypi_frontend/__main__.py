@@ -4,8 +4,8 @@ import logging
 import typing
 from pathlib import Path
 
-from ._gunicorn import Application
 from . import _app
+from ._gunicorn import Application
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
@@ -54,7 +54,7 @@ def handler(args: typing.Any) -> None:
             "worker_class": "uvicorn.workers.UvicornWorker",
             "default_proc_name": __package__,
             "capture_output": True,
-        }
+        },
     ).run()
 
 

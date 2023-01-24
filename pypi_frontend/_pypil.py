@@ -1,9 +1,9 @@
-from itertools import groupby
 import typing
+from itertools import groupby
 
 import packaging.version
-from pypi_simple import PyPISimple
 import pypi_simple.client
+from pypi_simple import PyPISimple
 
 
 class PackageName(str):
@@ -92,10 +92,12 @@ class Project:
         if not releases:
             raise ValueError(f"Project {name} has no releases")
 
-        self._releases = tuple(sorted(
-            releases,
-            key=lambda release: safe_version(release.version),
-        ))
+        self._releases = tuple(
+            sorted(
+                releases,
+                key=lambda release: safe_version(release.version),
+            ),
+        )
 
     def releases(self) -> typing.Tuple[ProjectRelease, ...]:
         return self._releases

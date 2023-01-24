@@ -1,26 +1,22 @@
 import asyncio
-from enum import Enum
 import logging
-import traceback
-from pathlib import Path
-import typing
 import sqlite3
+import traceback
+import typing
+from enum import Enum
+from pathlib import Path
 
 import fastapi
-from diskcache import Cache
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 import jinja2
 import packaging.requirements
+from diskcache import Cache
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import _pypil
-from . import __version__
-
-from .fetch_description import package_info, EMPTY_PKG_INFO, PackageInfo
-from . import fetch_projects
-
+from . import __version__, _pypil, fetch_projects
+from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
 
 here = Path(__file__).absolute().parent
 
@@ -147,7 +143,8 @@ class Customiser:
             remaining_packages = packages_for_reindexing - seen
             pkg_name = remaining_packages.pop()
             print(
-                f"Index iteration loop. Looking at {pkg_name}, with {len(remaining_packages)} remaining ({len(seen)} having been completed)")
+                f"Index iteration loop. Looking at {pkg_name}, with {len(remaining_packages)} remaining ({len(seen)} having been completed)",
+            )
             seen.add(pkg_name)
             try:
                 prj = full_index.project(pkg_name)
@@ -231,11 +228,11 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             fields = 'canonical_name, summary, release_version, release_date'
             exact = cursor.execute(
                 'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?',
-                (name,)
+                (name,),
             ).fetchone()
             results = cursor.execute(
                 "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name LIKE ? OR summary LIKE ? LIMIT ? OFFSET ?",
-                (f'%{name}%', f'%{name}%', page_size, offset)
+                (f'%{name}%', f'%{name}%', page_size, offset),
             ).fetchall()
 
         # TODO: This shouldn't include the pagination.
@@ -251,7 +248,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
                 "search_query": name,
                 "exact": exact,
                 "results": results,
-                "results_count": n_results
+                "results_count": n_results,
             },
         )
 
@@ -359,7 +356,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
                 "downloads": {
                     "last_day": -1,
                     "last_month": -1,
-                    "last_week": -1
+                    "last_week": -1,
                 },
                 "home_page": release_info.url,
                 "license": "",
@@ -374,7 +371,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
                 "summary": release_info.summary,
                 "version": release.version,
                 "yanked": False,
-                "yanked_reason": None
+                "yanked_reason": None,
             },
             "last_serial": -1,
             "releases": {
@@ -398,10 +395,10 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
                         "yanked_reason": None,
                     }
                     for file in release.files()
-                ]
+                ],
             },
             "urls": [],
-            "vulnerabilities": []
+            "vulnerabilities": [],
         }
         return meta
 

@@ -37,4 +37,3 @@ Promote this new version to pro (once tested), and restart the acc-pypi-frontend
 ```
 systemctrl restart acc-pypi-frontend
 ```
-

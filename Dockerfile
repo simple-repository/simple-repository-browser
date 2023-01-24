@@ -22,8 +22,7 @@ RUN cd /opt/src/ \
 FROM python:3.7 as runner
 
 COPY --from=py_builder /opt/src/dist /opt/src/dist
-RUN pip install /opt/src/dist/* 
+RUN pip install /opt/src/dist/*
 
 WORKDIR /opt/pypi-frontend/
 CMD uvicorn pypi_frontend._develop:app --host 0.0.0.0
-

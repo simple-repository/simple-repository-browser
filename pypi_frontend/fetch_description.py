@@ -5,7 +5,6 @@ import datetime
 import email.parser
 import email.policy
 import html
-import importlib_metadata
 import logging
 import os.path
 import tarfile
@@ -15,6 +14,7 @@ import zipfile
 
 import aiohttp
 import bleach
+import importlib_metadata
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
@@ -48,7 +48,8 @@ class PackageInfo:
 class SDist(pkginfo.SDist):
     def read(self):
         fqn = os.path.abspath(
-            os.path.normpath(self.filename))
+            os.path.normpath(self.filename),
+        )
 
         archive, names, read_file = self._get_archive(fqn)
 
@@ -79,7 +80,7 @@ class SDist(pkginfo.SDist):
 
 async def fetch_file(url, dest):
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.get(url,) as r:
+        async with session.get(url) as r:
             try:
                 r.raise_for_status()
             except aiohttp.client.ClientResponseError as err:
@@ -130,7 +131,7 @@ class ArchiveTimestampCapture:
 
 EMPTY_PKG_INFO = PackageInfo(
         '', '', '',
-    )
+)
 
 async def package_info(
         release: _pypil.ProjectRelease,
@@ -142,7 +143,7 @@ async def package_info(
             file.filename.endswith('.whl'),
             file.filename.endswith('.tar.gz'),
             file.filename.endswith('.zip'),
-        )
+        ),
     )
 
     if not files:
