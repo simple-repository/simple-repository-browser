@@ -8,6 +8,10 @@ variables:
   PY_VERSION: '3.9'
 
 
+pre-commit:
+  extends: .acc_py_pre-commit
+
+
 fetch_external_deps:
   image: registry.cern.ch/docker.io/library/node:15
   stage: build
@@ -50,6 +54,8 @@ build_and_publish_container_image:
   # Build a container image with Kaniko, for more details see
   # https://gitlab.cern.ch/gitlabci-examples/build_docker_image
   stage: deploy
+  extends:
+    - .acc_py_on_tag
   image:
     name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
     entrypoint: ['']

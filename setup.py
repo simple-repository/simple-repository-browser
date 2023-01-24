@@ -6,8 +6,8 @@ https://packaging.python.org/guides/distributing-packages-using-setuptools/
 
 """
 from pathlib import Path
-from setuptools import setup, find_packages
 
+from setuptools import find_packages, setup
 
 HERE = Path(__file__).parent.absolute()
 with (HERE / 'README.md').open('rt') as fh:
@@ -38,6 +38,7 @@ REQUIREMENTS: dict = {
     ],
     'dev': [
         'build',
+        'pre-commit',
     ],
     'doc': [
         'sphinx',
@@ -77,9 +78,11 @@ setup(
         **REQUIREMENTS,
         # The 'dev' extra is the union of 'test' and 'doc', with an option
         # to have explicit development dependencies listed.
-        'dev': [req
-                for extra in ['dev', 'test', 'doc']
-                for req in REQUIREMENTS.get(extra, [])],
+        'dev': [
+            req
+            for extra in ['dev', 'test', 'doc']
+            for req in REQUIREMENTS.get(extra, [])
+        ],
         # The 'all' extra is the union of all requirements.
         'all': [req for reqs in REQUIREMENTS.values() for req in reqs],
     },

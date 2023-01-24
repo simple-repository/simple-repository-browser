@@ -4,8 +4,8 @@ import logging
 import typing
 from pathlib import Path
 
-from ._gunicorn import Application
 from . import _app
+from ._gunicorn import Application
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
@@ -25,7 +25,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--customiser', type=str, default="pypi_frontend._app:Customiser")
 
 
-def load_customiser(name: str) -> _app.Customiser:
+def load_customiser(name: str) -> typing.Type[_app.Customiser]:
     mod_name, class_name = name.split(':', 1)
     module = importlib.import_module(mod_name)
     cls = getattr(module, class_name)
@@ -54,7 +54,7 @@ def handler(args: typing.Any) -> None:
             "worker_class": "uvicorn.workers.UvicornWorker",
             "default_proc_name": __package__,
             "capture_output": True,
-        }
+        },
     ).run()
 
 

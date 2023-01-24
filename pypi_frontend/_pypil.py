@@ -1,9 +1,9 @@
-from itertools import groupby
 import typing
+from itertools import groupby
 
 import packaging.version
-from pypi_simple import PyPISimple
 import pypi_simple.client
+from pypi_simple import PyPISimple
 
 
 class PackageName(str):
@@ -54,12 +54,12 @@ class ProjectRelease:
 
     @classmethod
     def build_from_files(cls, files: typing.Tuple[ProjectFile, ...]) -> typing.Tuple["ProjectRelease", ...]:
-        versions = {}
+        versions: typing.Dict[str, typing.List[ProjectFile]] = {}
         for k, g in groupby(files, lambda file: file.version):
             versions.setdefault(k, []).extend(list(g))
         releases = []
-        for version, files in versions.items():
-            releases.append(cls(version, files))
+        for version, version_files in versions.items():
+            releases.append(cls(version, tuple(version_files)))
         return tuple(releases)
 
     def __repr__(self):
@@ -92,10 +92,12 @@ class Project:
         if not releases:
             raise ValueError(f"Project {name} has no releases")
 
-        self._releases = tuple(sorted(
-            releases,
-            key=lambda release: safe_version(release.version),
-        ))
+        self._releases = tuple(
+            sorted(
+                releases,
+                key=lambda release: safe_version(release.version),
+            ),
+        )
 
     def releases(self) -> typing.Tuple[ProjectRelease, ...]:
         return self._releases

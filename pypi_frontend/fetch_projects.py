@@ -11,7 +11,7 @@ def create_table(connection):
         cursor.execute(
             '''CREATE TABLE IF NOT EXISTS projects
             (canonical_name text unique, preferred_name text, summary text, release_date timestamp, release_version text)
-            '''
+            ''',
         )
 
 
@@ -30,11 +30,13 @@ def remove_if_found(connection, canonical_name):
 
 def update_summary(conn, name: str, summary: str, release_date: datetime.datetime, release_version: str):
     with conn as cursor:
-        cursor.execute('''
+        cursor.execute(
+            '''
         UPDATE projects
         SET summary = ?, release_date = ?, release_version = ?
         WHERE canonical_name == ?;
-        ''', (summary, release_date, release_version, name))
+        ''', (summary, release_date, release_version, name),
+        )
 
 
 async def fully_populate_db(connection, index):
@@ -54,7 +56,7 @@ async def fully_populate_db(connection, index):
             )
 
     with con as cursor:
-        db_canonical_names = {row[0] for row in cursor.execute("SELECT canonical_name FROM projects", ).fetchall()}
+        db_canonical_names = {row[0] for row in cursor.execute("SELECT canonical_name FROM projects").fetchall()}
 
     index_canonical_names = {normed_name for normed_name, _ in project_names}
 
@@ -66,7 +68,7 @@ async def fully_populate_db(connection, index):
     if names_in_db_no_longer_in_index:
         print(
             f'Removing the following { len(names_in_db_no_longer_in_index) } names from the database:\n   '
-            + "\n   ".join(list(names_in_db_no_longer_in_index)[:2000])
+            "\n   ".join(list(names_in_db_no_longer_in_index)[:2000]),
         )
     with con as cursor:
         for name in names_in_db_no_longer_in_index:
@@ -75,7 +77,7 @@ async def fully_populate_db(connection, index):
                 DELETE FROM projects
                 WHERE canonical_name == ?;
                 ''',
-                (name, ),
+                (name,),
             )
     print('DB synchronised with index')
 
@@ -88,22 +90,18 @@ async def _devel_to_be_turned_into_test():
     from ._pypil import SimplePackageIndex
 
     index = SimplePackageIndex()
-
-    index = SimplePackageIndex(source_url='http://cwe-513-vpl337.cern.ch:8000/simple/')
+    # index = SimplePackageIndex(source_url='http://cwe-513-vpl337.cern.ch:8000/simple/')
 
     if False:
-        import asyncio
         asyncio.run(fully_populate_db(con, index))
 
-    name = 'cartop'
     with con as cur:
         # exact = cur.execute("SELECT * FROM projects WHERE canonical_name == ?", (f'{name}',)).fetchone()
         # results = cur.execute("SELECT * FROM projects WHERE canonical_name LIKE ? LIMIT 100", (f'%{name}%', )).fetchall()
-        [count] = cur.execute("SELECT COUNT(canonical_name) FROM projects", ).fetchone()
+        [count] = cur.execute("SELECT COUNT(canonical_name) FROM projects").fetchone()
 
     print(count)
 
 
 if __name__ == '__main__':
-    import asyncio
     asyncio.run(_devel_to_be_turned_into_test())
