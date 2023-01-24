@@ -8,6 +8,10 @@ variables:
   PY_VERSION: '3.9'
 
 
+pre-commit:
+  extends: .acc_py_pre-commit
+
+
 fetch_external_deps:
   image: registry.cern.ch/docker.io/library/node:15
   stage: build
