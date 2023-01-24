@@ -216,8 +216,9 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
 
     @app.get("/search", response_class=HTMLResponse, name='search')
     @customiser.decorate
-    async def search_page(request: Request, name: str, page: typing.Optional[int] = 0):
-        name = _pypil.PackageName(name).normalized
+    async def search_page(request: Request, query: str, page: typing.Optional[int] = 0):
+        # query = query.replace(' ', '%')  # Put a wildcard in there...
+        name = _pypil.PackageName(query).normalized
 
         page_size = 50
         page = page or 0
