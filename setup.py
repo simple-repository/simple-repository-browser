@@ -69,7 +69,7 @@ setup(
             'static/*/*',
             'static/*',
             'templates/*',
-            'templates/base',
+            'templates/base/*',
         ],
     },
 

@@ -106,7 +106,8 @@ class Project:
         # Use the pip logic to determine the latest release. First, pick the greatest non-dev version,
         # and if nothing, fall back to the greatest dev version.
         for release in self._releases[::-1]:
-            if not safe_version(release.version).is_devrelease:
+            vn = safe_version(release.version)
+            if not (vn.is_devrelease or vn.is_prerelease):
                 return release
         else:
             return self._releases[-1]

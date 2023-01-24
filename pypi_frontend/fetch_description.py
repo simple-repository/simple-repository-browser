@@ -280,14 +280,17 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
 async def _devel_to_be_turned_into_test():
     index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
 
-    prj = index.project('pylogbook')
-    prj = index.project('pyreadline')
-    prj = index.project('vme-boards')
-    # prj = index.project('acc-py-pip-config')
+    prj = index.project('pylogbook')  # An internal only project
+    # prj = index.project('pyreadline')  # exe files.
+    # prj = index.project('vme-boards')  # Unusual/unparsable filename
+    # prj = index.project('crcmod')  # No useful format (msi only)
+    # prj = index.project('testcontainers') # Latest is an rc release
+    # prj = index.project('cernsso')  # Has no files (but a release)
+
     releases = prj.releases()
     for release in releases:
         print('V: ', release.version)
-    print(releases[-1])
+    print('Latest:', prj.latest_release())
     summaries = {}
     for release in releases[::-1]:
         print(release.version, release.files())
