@@ -285,6 +285,7 @@ async def _devel_to_be_turned_into_test():
 
     prj = index.project('pylogbook')
     prj = index.project('pyreadline')
+    prj = index.project('vme-boards')
     # prj = index.project('acc-py-pip-config')
     releases = prj.releases()
     for release in releases:
