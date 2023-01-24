@@ -38,7 +38,7 @@ class PackageInfo:
     maintainer: typing.Optional[str] = None
     classifiers: typing.Sequence[str] = ()
     release_date: typing.Optional[datetime.datetime] = None
-    project_urls: typing.Dict[str, typing.Tuple[str, ...]] = dataclasses.field(default_factory=dict)
+    project_urls: typing.Dict[str, str] = dataclasses.field(default_factory=dict)
     files_info: typing.Dict[str, FileInfo] = dataclasses.field(default_factory=dict)
     requires_python: typing.Optional[str] = None
     requires_dist: typing.Sequence[str] = ()
@@ -284,11 +284,11 @@ async def _devel_to_be_turned_into_test():
     index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
 
     prj = index.project('pylogbook')
+    prj = index.project('pyreadline')
     # prj = index.project('acc-py-pip-config')
     releases = prj.releases()
-    print(releases)
     for release in releases:
-        print(release.version)
+        print('V: ', release.version)
     print(releases[-1])
     summaries = {}
     for release in releases[::-1]:

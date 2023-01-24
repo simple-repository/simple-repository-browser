@@ -1,6 +1,7 @@
 import argparse
 import importlib
 import logging
+import typing
 from pathlib import Path
 
 from ._gunicorn import Application
@@ -31,7 +32,7 @@ def load_customiser(name: str) -> _app.Customiser:
     return cls
 
 
-def handler(args: dict) -> None:
+def handler(args: typing.Any) -> None:
     customiser = load_customiser(args.customiser)
     app = _app.make_app(
         cache_dir=Path(args.cache_dir),

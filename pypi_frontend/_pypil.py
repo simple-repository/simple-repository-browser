@@ -3,6 +3,7 @@ import typing
 
 import packaging.version
 from pypi_simple import PyPISimple
+import pypi_simple.client
 
 
 class PackageName(str):
@@ -44,7 +45,7 @@ class ProjectRelease:
     A release can have multiple files.
 
     """
-    def __init__(self, version='', files: typing.Tuple[ProjectFile, ...] = ()):
+    def __init__(self, version: str = '', files: typing.Tuple[ProjectFile, ...] = ()):
         self.version = version
         self._files = files
 
@@ -52,7 +53,7 @@ class ProjectRelease:
         return self._files
 
     @classmethod
-    def build_from_files(cls, files: typing.Tuple[ProjectFile]) -> typing.Tuple["ProjectRelease"]:
+    def build_from_files(cls, files: typing.Tuple[ProjectFile, ...]) -> typing.Tuple["ProjectRelease", ...]:
         versions = {}
         for k, g in groupby(files, lambda file: file.version):
             versions.setdefault(k, []).extend(list(g))
@@ -85,7 +86,7 @@ class Project:
     A project contains multiple releases.
 
     """
-    def __init__(self, name: PackageName, releases: typing.Tuple[ProjectRelease]):
+    def __init__(self, name: PackageName, releases: typing.Tuple[ProjectRelease, ...]):
         self.name = name
 
         if not releases:
@@ -96,7 +97,7 @@ class Project:
             key=lambda release: safe_version(release.version),
         ))
 
-    def releases(self) -> typing.Tuple[ProjectRelease]:
+    def releases(self) -> typing.Tuple[ProjectRelease, ...]:
         return self._releases
 
     def latest_release(self):
@@ -108,7 +109,7 @@ class Project:
         else:
             return self._releases[-1]
 
-    def release(self, version: str):
+    def release(self, version: str) -> ProjectRelease:
         # Suboptimal default search.
         results = [release for release in self.releases() if release.version == version]
         if not results:
@@ -131,7 +132,7 @@ class SimplePackageIndex:
     def __init__(self, source_url: str = 'https://pypi.org/simple'):
         self._source_url = source_url
 
-    def project_names(self) -> typing.Tuple[PackageName]:
+    def project_names(self) -> typing.Tuple[PackageName, ...]:
         # TODO: Use code from grouping-service to allow (async) streaming of projects.
         simple = PyPISimple(self._source_url)
         result = []
@@ -139,17 +140,29 @@ class SimplePackageIndex:
             result.append(PackageName(name))
         return tuple(result)
 
-    def project(self, name: PackageName) -> Project:
+    def project(self, name: typing.Union[PackageName, str]) -> Project:
+        if not isinstance(name, PackageName):
+            name = PackageName(name)
         simple = PyPISimple(self._source_url)
-        page = simple.get_project_page(name)
+        try:
+            page = simple.get_project_page(name)
+        except pypi_simple.client.NoSuchProjectError:
+            # faulthandler (a test dependency of greenlet)
+            page = None
+
         if page is None:
             raise PackageNotFound(name)
 
         return Project(
-            name=name,
+            name=name.normalized,  # We don't have the preferred name here.
             releases=ProjectRelease.build_from_files(
                 tuple(
-                    ProjectFile(pkg.url, pkg.version, pkg.filename) for pkg in page.packages
+                    ProjectFile(
+                        pkg.url,
+                        pkg.version or '0.0dev0',  # Seen with pyreadline and vme-boards
+                        pkg.filename,
+                    ) for pkg in page.packages
+
                 ),
             ),
         )
