@@ -54,12 +54,12 @@ class ProjectRelease:
 
     @classmethod
     def build_from_files(cls, files: typing.Tuple[ProjectFile, ...]) -> typing.Tuple["ProjectRelease", ...]:
-        versions = {}
+        versions: typing.Dict[str, typing.List[ProjectFile]] = {}
         for k, g in groupby(files, lambda file: file.version):
             versions.setdefault(k, []).extend(list(g))
         releases = []
-        for version, files in versions.items():
-            releases.append(cls(version, files))
+        for version, version_files in versions.items():
+            releases.append(cls(version, tuple(version_files)))
         return tuple(releases)
 
     def __repr__(self):

@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import sqlite3
-import traceback
 import typing
 from enum import Enum
 from pathlib import Path
@@ -67,13 +66,13 @@ class Customiser:
             try:
                 return await call_next(request)
             except Exception as err:
-                logging.error(traceback.format_exc())
+                logging.exception(err, exc_info=True)
                 return HTMLResponse(
                     cls.templates().get_template('error.html').render(
-                    **{
-                        "request": request,
-                        "detail": "Internal server error",
-                    },
+                        **{
+                            "request": request,
+                            "detail": "Internal server error",
+                        },
                     ),
                     status_code=500,
                 )
@@ -135,7 +134,7 @@ class Customiser:
 
     @classmethod
     async def crawl_recursively(cls, app: fastapi.FastAPI, normalized_project_names_to_crawl: typing.Set[str]) -> None:
-        seen = set()
+        seen: set = set()
         packages_for_reindexing = set(normalized_project_names_to_crawl)
         full_index = app.state.full_index
 
@@ -225,7 +224,6 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         offset = page * page_size
 
         with request.app.state.projects_db_connection as cursor:
-            fields = 'canonical_name, summary, release_version, release_date'
             exact = cursor.execute(
                 'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?',
                 (name,),

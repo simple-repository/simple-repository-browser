@@ -68,7 +68,7 @@ async def fully_populate_db(connection, index):
     if names_in_db_no_longer_in_index:
         print(
             f'Removing the following { len(names_in_db_no_longer_in_index) } names from the database:\n   '
-            + "\n   ".join(list(names_in_db_no_longer_in_index)[:2000]),
+            "\n   ".join(list(names_in_db_no_longer_in_index)[:2000]),
         )
     with con as cursor:
         for name in names_in_db_no_longer_in_index:
@@ -90,14 +90,11 @@ async def _devel_to_be_turned_into_test():
     from ._pypil import SimplePackageIndex
 
     index = SimplePackageIndex()
-
-    index = SimplePackageIndex(source_url='http://cwe-513-vpl337.cern.ch:8000/simple/')
+    # index = SimplePackageIndex(source_url='http://cwe-513-vpl337.cern.ch:8000/simple/')
 
     if False:
-        import asyncio
         asyncio.run(fully_populate_db(con, index))
 
-    name = 'cartop'
     with con as cur:
         # exact = cur.execute("SELECT * FROM projects WHERE canonical_name == ?", (f'{name}',)).fetchone()
         # results = cur.execute("SELECT * FROM projects WHERE canonical_name LIKE ? LIMIT 100", (f'%{name}%', )).fetchall()
@@ -107,5 +104,4 @@ async def _devel_to_be_turned_into_test():
 
 
 if __name__ == '__main__':
-    import asyncio
     asyncio.run(_devel_to_be_turned_into_test())

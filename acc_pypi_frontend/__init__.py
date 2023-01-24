@@ -1,12 +1,8 @@
-import asyncio
 import typing
 from pathlib import Path
 
 import fastapi
 import jinja2
-import packaging.requirements
-import packaging.specifiers
-import pypi_simple
 
 import pypi_frontend._app as base
 from pypi_frontend import _pypil

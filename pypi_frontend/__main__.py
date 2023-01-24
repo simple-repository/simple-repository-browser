@@ -25,7 +25,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--customiser', type=str, default="pypi_frontend._app:Customiser")
 
 
-def load_customiser(name: str) -> _app.Customiser:
+def load_customiser(name: str) -> typing.Type[_app.Customiser]:
     mod_name, class_name = name.split(':', 1)
     module = importlib.import_module(mod_name)
     cls = getattr(module, class_name)

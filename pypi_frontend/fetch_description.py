@@ -4,7 +4,6 @@ import dataclasses
 import datetime
 import email.parser
 import email.policy
-import html
 import logging
 import os.path
 import tarfile
@@ -44,7 +43,6 @@ class PackageInfo:
     requires_dist: typing.Sequence[str] = ()
 
 
-
 class SDist(pkginfo.SDist):
     def read(self):
         fqn = os.path.abspath(
@@ -75,7 +73,6 @@ class SDist(pkginfo.SDist):
                     return data
         finally:
             archive.close()
-
 
 
 async def fetch_file(url, dest):
@@ -129,9 +126,8 @@ class ArchiveTimestampCapture:
             zipfile.ZipFile, tarfile.TarFile = orig_zipfile, orig_tarfile
 
 
-EMPTY_PKG_INFO = PackageInfo(
-        '', '', '',
-)
+EMPTY_PKG_INFO = PackageInfo('', '', '')
+
 
 async def package_info(
         release: _pypil.ProjectRelease,
@@ -306,5 +302,4 @@ async def _devel_to_be_turned_into_test():
 
 
 if __name__ == '__main__':
-    import asyncio
     asyncio.run(_devel_to_be_turned_into_test())
