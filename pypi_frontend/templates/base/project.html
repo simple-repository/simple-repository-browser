@@ -4,7 +4,7 @@
 {{ project.name }} · {{ super() }}
 {% endblock title %}
 
-{% block page_banner %}
+{% macro page_banner() %}
 <div class="row" style="padding-bottom: 3em; padding-top: 2em">
   <div class="col-md-6">
     <h1> {{ project.name }} {{ release.version }}</h1>
@@ -38,17 +38,24 @@
     </span>
   </div>
 </div>
-{% endblock page_banner %}
-
-
-{% block banner_split %}
-<div data-source="summary">
-    &nbsp;
-</div>
-{% endblock banner_split %}
+{% endmacro %}
 
 
 {% block page_content %}
+        <section class="jumbotron" style="background-color: #006dad; color: white ; padding: 0px; margin: 0px;" id="page-banner">
+            <div class="container">
+            {{ page_banner() }}
+            </div>
+        </section>
+
+        <section class="jumbotron" style="background-color: #ececec; color: #464646; border-bottom: 1px solid #d3d3d3; padding: 1em; margin-bottom: 1em;" id="banner-split">
+            <div class="container">
+              <div data-source="summary">
+                  &nbsp;
+              </div>
+            </div>
+        </section>
+
     <div class="container" id="page-content">
       <div class="row">
         <div class="col-md-3">

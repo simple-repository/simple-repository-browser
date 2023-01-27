@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block page_banner %}
+{% macro page_banner() -%}
           <div class="container">
             <div class="col-md-10 mx-auto text-center">
               <h1 class="jumbotron-heading" style="padding: 50px 50px;">
@@ -17,31 +17,32 @@
                     <div class="form-outline"  style="width: 100%;">
                       <input type="search" name="query" class="form-control" placeholder="Search projects" />
                     </div>
-
                   </div>
                 </div>
 
             </form>
             <br><br>
           </div>
-{% endblock page_banner %}
+{% endmacro %}
 
-{% block banner_split %}
-          <div class="col-md-8 mx-auto">
-            <div class="row">
+{% macro banner_split() %}
+        <div class="col-md-8 mx-auto">
+          <div class="row">
+          </div>
+        </div>
+{% endmacro %}
 
-<!--                <p class="col-md-3">-->
-<!--                342,532 projects-->
-<!--                </p>-->
-<!--                <p class="col-md-3">-->
-<!--                3,055,593 releases-->
-<!--                </p>-->
-<!--                <p class="col-md-3">-->
-<!--                5,225,365 files-->
-<!--                </p>-->
-<!--                <p class="col-md-3">-->
-<!--                554,074 users-->
-<!--                </p>-->
-              </div>
+
+{% block page_content %}
+        <section class="jumbotron" style="background-color: #006dad; color: white ; padding: 0px; margin: 0px;" id="page-banner">
+            <div class="container">
+            {{ page_banner() }}
             </div>
-{% endblock banner_split %}
+        </section>
+
+        <section class="jumbotron" style="background-color: #ececec; color: #464646; border-bottom: 1px solid #d3d3d3; padding: 1em; margin-bottom: 1em;" id="banner-split">
+            <div class="container">
+            {{ banner_split() }}
+            </div>
+        </section>
+{% endblock page_content %}

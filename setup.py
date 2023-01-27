@@ -27,6 +27,7 @@ REQUIREMENTS: dict = {
         'jinja2',
         'markdown',
         'packaging',
+        'parsley',
         'pkginfo',
         'pypi_simple>=1.0.*',
         # 'pypil[simple]',

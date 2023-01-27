@@ -24,6 +24,7 @@
 {%- endmacro %}
 
 {% block page_content %}
+    {{ super() }}
     <div class="container">
       <div class="row">
 <!--        <div class="col-md-3"></div>-->
@@ -33,8 +34,12 @@
                 Exact match found:
                 {{ package_card(exact) }}
             {% elif search_query %}
-              No exact match found. Were you expecting one? If so, visit the <a href="{{ url_for('project', project_name=search_query) }}">"{{ search_query }}" project page</a>
+              {% if single_name_proposal %}
+              No exact match found. Were you expecting one? If so, visit the <a href="{{ url_for('project', project_name=single_name_proposal) }}">"{{ single_name_proposal }}" project page</a>
               to have the index updated automatically.
+              {% else %}
+              No results found. Perhaps try reducing the number of filters in your query.
+              {% endif %}
               <br><br>
             {% endif %}
 

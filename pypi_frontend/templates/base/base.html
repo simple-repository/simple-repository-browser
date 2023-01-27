@@ -46,42 +46,10 @@
     </div>
   </div>
 
-      <main role="main" style="min-height: 75vh;">
-
-        <section class="jumbotron" style="background-color: #006dad; color: white ; padding: 0px; margin: 0px;" id="page-banner">
-            <div class="container">
-            {% block page_banner %}
-            {% endblock page_banner %}
-            </div>
-        </section>
-
-        <section class="jumbotron" style="background-color: #ececec; color: #464646; border-bottom: 1px solid #d3d3d3; padding: 1em; margin-bottom: 1em;" id="banner-split">
-            <div class="container">
-            {% block banner_split %}
-          <div class="col-md-8 mx-auto">
-            <div class="row">
-
-                <p class="col-md-3">
-                342,532 projects
-                </p>
-                <p class="col-md-3">
-                3,055,593 releases
-                </p>
-                <p class="col-md-3">
-                5,225,365 files
-                </p>
-                <p class="col-md-3">
-                554,074 users
-                </p>
-              </div>
-            </div>
-            {% endblock banner_split %}
-            </div>
-        </section>
-
+      <main role="main" style="min-height: 75vh">
           {% block page_content %}
-          {% endblock page_content %}
 
+          {% endblock page_content %}
       </main>
 
       <footer class="text-muted mt-auto">

@@ -270,7 +270,7 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
 
     description = bleach.clean(
         description,
-        tags=bleach.sanitizer.ALLOWED_TAGS + ALLOWED_TAGS,
+        tags=set(bleach.sanitizer.ALLOWED_TAGS) | set(ALLOWED_TAGS),
         attributes=ALLOWED_ATTRIBUTES,
     )
     description = bleach.linkify(description, parse_email=True)
