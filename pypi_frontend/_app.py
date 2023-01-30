@@ -235,7 +235,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         try:
             if len(search_terms) == 0:
                 raise ValueError("Please specify a search query")
-            condition = _search.build_sql(search_terms)
+            condition_query, condition_terms = _search.build_sql(search_terms)
         except ValueError as err:
             return HTMLResponse(
                 templates.get_template("error.html").render(
@@ -252,23 +252,23 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         page = page or 0
         offset = page * page_size
 
+        single_name_proposal = _search.simple_name_from_query(search_terms)
+        exact = None
+
         with request.app.state.projects_db_connection as cursor:
-            exact = cursor.execute(
-                f'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE {condition}',
-            ).fetchone()
+            if single_name_proposal:
+                exact = cursor.execute(
+                    'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?',
+                    (single_name_proposal,),
+                ).fetchone()
             results = cursor.execute(
-                f"SELECT canonical_name, summary, release_version, release_date FROM projects WHERE {condition} LIMIT ? OFFSET ?",
-                (page_size, offset),
+                "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE "
+                f"{condition_query} LIMIT ? OFFSET ?",
+                condition_terms + (page_size, offset),
             ).fetchall()
 
         # TODO: This shouldn't include the pagination.
         n_results = len(results)
-
-        single_name_proposal: typing.Optional[str]
-        if n_results == 0:
-            single_name_proposal = _search.simple_name_from_query(search_terms)
-        else:
-            single_name_proposal = None
 
         # Drop the duplicate.
         if exact in results:

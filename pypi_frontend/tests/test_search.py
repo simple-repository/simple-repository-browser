@@ -92,20 +92,23 @@ def test_simple_name_proposal(query, expected_result):
 @pytest.mark.parametrize(
     ["query", "expected_predicate"],
     [
-        ("", ""),
-        ("name:foo", "canonical_name LIKE '%foo%'"),
-        ("name:foo__unnormed", "canonical_name LIKE '%foo-unnormed%'"),
-        ("foo", "(canonical_name LIKE '%foo%' OR summary LIKE '%foo%')"),
-        ("some*.Name", "(canonical_name LIKE '%some%-name%' OR summary LIKE '%some%.Name%')"),
-        ("summary:\"Some Description\"", "summary LIKE '%Some Description%'"),
-        ("foo bar", "((canonical_name LIKE '%foo%' OR summary LIKE '%foo%')) AND ((canonical_name LIKE '%bar%' OR summary LIKE '%bar%'))"),
-        ("foo OR bar", "((canonical_name LIKE '%foo%' OR summary LIKE '%foo%')) OR ((canonical_name LIKE '%bar%' OR summary LIKE '%bar%'))"),
-        ("-name:foo OR -bar", "(Not (canonical_name LIKE '%foo%') OR ((Not (canonical_name LIKE '%bar%' OR summary LIKE '%bar%'))))"),
+        ("", ("", ())),
+        ("name:foo", ('canonical_name LIKE ?', ('%foo%',))),
+        ("name:foo__unnormed", ('canonical_name LIKE ?', ('%foo-unnormed%',))),
+        ("foo", ('(canonical_name LIKE ? OR summary LIKE ?)', ('%foo%', '%foo%'))),
+        ("some*.Name", ('(canonical_name LIKE ? OR summary LIKE ?)', ('%some%-name%', '%some%.Name%'))),
+        ("summary:\"Some Description\"", ('summary LIKE ?', ('%Some Description%',))),
+        ("foo bar", ('((canonical_name LIKE ? OR summary LIKE ?) AND (canonical_name LIKE ? OR summary LIKE ?))', ('%foo%', '%foo%', '%bar%', '%bar%'))),
+        ("foo OR bar", ('((canonical_name LIKE ? OR summary LIKE ?) OR (canonical_name LIKE ? OR summary LIKE ?))', ('%foo%', '%foo%', '%bar%', '%bar%'))),
+        ("-name:foo OR -bar", ('(Not (canonical_name LIKE ? OR (Not (canonical_name LIKE ? OR summary LIKE ?))))', ('%foo%', '%bar%', '%bar%'))),
+        ("summary:\"Some'; DROP TABLE gotcha; ' Description\"", ('summary LIKE ?', ("%Some'; DROP TABLE gotcha; ' Description%",))),
     ],
 )
 def test_build_sql_predicate(query, expected_predicate):
-    result = _search.query_to_sql(query)
-    assert result == expected_predicate
+    sql_stmt, params = _search.query_to_sql(query)
+    assert (sql_stmt, params) == expected_predicate
+    assert sql_stmt == expected_predicate[0]
+    assert params == expected_predicate[1]
 
 
 @pytest.mark.parametrize(

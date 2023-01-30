@@ -45,38 +45,48 @@ def normalise_name(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
-def prepare_name(term: Filter) -> str:
+# A safe SQL statement must not use *any* user-defined input in the resulting first argument (the SQL query),
+# rather any user input MUST be provided as part of the arguments (second part of the value), which will be passed
+# to SQLITE to deal with.
+SafeSQLStmt = typing.Tuple[str, typing.Tuple[typing.Any, ...]]
+
+
+def prepare_name(term: Filter) -> SafeSQLStmt:
     if term.value.startswith('"'):
         # Match the phase precisely.
         value = term.value[1:-1]
     else:
         value = normalise_name(term.value)
     value = value.replace('*', '%')
-    return f"canonical_name LIKE '%{value}%'"
+    return "canonical_name LIKE ?", (f'%{value}%',)
 
 
-def prepare_summary(term: Filter) -> str:
+def prepare_summary(term: Filter) -> SafeSQLStmt:
     if term.value.startswith('"'):
         # Match the phase precisely.
         value = term.value[1:-1]
     else:
         value = term.value
     value = value.replace('*', '%')
-    return f"summary LIKE '%{value}%'"
+    return "summary LIKE ?", (f'%{value}%',)
 
 
-def build_sql(term: typing.Union[Term, typing.Tuple[Term, ...]]) -> str:
+def build_sql(term: typing.Union[Term, typing.Tuple[Term, ...]]) -> SafeSQLStmt:
+    # Return query and params to be used in SQL. query MUST not be produced using untrusted input, as is vulnerable to SQL injection.
+    # Instead, any user input must be in the parameters, which undergoes sqllite built-in cleaning.
     if isinstance(term, tuple):
         if len(term) == 0:
-            return ''
+            return '', ()
 
-        # No known query can produce a mutlti-value term
+        # No known query can produce a multi-value term
         assert len(term) == 1
         return build_sql(term[0])
 
     if isinstance(term, Filter):
         if term.filter_on == FilterOn.name_or_summary:
-            return f"({prepare_name(term)} OR {prepare_summary(term)})"
+            sql1, terms1 = prepare_name(term)
+            sql2, terms2 = prepare_summary(term)
+            return f"({sql1} OR {sql2})", terms1 + terms2
         elif term.filter_on == FilterOn.name:
             return prepare_name(term)
         elif term.filter_on == FilterOn.summary:
@@ -84,16 +94,21 @@ def build_sql(term: typing.Union[Term, typing.Tuple[Term, ...]]) -> str:
         else:
             raise ValueError(f"Unhandled filter on {term.filter_on}")
     elif isinstance(term, And):
-        return f'({build_sql(term.lhs)}) AND ({build_sql(term.rhs)})'
+        sql1, terms1 = build_sql(term.lhs)
+        sql2, terms2 = build_sql(term.rhs)
+        return f"({sql1} AND {sql2})", terms1 + terms2
     elif isinstance(term, Or):
-        return f'({build_sql(term.lhs)}) OR ({build_sql(term.rhs)})'
+        sql1, terms1 = build_sql(term.lhs)
+        sql2, terms2 = build_sql(term.rhs)
+        return f"({sql1} OR {sql2})", terms1 + terms2
     elif isinstance(term, Not):
-        return f'(Not {build_sql(term.term)})'
+        sql1, terms1 = build_sql(term.term)
+        return f'(Not {sql1})', terms1
     else:
         raise ValueError(f"unknown term type {type(term)}")
 
 
-def query_to_sql(query):
+def query_to_sql(query) -> SafeSQLStmt:
     terms = parse(query)
     return build_sql(terms)
 
