@@ -24,6 +24,7 @@
 {%- endmacro %}
 
 {% block page_content %}
+    {{ super() }}
     <div class="container">
       <div class="row">
 <!--        <div class="col-md-3"></div>-->
@@ -32,18 +33,27 @@
             {% if exact %}
                 Exact match found:
                 {{ package_card(exact) }}
-            {% elif search_query %}
-              No exact match found. Were you expecting one? If so, visit the <a href="{{ url_for('project', project_name=search_query) }}">"{{ search_query }}" project page</a>
-              to have the index updated automatically.
-              <br><br>
             {% endif %}
 
-              Found {{ results_count }} results
-            <br>
+            {% if not exact and single_name_proposal %}
+              No exact match found. Were you expecting one? If so, visit the
+                <a href="{{ url_for('project', project_name=single_name_proposal) }}">
+                    "{{ single_name_proposal }}" project page
+                </a>
+              to have the index updated automatically.
+              <br><br>
+            {% elif results_count == 0 %}
+              No results found. Consider reducing the number of filters in your query.
+            {% endif %}
 
-            {% for result in results %}
+            {% if results_count > 0 %}
+              Found {{ results_count }} results
+              <br>
+
+              {% for result in results %}
                 {{ package_card(result) }}
-            {% endfor %}
+              {% endfor %}
+            {% endif %}
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import __version__, _pypil, fetch_projects
+from . import __version__, _pypil, _search, fetch_projects
 from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
 
 here = Path(__file__).absolute().parent
@@ -218,21 +218,53 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
     @app.get("/search", response_class=HTMLResponse, name='search')
     @customiser.decorate
     async def search_page(request: Request, query: str, page: typing.Optional[int] = 0):
-        # query = query.replace(' ', '%')  # Put a wildcard in there...
-        name = _pypil.PackageName(query).normalized
+        try:
+            search_terms = _search.parse(query)
+        except _search.ParseError:
+            return HTMLResponse(
+                templates.get_template("error.html").render(
+                    **{
+                        "request": request,
+                        "search_query": query,
+                        "detail": "Invalid search pattern",
+                    },
+                ),
+                status_code=400,
+            )
+
+        try:
+            if len(search_terms) == 0:
+                raise ValueError("Please specify a search query")
+            condition_query, condition_terms = _search.build_sql(search_terms)
+        except ValueError as err:
+            return HTMLResponse(
+                templates.get_template("error.html").render(
+                    **{
+                        "request": request,
+                        "search_query": query,
+                        "detail": f"Search query invalid ({str(err)})",
+                    },
+                ),
+                status_code=400,
+            )
 
         page_size = 50
         page = page or 0
         offset = page * page_size
 
+        single_name_proposal = _search.simple_name_from_query(search_terms)
+        exact = None
+
         with request.app.state.projects_db_connection as cursor:
-            exact = cursor.execute(
-                'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?',
-                (name,),
-            ).fetchone()
+            if single_name_proposal:
+                exact = cursor.execute(
+                    'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?',
+                    (single_name_proposal,),
+                ).fetchone()
             results = cursor.execute(
-                "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name LIKE ? OR summary LIKE ? LIMIT ? OFFSET ?",
-                (f'%{name}%', f'%{name}%', page_size, offset),
+                "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE "
+                f"{condition_query} LIMIT ? OFFSET ?",
+                condition_terms + (page_size, offset),
             ).fetchall()
 
         # TODO: This shouldn't include the pagination.
@@ -245,10 +277,11 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         return templates.get_template("search.html").render(
             **{
                 "request": request,
-                "search_query": name,
+                "search_query": query,
                 "exact": exact,
                 "results": results,
                 "results_count": n_results,
+                "single_name_proposal": single_name_proposal,
             },
         )
 
