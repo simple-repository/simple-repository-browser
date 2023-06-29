@@ -18,6 +18,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import __version__, _pypil, _search, fetch_projects
 from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
 from acc_py_index.simple.repositories import http
+from acc_py_index import errors, utils
+from packaging.utils import canonicalize_name
+from packaging.version import Version, InvalidVersion
+
 
 here = Path(__file__).absolute().parent
 
@@ -331,12 +335,12 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
 
     @customiser.decorate
     async def project_page__common_impl(request: Request, project_name: str, version: typing.Optional[str] = None) -> str:
-        index: _pypil.SimplePackageIndex = request.app.state.full_index
-        canonical_name = _pypil.PackageName(project_name).normalized
+        index: http.HttpRepository = request.app.state.source
+        canonical_name = canonicalize_name(project_name)
         try:
-            prj = index.project(project_name)
-            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, canonical_name, prj.name)
-        except _pypil.PackageNotFound:
+            project_page = await index.get_project_page(canonical_name)
+            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, canonical_name, project_name)
+        except errors.PackageNotFoundError:
             # Tidy up the cache if the project is no longer found.
             with request.app.state.cache as cache:
                 for key in list(cache):
@@ -345,19 +349,31 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
-        latest_release = prj.latest_release()
+        releases = []
+        for file in project_page.files:
+            try:
+                release = Version(utils.extract_package_version(file.filename, canonical_name))
+            except (ValueError, InvalidVersion):
+                release = Version('0.0rc0')
+            releases.append(release)
+
+        if len(releases) == 0:
+            raise HTTPException(status_code=404, detail=f'No release not found for {project_name}.')
+        releases = set(releases)
+        releases = [str(release) for release in sorted(releases)]
+        latest_release = releases[-1]
 
         if version is None:
             release = latest_release
         else:
-            try:
-                release = prj.release(version)
-            except ValueError:  # TODO: make this exception specific
+            if not version in releases:
                 raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
+            release = version
         return templates.get_template("project.html").render(
             **{
                 "request": request,
-                "project": prj,
+                "project_name": canonical_name,
+                "releases": releases,
                 "latest_version": None,
                 "release": release,
                 "latest_release": latest_release,  # Note: May be the same release.
