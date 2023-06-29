@@ -91,6 +91,8 @@ class Customiser:
             key = ('pkg-info', prj.name, release.version)
             if key in cache and not force_recache:
                 release_info = cache[key]
+                # Validate that the cached result covers all of the files, and that no new
+                # files have been added since the cache was made. In that case, we re-cache.
                 if all(
                     [
                         file.filename in release_info.files_info
