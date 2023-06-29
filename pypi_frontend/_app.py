@@ -5,6 +5,7 @@ import typing
 from enum import Enum
 from pathlib import Path
 
+import aiohttp
 import fastapi
 import jinja2
 import packaging.requirements
@@ -16,9 +17,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__, _pypil, _search, fetch_projects
 from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
+from acc_py_index.simple.repositories import http
 
 here = Path(__file__).absolute().parent
-
 
 class ProjectPageSection(str, Enum):
     description = "description"
@@ -460,6 +461,16 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
     @app.on_event('startup')
     async def create_task():
         app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
+        app.state.session = aiohttp.ClientSession()
+        app.state.source = http.HttpRepository(
+            url = "https://pypi.org/simple/",
+            session=app.state.session,
+        )
+
+    @app.on_event("shutdown")
+    async def close_sessions():
+        await app.state.session.close()
+
 
 
 def make_app(
