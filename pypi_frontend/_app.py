@@ -91,29 +91,39 @@ class Customiser:
             key = ('pkg-info', prj.name, release.version)
             if key in cache and not force_recache:
                 release_info = cache[key]
-            else:
-                if force_recache:
-                    print('Recaching')
+                # Validate that the cached result covers all of the files, and that no new
+                # files have been added since the cache was made. In that case, we re-cache.
+                if all(
+                    [
+                        file.filename in release_info.files_info
+                        for file in release.files()
+                    ],
+                ):
+                    return release_info
 
-                fetch_projects.insert_if_missing(
+            if force_recache:
+                print('Recaching')
+
+            fetch_projects.insert_if_missing(
+                app.state.projects_db_connection,
+                prj.name.normalized,
+                prj.name,
+            )
+
+            release_info = await package_info(release)
+            if release_info is not None:
+                await cls.release_info_retrieved(prj, release_info)
+            cache[key] = release_info
+
+            if is_latest and release_info is not None:
+                fetch_projects.update_summary(
                     app.state.projects_db_connection,
-                    prj.name.normalized,
-                    prj.name,
+                    name=prj.name.normalized,
+                    summary=release_info.summary,
+                    release_date=release_info.release_date,
+                    release_version=release.version,
                 )
 
-                release_info = await package_info(release)
-                if release_info is not None:
-                    await cls.release_info_retrieved(prj, release_info)
-                cache[key] = release_info
-
-                if is_latest and release_info is not None:
-                    fetch_projects.update_summary(
-                        app.state.projects_db_connection,
-                        name=prj.name.normalized,
-                        summary=release_info.summary,
-                        release_date=release_info.release_date,
-                        release_version=release.version,
-                    )
         return release_info
 
     @classmethod
