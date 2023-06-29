@@ -18,6 +18,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import __version__, _pypil, _search, fetch_projects
 from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
 from acc_py_index.simple.repositories import http
+from acc_py_index.simple import model
 from acc_py_index import errors, utils
 from packaging.utils import canonicalize_name
 from packaging.version import Version, InvalidVersion
@@ -31,6 +32,30 @@ class ProjectPageSection(str, Enum):
     files = "files"
     dependencies = "dependencies"
 
+def get_releases(project_page: model.ProjectDetail, canonical_name: str) -> list[str]:
+        releases = []
+        for file in project_page.files:
+            try:
+                release = Version(utils.extract_package_version(file.filename, canonical_name))
+            except (ValueError, InvalidVersion):
+                release = Version('0.0rc0')
+            releases.append(release)
+
+        if len(releases) == 0:
+            raise HTTPException(status_code=404, detail=f'No release not found for {canonical_name}.')
+        releases = set(releases)
+        releases = [str(release) for release in sorted(releases)]
+
+def get_files_for_release(project_page: model.ProjectDetail, release: str) -> list[str]:
+    files = []
+    for file in project_page.files:
+        try:
+            candidate_release = Version(utils.extract_package_version(file.filename, canonical_name))
+        except (ValueError, InvalidVersion):
+            candidate_release = Version('0.0rc0')
+        if str(candidate_release) == release:
+            files.append[file]
+    return files
 
 class Customiser:
     # A class which can be overridden in order to customise the behaviour of
@@ -90,18 +115,21 @@ class Customiser:
         return fn
 
     @classmethod
-    async def fetch_pkg_info(cls, app: fastapi.FastAPI, prj: _pypil.Project, release: _pypil.ProjectRelease, force_recache: bool) -> typing.Optional[PackageInfo]:
-        is_latest = release == prj.latest_release()
+    async def fetch_pkg_info(cls, app: fastapi.FastAPI, prj: model.ProjectDetail, release: str, force_recache: bool) -> typing.Optional[PackageInfo]:
+        releases = get_releases(prj, prj.name)
+        if len(releases) == 0:
+            raise HTTPException(status_code=404, detail=f"No release found for {prj.name} with version {release}.")
+        is_latest = release == prj[-1]
         with app.state.cache as cache:
-            key = ('pkg-info', prj.name, release.version)
+            key = ('pkg-info', prj.name, str(release))
             if key in cache and not force_recache:
                 release_info = cache[key]
                 # Validate that the cached result covers all of the files, and that no new
                 # files have been added since the cache was made. In that case, we re-cache.
                 if all(
                     [
-                        file.filename in release_info.files_info
-                        for file in release.files()
+                        file in release_info.files_info
+                        for file in get_files_for_release(prj, release)
                     ],
                 ):
                     return release_info
@@ -111,11 +139,11 @@ class Customiser:
 
             fetch_projects.insert_if_missing(
                 app.state.projects_db_connection,
-                prj.name.normalized,
+                prj.name,
                 prj.name,
             )
 
-            release_info = await package_info(release)
+            release_info = await package_info(prj, release)
             if release_info is not None:
                 await cls.release_info_retrieved(prj, release_info)
             cache[key] = release_info
@@ -123,10 +151,10 @@ class Customiser:
             if is_latest and release_info is not None:
                 fetch_projects.update_summary(
                     app.state.projects_db_connection,
-                    name=prj.name.normalized,
+                    name=prj.name,
                     summary=release_info.summary,
                     release_date=release_info.release_date,
-                    release_version=release.version,
+                    release_version=release,
                 )
 
         return release_info
@@ -349,18 +377,9 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
-        releases = []
-        for file in project_page.files:
-            try:
-                release = Version(utils.extract_package_version(file.filename, canonical_name))
-            except (ValueError, InvalidVersion):
-                release = Version('0.0rc0')
-            releases.append(release)
-
-        if len(releases) == 0:
-            raise HTTPException(status_code=404, detail=f'No release not found for {project_name}.')
-        releases = set(releases)
-        releases = [str(release) for release in sorted(releases)]
+        
+        releases = get_releases(project_name, canonical_name)
+        
         latest_release = releases[-1]
 
         if version is None:

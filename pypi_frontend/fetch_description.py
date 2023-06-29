@@ -17,6 +17,7 @@ import importlib_metadata
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
+from acc_py_index.simple import model
 
 from . import _pypil
 
@@ -130,7 +131,7 @@ EMPTY_PKG_INFO = PackageInfo('', '', '')
 
 
 async def package_info(
-        release: _pypil.ProjectRelease,
+    release: model.ProjectDetail,
 ) -> typing.Optional[PackageInfo]:
 
     files = sorted(
