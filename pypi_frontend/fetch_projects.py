@@ -45,7 +45,7 @@ async def fully_populate_db(connection, index: SimpleRepository):
 
     project_list = await index.get_project_list()
     project_names = [
-        project.normalized_name for project in project_list.projects
+        (project.normalized_name, project.name) for project in project_list.projects
     ]
     print('Inserting all new names (if any)')
     with con as cursor:
