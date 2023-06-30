@@ -20,8 +20,6 @@ import readme_renderer.rst
 from acc_py_index import utils
 from acc_py_index.simple import model
 
-from . import _pypil
-
 
 @dataclasses.dataclass
 class FileInfo:
@@ -289,33 +287,33 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
     return description
 
 
-async def _devel_to_be_turned_into_test():
-    index = _pypil.SimplePackageIndex(source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
+# async def _devel_to_be_turned_into_test():
+    # index = (source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
 
-    prj = index.project('pylogbook')  # An internal only project
+    # prj = index.project('pylogbook')  # An internal only project
     # prj = index.project('pyreadline')  # exe files.
     # prj = index.project('vme-boards')  # Unusual/unparsable filename
     # prj = index.project('crcmod')  # No useful format (msi only)
     # prj = index.project('testcontainers') # Latest is an rc release
     # prj = index.project('cernsso')  # Has no files (but a release)
-    prj = index.project('orjson')  # Has a different content type header for the readme
+    # prj = index.project('orjson')  # Has a different content type header for the readme
 
-    releases = prj.releases()
-    for release in releases:
-        print('V: ', release.version)
-    print('Latest:', prj.latest_release())
-    summaries = {}
-    for release in releases[::-1]:
-        print(release.version, release.files())
-        info = await package_info(release)
-        if info:
-            summaries[release.version] = info.summary
-            print(info.maintainer, info.author)
-            print('Classifiers', info.classifiers)
-            break
+    # releases = prj.releases()
+    # for release in releases:
+    #    print('V: ', release.version)
+    # print('Latest:', prj.latest_release())
+    # summaries = {}
+    # for release in releases[::-1]:
+    #    print(release.version, release.files())
+    #    info = await package_info(release)
+    #    if info:
+    #        summaries[release.version] = info.summary
+    #        print(info.maintainer, info.author)
+    #        print('Classifiers', info.classifiers)
+    #        break
 
-    print(summaries)
+    # print(summaries)
 
 
-if __name__ == '__main__':
-    asyncio.run(_devel_to_be_turned_into_test())
+# if __name__ == '__main__':
+    # asyncio.run(_devel_to_be_turned_into_test())

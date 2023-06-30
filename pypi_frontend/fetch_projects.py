@@ -87,13 +87,8 @@ async def _devel_to_be_turned_into_test():
 
     create_table(con)
 
-    from ._pypil import SimplePackageIndex
-
-    index = SimplePackageIndex()
-    # index = SimplePackageIndex(source_url='http://cwe-513-vpl337.cern.ch:8000/simple/')
-
-    if False:
-        asyncio.run(fully_populate_db(con, index))
+    # if False:
+    #   asyncio.run(fully_populate_db(con, index))
 
     with con as cur:
         # exact = cur.execute("SELECT * FROM projects WHERE canonical_name == ?", (f'{name}',)).fetchone()

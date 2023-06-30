@@ -21,7 +21,7 @@ class AccPyCustomiser(base.Customiser):
 
     @classmethod
     async def release_info_retrieved(cls, project: model.ProjectDetail, pkg_info: base.PackageInfo) -> None:
-        with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as session:
             sc = SourceContext(session)
 
             extra_classifiers = []
@@ -32,7 +32,7 @@ class AccPyCustomiser(base.Customiser):
     @classmethod
     async def crawl_recursively(cls, app: fastapi.FastAPI, normalized_project_names_to_crawl: typing.Set[str]) -> None:
         # Add all of the release-local packages to the set of names that need to be crawled.
-        with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as session:
             internal_index = HttpRepository(
                 url='http://acc-py-repo.cern.ch/repository/py-release-local/simple',
                 session=session,
@@ -96,7 +96,7 @@ class SourceContext:
 
 
 async def _to_be_turned_into_a_test():
-    with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession() as session:
         index = HttpRepository(
             url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple',
             session=session,

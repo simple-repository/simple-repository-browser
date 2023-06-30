@@ -21,7 +21,7 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import __version__, _pypil, _search, fetch_projects
+from . import __version__, _search, fetch_projects
 from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
 
 here = Path(__file__).absolute().parent
@@ -86,7 +86,7 @@ class Customiser:
         return templates
 
     @classmethod
-    async def release_info_retrieved(cls, project: _pypil.Project, package_info: PackageInfo):
+    async def release_info_retrieved(cls, project: model.ProjectDetail, package_info: PackageInfo):
         pass
 
     @classmethod
