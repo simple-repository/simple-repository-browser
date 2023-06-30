@@ -9,22 +9,23 @@ import aiohttp
 import fastapi
 import jinja2
 import packaging.requirements
+from acc_py_index import errors, utils
+from acc_py_index.simple import model
+from acc_py_index.simple.repositories import http
+from acc_py_index.simple.repositories.core import SimpleRepository
 from diskcache import Cache
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from packaging.utils import canonicalize_name
+from packaging.version import InvalidVersion, Version
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__, _pypil, _search, fetch_projects
 from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
-from acc_py_index.simple.repositories import http
-from acc_py_index.simple import model
-from acc_py_index import errors, utils
-from packaging.utils import canonicalize_name
-from packaging.version import Version, InvalidVersion
-
 
 here = Path(__file__).absolute().parent
+
 
 class ProjectPageSection(str, Enum):
     description = "description"
@@ -32,30 +33,33 @@ class ProjectPageSection(str, Enum):
     files = "files"
     dependencies = "dependencies"
 
+
 def get_releases(project_page: model.ProjectDetail, canonical_name: str) -> list[str]:
-        releases = []
-        for file in project_page.files:
-            try:
-                release = Version(utils.extract_package_version(file.filename, canonical_name))
-            except (ValueError, InvalidVersion):
-                release = Version('0.0rc0')
-            releases.append(release)
-
-        if len(releases) == 0:
-            raise HTTPException(status_code=404, detail=f'No release not found for {canonical_name}.')
-        releases = set(releases)
-        releases = [str(release) for release in sorted(releases)]
-
-def get_files_for_release(project_page: model.ProjectDetail, release: str) -> list[str]:
-    files = []
+    releases = []
     for file in project_page.files:
         try:
-            candidate_release = Version(utils.extract_package_version(file.filename, canonical_name))
+            release = Version(utils.extract_package_version(file.filename, canonical_name))
+        except (ValueError, InvalidVersion):
+            release = Version('0.0rc0')
+        releases.append(release)
+
+    if len(releases) == 0:
+        raise HTTPException(status_code=404, detail=f'No release not found for {canonical_name}.')
+    releases = [str(release) for release in sorted(set(releases))]
+    return releases
+
+
+def get_files_for_release(project_page: model.ProjectDetail, release: str) -> list[str]:
+    files: list[str] = []
+    for file in project_page.files:
+        try:
+            candidate_release = Version(utils.extract_package_version(file.filename, project_page.name))
         except (ValueError, InvalidVersion):
             candidate_release = Version('0.0rc0')
         if str(candidate_release) == release:
-            files.append[file]
+            files.append(file)
     return files
+
 
 class Customiser:
     # A class which can be overridden in order to customise the behaviour of
@@ -179,7 +183,7 @@ class Customiser:
     async def crawl_recursively(cls, app: fastapi.FastAPI, normalized_project_names_to_crawl: typing.Set[str]) -> None:
         seen: set = set()
         packages_for_reindexing = set(normalized_project_names_to_crawl)
-        full_index = app.state.full_index
+        full_index: SimpleRepository = app.state.full_index
 
         while packages_for_reindexing - seen:
             remaining_packages = packages_for_reindexing - seen
@@ -189,16 +193,12 @@ class Customiser:
             )
             seen.add(pkg_name)
             try:
-                prj = full_index.project(pkg_name)
-            except _pypil.PackageNotFound:
+                prj = await full_index.get_project_page(pkg_name)
+            except errors.PackageNotFoundError:
                 # faulthandler
                 continue
 
-            latest = prj.latest_release()
-            # Don't bother fetching devrelease only projects.
-            vn = _pypil.safe_version(latest.version)
-            if vn.is_devrelease or vn.is_prerelease:
-                continue
+            latest = get_releases(prj, pkg_name)[-1]
 
             release_info = await cls.fetch_pkg_info(app, prj, latest, force_recache=False)
             if release_info is None:
@@ -366,7 +366,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         index: http.HttpRepository = request.app.state.source
         canonical_name = canonicalize_name(project_name)
         try:
-            project_page = await index.get_project_page(canonical_name)
+            await index.get_project_page(canonical_name)
             fetch_projects.insert_if_missing(request.app.state.projects_db_connection, canonical_name, project_name)
         except errors.PackageNotFoundError:
             # Tidy up the cache if the project is no longer found.
@@ -377,15 +377,13 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
-        
         releases = get_releases(project_name, canonical_name)
-        
         latest_release = releases[-1]
 
         if version is None:
             release = latest_release
         else:
-            if not version in releases:
+            if version not in releases:
                 raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
             release = version
         return templates.get_template("project.html").render(
@@ -415,7 +413,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         except ValueError:  # TODO: make this exception specific
             raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
-        release_info = await customiser.fetch_pkg_info(app, prj, release, force_recache=recache)
+        release_info = await customiser.fetch_pkg_info(app, prj, release, force_recache=recache)  # type: ignore
 
         if release_info is None:
             release_info = EMPTY_PKG_INFO
@@ -498,14 +496,15 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
         app.state.session = aiohttp.ClientSession()
         app.state.source = http.HttpRepository(
-            url = "https://pypi.org/simple/",
+            url="https://pypi.org/simple/",
             session=app.state.session,
         )
+        app.state.index = app.state.source
+        app.state.full_index = app.state.index
 
     @app.on_event("shutdown")
     async def close_sessions():
         await app.state.session.close()
-
 
 
 def make_app(
@@ -519,10 +518,6 @@ def make_app(
     kwargs = {}
     if index_url is not None:
         kwargs.update({'source_url': index_url})
-
-    # TODO: There is no longer a reason that this state should be separate from build_app.
-    app.state.full_index = _pypil.SimplePackageIndex(**kwargs)
-    app.state.index = app.state.full_index
 
     app.state.periodic_reindexing_task = None
 

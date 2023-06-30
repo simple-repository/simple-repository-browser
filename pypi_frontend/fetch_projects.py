@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import sqlite3
 
-from ._pypil import PackageName
+from acc_py_index.simple.repositories.core import SimpleRepository
 
 
 def create_table(connection):
@@ -39,14 +39,14 @@ def update_summary(conn, name: str, summary: str, release_date: datetime.datetim
         )
 
 
-async def fully_populate_db(connection, index):
+async def fully_populate_db(connection, index: SimpleRepository):
     con = connection
     print('Fetching names from index')
 
-    loop = asyncio.get_event_loop()
-    non_canonical_project_names = await loop.run_in_executor(None, index.project_names)
-
-    project_names = [(PackageName(project).normalized, project) for project in non_canonical_project_names]
+    project_list = await index.get_project_list()
+    project_names = [
+        project.normalized_name for project in project_list.projects
+    ]
     print('Inserting all new names (if any)')
     with con as cursor:
         for canonical_name, name in project_names:
