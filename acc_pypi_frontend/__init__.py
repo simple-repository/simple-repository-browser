@@ -34,15 +34,25 @@ class AccPyCustomiser(base.Customiser):
         # Add all of the release-local packages to the set of names that need to be crawled.
         async with aiohttp.ClientSession() as session:
             internal_index = HttpRepository(
-                url='http://acc-py-repo.cern.ch/repository/py-release-local/simple',
+                url='http://acc-py-repo.cern.ch/repository/py-release-local/simple/',
                 session=session,
             )
             project_list = (await internal_index.get_project_list()).projects
             packages_for_reindexing = set(
                 project.normalized_name for project in project_list
             )
-
             await super().crawl_recursively(app, normalized_project_names_to_crawl | packages_for_reindexing)
+
+    @classmethod
+    def decorate(cls, fn):
+        if fn.__name__ == "create_source_repository":
+            def new_f(app: fastapi.FastAPI) -> HttpRepository:
+                return HttpRepository(
+                    url="http://acc-py-repo.cern.ch/repository/vr-py-releases/simple/",
+                    session=app.state.session,
+                )
+            return new_f
+        return fn
 
 
 class SourceContext:
@@ -50,11 +60,11 @@ class SourceContext:
 
     def __init__(self, session: aiohttp.ClientSession):
         self._internal = HttpRepository(
-            url='http://acc-py-repo.cern.ch/repository/py-release-local/simple',
+            url='http://acc-py-repo.cern.ch/repository/py-release-local/simple/',
             session=session,
         )
         self._external = HttpRepository(
-            url='http://acc-py-repo.cern.ch/repository/py-thirdparty-remote/simple',
+            url='http://acc-py-repo.cern.ch/repository/py-thirdparty-remote/simple/',
             session=session,
         )
 
@@ -98,7 +108,7 @@ class SourceContext:
 async def _to_be_turned_into_a_test():
     async with aiohttp.ClientSession() as session:
         index = HttpRepository(
-            url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple',
+            url='https://acc-py-repo.cern.ch/repository/vr-py-releases/simple/',
             session=session,
         )
         sc = SourceContext(session)

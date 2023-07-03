@@ -13,13 +13,14 @@ from acc_py_index import errors, utils
 from acc_py_index.simple import model
 from acc_py_index.simple.repositories import http
 from acc_py_index.simple.repositories.core import SimpleRepository
-from diskcache import Cache
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from diskcache import Cache
 
 from . import __version__, _search, fetch_projects
 from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
@@ -34,31 +35,42 @@ class ProjectPageSection(str, Enum):
     dependencies = "dependencies"
 
 
-def get_releases(project_page: model.ProjectDetail, canonical_name: str) -> list[str]:
-    releases = []
+def get_releases(
+    project_page: model.ProjectDetail,
+) -> dict[Version, tuple[model.File, ...]]:
+    result: dict[Version, list[model.File]] = {}
+    canonical_name = canonicalize_name(project_page.name)
     for file in project_page.files:
         try:
-            release = Version(utils.extract_package_version(file.filename, canonical_name))
+            release = Version(
+                version=utils.extract_package_version(
+                    filename=file.filename,
+                    project_name=canonical_name,
+                ),
+            )
         except (ValueError, InvalidVersion):
             release = Version('0.0rc0')
-        releases.append(release)
+        if release not in result:
+            result[release] = []
+        result[release].append(file)
+    return {
+        version: tuple(files) for version, files in result.items()
+    }
 
-    if len(releases) == 0:
-        raise HTTPException(status_code=404, detail=f'No release not found for {canonical_name}.')
-    releases = [str(release) for release in sorted(set(releases))]
-    return releases
 
+def get_latest_version(
+    releases: dict[Version, tuple[model.File, ...]],
+) -> typing.Optional[Version]:
+    # Use the pip logic to determine the latest release. First, pick the greatest non-dev version,
+    # and if nothing, fall back to the greatest dev version. If no release is available return None.
+    sorted_versions = sorted([version for version in releases])
 
-def get_files_for_release(project_page: model.ProjectDetail, release: str) -> list[model.File]:
-    files: list[model.File] = []
-    for file in project_page.files:
-        try:
-            candidate_release = Version(utils.extract_package_version(file.filename, project_page.name))
-        except (ValueError, InvalidVersion):
-            candidate_release = Version('0.0rc0')
-        if str(candidate_release) == release:
-            files.append(file)
-    return files
+    if not sorted_versions:
+        return None
+    for version in sorted_versions[::-1]:
+        if not (version.is_devrelease or version.is_prerelease):
+            return version
+    return sorted_versions[-1]
 
 
 class Customiser:
@@ -119,13 +131,19 @@ class Customiser:
         return fn
 
     @classmethod
-    async def fetch_pkg_info(cls, app: fastapi.FastAPI, prj: model.ProjectDetail, release: str, force_recache: bool) -> typing.Optional[PackageInfo]:
-        releases = get_releases(prj, prj.name)
-        if len(releases) == 0:
-            raise HTTPException(status_code=404, detail=f"No release found for {prj.name} with version {release}.")
-        is_latest = release == releases[-1]
+    async def fetch_pkg_info(cls, app: fastapi.FastAPI, prj: model.ProjectDetail, force_recache: bool, version: typing.Optional[Version] = None) -> typing.Optional[PackageInfo]:
+        releases = get_releases(prj)
+        if not releases:
+            return None
+        if not version:
+            if not (version := get_latest_version(releases)):
+                return None
+
+        if version not in releases:
+            return None
+
         with app.state.cache as cache:
-            key = ('pkg-info', prj.name, str(release))
+            key = ('pkg-info', prj.name, str(version))
             if key in cache and not force_recache:
                 release_info = cache[key]
                 # Validate that the cached result covers all of the files, and that no new
@@ -133,7 +151,7 @@ class Customiser:
                 if all(
                     [
                         file.filename in release_info.files_info
-                        for file in get_files_for_release(prj, release)
+                        for file in releases[version]
                     ],
                 ):
                     return release_info
@@ -147,18 +165,18 @@ class Customiser:
                 prj.name,
             )
 
-            release_info = await package_info(prj, release)
+            release_info = await package_info(releases[version])
             if release_info is not None:
                 await cls.release_info_retrieved(prj, release_info)
             cache[key] = release_info
-
+            is_latest = version == get_latest_version(releases)
             if is_latest and release_info is not None:
                 fetch_projects.update_summary(
                     app.state.projects_db_connection,
                     name=prj.name,
                     summary=release_info.summary,
                     release_date=release_info.release_date,
-                    release_version=release,
+                    release_version=str(version),
                 )
 
         return release_info
@@ -170,7 +188,7 @@ class Customiser:
         # We periodically want to refresh the project database to make sure we are up-to-date.
         await fetch_projects.fully_populate_db(
             app.state.projects_db_connection,
-            app.state.full_index,
+            app.state.source,
         )
         with app.state.cache as cache:
             packages_w_dist_info = set()
@@ -183,8 +201,7 @@ class Customiser:
     async def crawl_recursively(cls, app: fastapi.FastAPI, normalized_project_names_to_crawl: typing.Set[str]) -> None:
         seen: set = set()
         packages_for_reindexing = set(normalized_project_names_to_crawl)
-        full_index: SimpleRepository = app.state.full_index
-
+        full_index: SimpleRepository = app.state.source
         while packages_for_reindexing - seen:
             remaining_packages = packages_for_reindexing - seen
             pkg_name = remaining_packages.pop()
@@ -198,9 +215,7 @@ class Customiser:
                 # faulthandler
                 continue
 
-            latest = get_releases(prj, pkg_name)[-1]
-
-            release_info = await cls.fetch_pkg_info(app, prj, latest, force_recache=False)
+            release_info = await cls.fetch_pkg_info(app, prj, force_recache=False)
             if release_info is None:
                 continue
 
@@ -210,7 +225,7 @@ class Customiser:
                 except packaging.requirements.InvalidRequirement:
                     # See https://discuss.python.org/t/pip-supporting-non-pep508-dependency-specifiers/23107.
                     continue
-                packages_for_reindexing.add(dep_name)
+                packages_for_reindexing.add(canonicalize_name(dep_name))
 
             # Don't DOS the service, we aren't in a rush here.
             await asyncio.sleep(0.01)
@@ -359,10 +374,14 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             page_section: typing.Optional[ProjectPageSection] = ProjectPageSection.description,
     ):
         _ = page_section  # Handled in javascript.
-        return await project_page__common_impl(request, project_name, version)
+        try:
+            _version = Version(version)
+        except InvalidVersion:
+            raise HTTPException(status_code=404, detail=f"Invalid version {version}.")
+        return await project_page__common_impl(request, project_name, _version)
 
     @customiser.decorate
-    async def project_page__common_impl(request: Request, project_name: str, version: typing.Optional[str] = None) -> str:
+    async def project_page__common_impl(request: Request, project_name: str, version: typing.Optional[Version] = None) -> str:
         index: http.HttpRepository = request.app.state.source
         canonical_name = canonicalize_name(project_name)
         try:
@@ -377,30 +396,30 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonical_name)
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
-        releases = get_releases(prj, canonical_name)
-        latest_release = releases[-1]
+        releases = get_releases(prj)
+        if not releases:
+            raise HTTPException(status_code=404, detail=f"No releases for {project_name}.")
 
+        latest_version = get_latest_version(releases)
         if version is None:
-            release = latest_release
-        else:
-            if version not in releases:
-                raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
-            release = version
+            version = latest_version
+        if version not in releases:
+            raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
+
         return templates.get_template("project.html").render(
             **{
                 "request": request,
-                "project_name": canonical_name,
+                "project": prj,
                 "releases": releases,
-                "latest_version": None,
-                "release": release,
-                "latest_release": latest_release,  # Note: May be the same release.
+                "version": str(version),
+                "latest_version": str(latest_version),  # Note: May be the same release.
             },
         )
 
     @app.get("/api/project/{project_name}/{version}", response_class=JSONResponse, name='api_project_version')
     @customiser.decorate
     async def release_api__json(request: Request, project_name: str, version: str, recache: bool = False):
-        index: SimpleRepository = request.app.state.full_index
+        index: SimpleRepository = request.app.state.source
         try:
             prj = await index.get_project_page(canonicalize_name(project_name))
             fetch_projects.insert_if_missing(request.app.state.projects_db_connection, prj.name, project_name)
@@ -408,15 +427,23 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonicalize_name(project_name))
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
 
-        release_files = get_files_for_release(prj, version)
-        if not release_files:
+        try:
+            _version = Version(version)
+        except InvalidVersion:
+            raise HTTPException(status_code=404, detail=f"Invalid version {version}.")
+
+        releases = get_releases(prj)
+        if not releases:
+            raise HTTPException(status_code=404, detail=f'No release found for {project_name}.')
+        if _version not in releases:
             raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
-        release_info = await customiser.fetch_pkg_info(app, prj, version, force_recache=recache)
+        release_files = releases[_version]
+        release_info = await customiser.fetch_pkg_info(app, prj, version=_version, force_recache=recache)
 
         if release_info is None:
             release_info = EMPTY_PKG_INFO
-            release_files = []  # crcmod as an example.
+            release_files = ()  # crcmod as an example.
 
         # https://packaging.python.org/en/latest/specifications/core-metadata/
         # https://peps.python.org/pep-0566/
@@ -490,18 +517,22 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
                 logging.exception(err, exc_info=True)
             await asyncio.sleep(frequency_seconds)
 
-    @app.on_event('startup')
-    async def create_task():
-        app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
-        app.state.session = aiohttp.ClientSession()
-        app.state.source = http.HttpRepository(
+    @customiser.decorate
+    def create_source_repository(app: fastapi.FastAPI):
+        return http.HttpRepository(
             url="https://pypi.org/simple/",
             session=app.state.session,
         )
-        app.state.index = app.state.source
-        app.state.full_index = app.state.index
+
+    @app.on_event('startup')
+    @customiser.decorate
+    async def create_task():
+        app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
+        app.state.session = aiohttp.ClientSession()
+        app.state.source = create_source_repository(app)
 
     @app.on_event("shutdown")
+    @customiser.decorate
     async def close_sessions():
         await app.state.session.close()
 
