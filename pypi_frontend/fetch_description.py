@@ -17,7 +17,6 @@ import importlib_metadata
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
-from acc_py_index import utils
 from acc_py_index.simple import model
 
 
@@ -130,31 +129,19 @@ EMPTY_PKG_INFO = PackageInfo('', '', '')
 
 
 async def package_info(
-    release: model.ProjectDetail,
-    version: str,
+    release_files: tuple[model.File, ...],
 ) -> typing.Optional[PackageInfo]:
-    distribution_files: list[model.File] = []
-
-    for file in release.files:
-        try:
-            file_version = utils.extract_package_version(file.filename, release.name)
-        except ValueError:
-            pass
-        if file_version == version:
-            distribution_files.append(file)
+    if not release_files:
+        return None
 
     files = sorted(
-        distribution_files,
+        release_files,
         key=lambda file: (
             file.filename.endswith('.whl'),
             file.filename.endswith('.tar.gz'),
             file.filename.endswith('.zip'),
         ),
     )
-
-    if not files:
-        logging.debug(f"no files found for {version}")
-        return None
 
     files_info = {}
     limited_concurrency = asyncio.Semaphore(10)

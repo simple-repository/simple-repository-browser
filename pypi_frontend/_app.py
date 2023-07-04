@@ -6,6 +6,7 @@ from enum import Enum
 from pathlib import Path
 
 import aiohttp
+import diskcache
 import fastapi
 import jinja2
 import packaging.requirements
@@ -19,8 +20,6 @@ from fastapi.staticfiles import StaticFiles
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
-from diskcache import Cache
 
 from . import __version__, _search, fetch_projects
 from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
@@ -131,14 +130,14 @@ class Customiser:
         return fn
 
     @classmethod
-    async def fetch_pkg_info(cls, app: fastapi.FastAPI, prj: model.ProjectDetail, force_recache: bool, version: typing.Optional[Version] = None) -> typing.Optional[PackageInfo]:
-        releases = get_releases(prj)
-        if not releases:
-            return None
-        if not version:
-            if not (version := get_latest_version(releases)):
-                return None
-
+    async def fetch_pkg_info(
+        cls,
+        app: fastapi.FastAPI,
+        prj: model.ProjectDetail,
+        version: Version,
+        releases: dict[Version, tuple[model.File, ...]],
+        force_recache: bool,
+    ) -> typing.Optional[PackageInfo]:
         if version not in releases:
             return None
 
@@ -161,7 +160,7 @@ class Customiser:
 
             fetch_projects.insert_if_missing(
                 app.state.projects_db_connection,
-                prj.name,
+                canonicalize_name(prj.name),
                 prj.name,
             )
 
@@ -215,7 +214,13 @@ class Customiser:
                 # faulthandler
                 continue
 
-            release_info = await cls.fetch_pkg_info(app, prj, force_recache=False)
+            releases = get_releases(prj)
+            latest_version = get_latest_version(releases)
+            if not latest_version or latest_version.is_devrelease or latest_version.is_prerelease:
+                # Don't bother fetching devrelease only projects.
+                continue
+
+            release_info = await cls.fetch_pkg_info(app, prj, latest_version, releases, force_recache=False)
             if release_info is None:
                 continue
 
@@ -422,7 +427,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         index: SimpleRepository = request.app.state.source
         try:
             prj = await index.get_project_page(canonicalize_name(project_name))
-            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, prj.name, project_name)
+            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, canonicalize_name(prj.name), project_name)
         except errors.PackageNotFoundError:
             fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonicalize_name(project_name))
             raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
@@ -430,7 +435,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
         try:
             _version = Version(version)
         except InvalidVersion:
-            raise HTTPException(status_code=404, detail=f"Invalid version {version}.")
+            raise HTTPException(status_code=406, detail=f"Invalid version {version}.")
 
         releases = get_releases(prj)
         if not releases:
@@ -439,7 +444,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
         release_files = releases[_version]
-        release_info = await customiser.fetch_pkg_info(app, prj, version=_version, force_recache=recache)
+        release_info = await customiser.fetch_pkg_info(app, prj, _version, releases, force_recache=recache)
 
         if release_info is None:
             release_info = EMPTY_PKG_INFO
@@ -551,7 +556,7 @@ def make_app(
 
     app.state.periodic_reindexing_task = None
 
-    app.state.cache = Cache(str(cache_dir/'diskcache'))
+    app.state.cache = diskcache.Cache(str(cache_dir/'diskcache'))
 
     con = sqlite3.connect(
         cache_dir/'projects.sqlite',
