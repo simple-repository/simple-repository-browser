@@ -434,7 +434,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
                         # "packagetype": "bdist_wheel",
                         # "python_version": "2.7",
                         "size": release_info.files_info[file.filename].size,
-                        "upload_time_iso_8601": release_info.files_info[file.filename].created.isoformat(),
+                        # "upload_time_iso_8601": release_info.files_info[file.filename].created.isoformat(),
                         "url": file.url,
                         "yanked": False,
                         "yanked_reason": None,

@@ -25,7 +25,6 @@ from . import _pypil
 class FileInfo:
     #: Size, in bytes, of the compressed file.
     size: int
-    created: datetime.datetime
 
 
 @dataclasses.dataclass
@@ -161,13 +160,8 @@ async def package_info(
         ]
         for coro in asyncio.as_completed(coros):
             filename, response = await coro
-            last_modified = datetime.datetime.strptime(
-                response.headers['Last-Modified'],
-                '%a, %d %b %Y %H:%M:%S %Z',
-            )
             files_info[filename] = FileInfo(
                 size=int(response.headers['Content-Length']),
-                created=last_modified,
             )
 
     file = files[0]
