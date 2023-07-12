@@ -49,21 +49,18 @@ def get_releases(
             )
         except (ValueError, InvalidVersion):
             release = Version('0.0rc0')
-        if release not in result:
-            result[release] = []
-        result[release].append(file)
+        result.setdefault(release, []).append(file)
     return {
         version: tuple(files) for version, files in result.items()
     }
 
 
 def get_latest_version(
-    releases: dict[Version, tuple[model.File, ...]],
+    versions: typing.Iterable[Version],
 ) -> typing.Optional[Version]:
     # Use the pip logic to determine the latest release. First, pick the greatest non-dev version,
     # and if nothing, fall back to the greatest dev version. If no release is available return None.
-    sorted_versions = sorted([version for version in releases])
-
+    sorted_versions = sorted(versions)
     if not sorted_versions:
         return None
     for version in sorted_versions[::-1]:
@@ -168,11 +165,11 @@ class Customiser:
             if release_info is not None:
                 await cls.release_info_retrieved(prj, release_info)
             cache[key] = release_info
-            is_latest = version == get_latest_version(releases)
+            is_latest = version == get_latest_version(releases.keys())
             if is_latest and release_info is not None:
                 fetch_projects.update_summary(
                     app.state.projects_db_connection,
-                    name=prj.name,
+                    name=canonicalize_name(prj.name),
                     summary=release_info.summary,
                     release_date=release_info.release_date,
                     release_version=str(version),
@@ -215,7 +212,7 @@ class Customiser:
                 continue
 
             releases = get_releases(prj)
-            latest_version = get_latest_version(releases)
+            latest_version = get_latest_version(releases.keys())
             if not latest_version or latest_version.is_devrelease or latest_version.is_prerelease:
                 # Don't bother fetching devrelease only projects.
                 continue
