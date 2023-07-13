@@ -233,12 +233,17 @@ class Customiser:
             await asyncio.sleep(0.01)
 
 
-def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None:
+def build_app(
+    app: fastapi.FastAPI,
+    customiser: typing.Type[Customiser],
+    prefix: str,
+) -> None:
     customiser.prepare_static(app)
     templates = customiser.templates()
     customiser.add_exception_middleware(app)
+    router = fastapi.APIRouter(prefix=prefix)
 
-    @app.get("/", response_class=HTMLResponse, name='index')
+    @router.get("/", response_class=HTMLResponse, name='index')
     async def index_page(request: Request):
         return templates.get_template('index.html').render(
             **{
@@ -246,7 +251,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             },
         )
 
-    @app.get("/about", response_class=HTMLResponse, name='about')
+    @router.get("/about", response_class=HTMLResponse, name='about')
     @customiser.decorate
     async def about_page(request: Request):
 
@@ -275,7 +280,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             },
         )
 
-    @app.get("/search", response_class=HTMLResponse, name='search')
+    @router.get("/search", response_class=HTMLResponse, name='search')
     @customiser.decorate
     async def search_page(request: Request, query: str, page: typing.Optional[int] = 0):
         try:
@@ -358,7 +363,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             status_code=exc.status_code,
         )
 
-    @app.get("/project/{project_name}", response_class=HTMLResponse, name='project')
+    @router.get("/project/{project_name}", response_class=HTMLResponse, name='project')
     @customiser.decorate
     async def project_page__latest_release(
             request: Request,
@@ -366,8 +371,8 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
     ):
         return await project_page__common_impl(request, project_name)
 
-    @app.get("/project/{project_name}/{version}", response_class=HTMLResponse, name='project_version')
-    @app.get("/project/{project_name}/{version}/{page_section}", response_class=HTMLResponse, name='project_version_section')
+    @router.get("/project/{project_name}/{version}", response_class=HTMLResponse, name='project_version')
+    @router.get("/project/{project_name}/{version}/{page_section}", response_class=HTMLResponse, name='project_version_section')
     @customiser.decorate
     async def project_page__specific_release(
             request: Request,
@@ -418,7 +423,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             },
         )
 
-    @app.get("/api/project/{project_name}/{version}", response_class=JSONResponse, name='api_project_version')
+    @router.get("/api/project/{project_name}/{version}", response_class=JSONResponse, name='api_project_version')
     @customiser.decorate
     async def release_api__json(request: Request, project_name: str, version: str, recache: bool = False):
         index: SimpleRepository = request.app.state.source
@@ -538,14 +543,17 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
     async def close_sessions():
         await app.state.session.close()
 
+    app.include_router(router)
+
 
 def make_app(
         cache_dir: Path = Path.cwd() / 'cache',
-        index_url=None, prefix=None,
+        index_url=None,
+        prefix=None,
         customiser: typing.Type[Customiser] = Customiser,
 ) -> fastapi.FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None)
-    build_app(app, customiser=customiser)
+    build_app(app, customiser=customiser, prefix=prefix or "")
 
     kwargs = {}
     if index_url is not None:
@@ -568,8 +576,4 @@ def make_app(
 
     fetch_projects.create_table(con)
 
-    if prefix is not None:
-        base_app = FastAPI(docs_url=None, redoc_url=None)
-        base_app.mount(prefix, app)
-        app = base_app
     return app
