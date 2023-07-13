@@ -155,7 +155,7 @@ grammar = parsley.makeGrammar(
 
 
 def parse(query: str) -> typing.Tuple[Term, ...]:
-    return grammar(query).search_terms()
+    return grammar(query.strip()).search_terms()
 
 
 ParseError = parsley.ParseError
