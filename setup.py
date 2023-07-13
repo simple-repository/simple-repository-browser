@@ -16,6 +16,7 @@ with (HERE / 'README.md').open('rt') as fh:
 
 REQUIREMENTS: dict = {
     'core': [
+        'acc-py-index~=3.0',
         'aiohttp',
         'bleach',
         'diskcache',
@@ -30,7 +31,6 @@ REQUIREMENTS: dict = {
         'parsley',
         'pkginfo',
         'pypi_simple>=1.0',
-        # 'pypil[simple]',
         'readme-renderer[md]',
         'uvicorn',
     ],

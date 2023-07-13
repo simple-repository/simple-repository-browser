@@ -7,15 +7,15 @@
 {% macro page_banner() %}
 <div class="row" style="padding-bottom: 3em; padding-top: 2em">
   <div class="col-md-6">
-    <h1> {{ project.name }} {{ release.version }}</h1>
+    <h1> {{ project.name }} {{ version }}</h1>
     <br>
-    {% if latest_release == release %}
+    {% if latest_version == version %}
     <span class="pip-command" id="pip-command">pip install {{ project.name }}
-      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ release.version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
+      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
     </span>
     {% else %}
-    <span class="pip-command" id="pip-command">pip install {{ project.name }}=={{ release.version }}
-      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ release.version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
+    <span class="pip-command" id="pip-command">pip install {{ project.name }}=={{ version }}
+      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
     </span>
     {% endif %}
   </div>
@@ -28,9 +28,9 @@
         <span>Latest version</span>
     </a>
     {% else %}
-    <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_release.version) }}">
+    <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_version) }}">
       <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
-        <span>Newer version available ({{ latest_release.version }})</span>
+        <span>Newer version available ({{ latest_release }})</span>
     </a>
     {% endif %}
     <br><br>
@@ -105,12 +105,12 @@
             </div>
           </div>
           <div id="releases-page" data-purpose="page-switch" data-source="releases">
-          {% for release in project.releases()|reverse %}
-            <a href="{{ url_for('project_version', project_name=project.name, version=release.version) }}">
+          {% for _version in releases|reverse %}
+            <a href="{{ url_for('project_version', project_name=project.name, version=_version) }}">
                 <div class="card" style="margin: 1em;">
                   <div class="card-body">
                     <img src="{{ url_for('static', path='/images/white-cube.8c3a6fe9.svg') }}" style="padding: 0 1em 0 0.5em;" >
-                    {{ release.version }}
+                    {{ _version }}
                   </div>
                 </div>
             </a>
@@ -139,7 +139,7 @@
   };
 
 
-  $.getJSON("{{ url_for('api_project_version', project_name=project.name, version=release.version) }}", function( data ) {
+  $.getJSON("{{ url_for('api_project_version', project_name=project.name, version=version) }}", function( data ) {
     date = new Date(data['info']['creation_date']);
     if(!isNaN(date.getTime()) && date.getFullYear() > 1990) {
         date = date.toLocaleString('default', { month: 'short' }) + ' ' + date.getDate() + ', ' + date.getFullYear();
@@ -256,7 +256,7 @@
      });
 
      // Handle Files
-    data['releases']['{{ release.version }}'].forEach(function (file) {
+    data['releases']['{{ version }}'].forEach(function (file) {
       $('#project_files').append(`
             <a href="${file.url}">
                 <div class="card" style="margin: 1em;">
@@ -282,28 +282,28 @@ function show_page(page_class){
 $('button.releases').click(
   function() {
     show_page('releases');
-    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=release.version) }}/releases' );
+    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=version) }}/releases' );
   }
 )
 
 $('button.description').click(
   function() {
     show_page('description');
-    history.replaceState( {} , 'Description', '{{ url_for('project_version', project_name=project.name, version=release.version) }}/description' );
+    history.replaceState( {} , 'Description', '{{ url_for('project_version', project_name=project.name, version=version) }}/description' );
   }
 )
 
 $('button.files').click(
   function() {
     show_page('files');
-    history.replaceState( {} , 'Files', '{{ url_for('project_version', project_name=project.name, version=release.version) }}/files' );
+    history.replaceState( {} , 'Files', '{{ url_for('project_version', project_name=project.name, version=version) }}/files' );
   }
 )
 
 $('button.dependencies').click(
   function() {
     show_page('dependencies');
-    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=release.version) }}/dependencies' );
+    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=version) }}/dependencies' );
   }
 )
 

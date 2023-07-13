@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import sqlite3
 
-from ._pypil import PackageName
+from acc_py_index.simple.repositories.core import SimpleRepository
 
 
 def create_table(connection):
@@ -39,14 +39,14 @@ def update_summary(conn, name: str, summary: str, release_date: datetime.datetim
         )
 
 
-async def fully_populate_db(connection, index):
+async def fully_populate_db(connection, index: SimpleRepository):
     con = connection
     print('Fetching names from index')
 
-    loop = asyncio.get_event_loop()
-    non_canonical_project_names = await loop.run_in_executor(None, index.project_names)
-
-    project_names = [(PackageName(project).normalized, project) for project in non_canonical_project_names]
+    project_list = await index.get_project_list()
+    project_names = [
+        (project.normalized_name, project.name) for project in project_list.projects
+    ]
     print('Inserting all new names (if any)')
     with con as cursor:
         for canonical_name, name in project_names:
@@ -87,13 +87,8 @@ async def _devel_to_be_turned_into_test():
 
     create_table(con)
 
-    from ._pypil import SimplePackageIndex
-
-    index = SimplePackageIndex()
-    # index = SimplePackageIndex(source_url='http://cwe-513-vpl337.cern.ch:8000/simple/')
-
-    if False:
-        asyncio.run(fully_populate_db(con, index))
+    # if False:
+    #   asyncio.run(fully_populate_db(con, index))
 
     with con as cur:
         # exact = cur.execute("SELECT * FROM projects WHERE canonical_name == ?", (f'{name}',)).fetchone()
