@@ -412,7 +412,7 @@ def build_app(app: fastapi.FastAPI, customiser: typing.Type[Customiser]) -> None
             **{
                 "request": request,
                 "project": prj,
-                "releases": releases,
+                "releases": sorted(releases),
                 "version": str(version),
                 "latest_version": str(latest_version),  # Note: May be the same release.
             },
