@@ -98,8 +98,8 @@ class Customiser:
         pass
 
     @classmethod
-    def prepare_static(cls, app) -> None:
-        app.mount("/static", StaticFiles(directory=here / "static"), name="static")
+    def prepare_static(cls, router: fastapi.APIRouter) -> None:
+        router.mount("/static", StaticFiles(directory=here / "static"), name="static")
 
     @classmethod
     def add_exception_middleware(cls, app):
@@ -238,10 +238,11 @@ def build_app(
     customiser: typing.Type[Customiser],
     prefix: str,
 ) -> None:
-    customiser.prepare_static(app)
     templates = customiser.templates()
     customiser.add_exception_middleware(app)
-    router = fastapi.APIRouter(prefix=prefix)
+    router = fastapi.APIRouter()
+    customiser.prepare_static(router)
+    app.mount(prefix, router)
 
     @router.get("/", response_class=HTMLResponse, name='index')
     async def index_page(request: Request):
@@ -542,8 +543,6 @@ def build_app(
     @customiser.decorate
     async def close_sessions():
         await app.state.session.close()
-
-    app.include_router(router)
 
 
 def make_app(
