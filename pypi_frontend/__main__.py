@@ -42,7 +42,7 @@ def handler(args: typing.Any) -> None:
     )
     Path(args.logs_dir).mkdir(exist_ok=True, parents=True)
     bind = f'{args.host}:{args.port}'
-    print(f'Starting application on http://{bind}')
+    print(f'Starting application on http://{bind}{args.url_prefix or ""}/')
     print(f'Cache in {args.cache_dir}')
     print(f'Logs in {args.logs_dir}')
     Application(
