@@ -1,0 +1,97 @@
+
+// Limit the width as seen on pypi.
+$container-max-widths: (
+  sm: 540px,
+  md: 720px,
+  lg: 960px,
+  xl: 1000px,
+  xxl: 1090px
+);
+
+@import "~bootstrap/scss/bootstrap";
+
+.navbar {
+   background-color: #0073b7;
+}
+.nav-link {
+   color: white;
+}
+
+.nav-link:hover {
+   color: white;
+}
+.navbar-brand:hover {
+   text-decoration: none;
+}
+
+a:hover, a:visited, a:link, a:active
+{
+    text-decoration: none;
+}
+
+
+.btn-link {
+   text-decoration: none;
+}
+
+nav a:hover {
+   text-decoration: underline;
+}
+
+.pip-command {
+   font-family: Source Code Pro, monospace;
+   font-weight: 500;
+   font-size: 1.2rem;
+   background-color: rgba(0, 0, 0, .15);
+   padding: 8px;
+   border: 1px dotted hsla(0, 0%, 100%, .4);
+   line-height: 30px;
+   white-space: nowrap;  // Long pip commands shouldn't wrap
+}
+
+.pip-command a, .pip-command a:hover {
+   color: white;
+}
+
+footer {
+   background-color: #0073b7;
+   color: white;
+   padding: 2em;
+}
+
+footer.text-muted.mt-auto {
+   color: white !important;
+   margin-top: 2em !important;
+}
+
+.btn-primary, .btn-primary:hover, .btn-primary:active, .btn-primary:focus {
+   background-color: #0073b7;
+   border-color: #0073b7;
+   box-shadow: none;  // On focus otherwise
+}
+
+dev#page-content a:hover {
+   color: #0073b7;
+}
+
+
+a.status-badge {
+   font-weight: 400;
+   line-height: 1.4;
+   border: 1px solid hsla(0, 0%, 100%, .5);
+   border-radius: 3px;
+   box-sizing: border-box;
+   display: inline-flex;
+   font-size: .8rem;
+   min-height: 40px;
+   padding: 12px;
+   color: #fff;
+}
+
+a.status-badge--bad {
+   background-color: #d52d40;
+}
+
+a.status-badge--good {
+   background-color: #148024;
+}

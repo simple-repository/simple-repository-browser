@@ -1,0 +1,25 @@
+{#
+ Copyright (C) 2023, CERN
+ This software is distributed under the terms of the MIT
+ licence, copied verbatim in the file "LICENSE".
+ In applying this license, CERN does not waive the privileges and immunities
+ granted to it by virtue of its status as Intergovernmental Organization
+ or submit itself to any jurisdiction.
+#}
+
+{% extends "page.html.jinja2" %}
+
+{% block page_content %}
+{{ super() }}
+<section>
+    <div class="container">
+        <p>
+            This PyPI frontend is developed at <a href="https://github.com/simple-repository/simple-repository-browser">https://github.com/simple-repository/simple-repository-browser</a>
+        </p>
+        <p>
+            There are {{ "{:,}".format(n_packages) }} packages in the index, and metadata for {{ "{:,}".format(n_dist_info) }} specific distributions ({{ "{:,}".format(n_packages_w_dist_info) }} distinct packages) cached.
+        </p>
+    </div>
+</section>
+
+{% endblock page_content %}

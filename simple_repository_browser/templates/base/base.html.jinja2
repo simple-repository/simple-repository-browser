@@ -1,0 +1,76 @@
+{#
+ Copyright (C) 2023, CERN
+ This software is distributed under the terms of the MIT
+ licence, copied verbatim in the file "LICENSE".
+ In applying this license, CERN does not waive the privileges and immunities
+ granted to it by virtue of its status as Intergovernmental Organization
+ or submit itself to any jurisdiction.
+#}
+
+<!DOCTYPE html>
+<html>
+<head>
+    {% block head %}
+    <title>{% block title %}Simple Browser{% endblock title %}</title>
+    <script src="{{ url_for('static', path='/js/pypi.core.js') }}"></script>
+
+    <link rel="icon" href="{{ url_for('static', path='/images/box-icon.png') }}" type="image/x-icon">
+
+    {% block extra_head %}
+    {% endblock extra_head %}
+    {% endblock head %}
+</head>
+  <body class="d-flex flex-column min-vh-100">
+
+  <div style="background-color: #0073b7; border-bottom: 1px solid #0067a3;">
+    <div class="container" id="site-header">
+      <nav class="navbar navbar-expand-lg navbar-light container" >
+
+      <a class="navbar-brand" href="{{ url_for('index') }}" style="font-size: xx-large; color: white; font-weight: bolder">
+          {% block logo %}
+            Simple Browser
+          {% endblock logo %}
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            {% block navbar_left %}
+            {% endblock %}
+  <!--        <li class="nav-item">-->
+  <!--          <a class="nav-link disabled">Disabled</a>-->
+  <!--        </li>-->
+        </ul>
+        <div class="d-flex">
+          {% block navbar_right %}
+            <a class="nav-link" href="{{ url_for('about') }}">About</a>
+          {% endblock %}
+        </div>
+      </div>
+
+      </nav>
+    </div>
+  </div>
+
+      <main role="main" style="min-height: 75vh">
+          {% block page_content %}
+
+          {% endblock page_content %}
+      </main>
+
+      <footer class="text-muted mt-auto">
+      <div class="container text-center">
+        <p class="float-right">
+<!--          <a href="#">Back to top</a>-->
+            PyPI frontend v{{ request.app.state.version }}
+        </p>
+        <p></p>
+      </div>
+      {% block extra_footer %}
+      {% endblock extra_footer %}
+    </footer>
+  </body>
+</html>

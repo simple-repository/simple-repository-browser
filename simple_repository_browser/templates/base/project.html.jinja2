@@ -1,0 +1,332 @@
+{#
+ Copyright (C) 2023, CERN
+ This software is distributed under the terms of the MIT
+ licence, copied verbatim in the file "LICENSE".
+ In applying this license, CERN does not waive the privileges and immunities
+ granted to it by virtue of its status as Intergovernmental Organization
+ or submit itself to any jurisdiction.
+#}
+
+{% extends "page.html.jinja2" %}
+
+{% block title %}
+{{ project.name }} · {{ super() }}
+{% endblock title %}
+
+{% macro page_banner() %}
+<div class="row" style="padding-bottom: 3em; padding-top: 2em">
+  <div class="col-md-6">
+    <h1> {{ project.name }} {{ version }}</h1>
+    <br>
+    {% if latest_version == version %}
+    <span class="pip-command" id="pip-command">pip install {{ project.name }}
+      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
+    </span>
+    {% else %}
+    <span class="pip-command" id="pip-command">pip install {{ project.name }}=={{ version }}
+      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
+    </span>
+    {% endif %}
+  </div>
+
+  <div class="offset-md-2 col-md-4 text-end">
+    <br>
+    {% if latest_release == release %}
+    <a class="status-badge status-badge--good" href="">
+      <i class="fa fa-check fa-fw"></i>&nbsp
+        <span>Latest version</span>
+    </a>
+    {% else %}
+    <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_version) }}">
+      <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
+        <span>Newer version available ({{ latest_release }})</span>
+    </a>
+    {% endif %}
+    <br><br>
+    <span data-source="release_date">
+    </span>
+  </div>
+</div>
+{% endmacro %}
+
+
+{% block page_content %}
+        <section class="jumbotron" style="background-color: #006dad; color: white ; padding: 0px; margin: 0px;" id="page-banner">
+            <div class="container">
+            {{ page_banner() }}
+            </div>
+        </section>
+
+        <section class="jumbotron" style="background-color: #ececec; color: #464646; border-bottom: 1px solid #d3d3d3; padding: 1em; margin-bottom: 1em;" id="banner-split">
+            <div class="container">
+              <div data-source="summary">
+                  &nbsp;
+              </div>
+            </div>
+        </section>
+
+    <div class="container" id="page-content">
+      <div class="row">
+        <div class="col-md-3">
+          <div class="d-grid gap-2 d-md-block page-navigation">
+            <strong>Navigation</strong>
+            <button class="btn btn-link col-md-12 rounded-0 description text-start" type="button" data-purpose="page-select">
+              <i class="fa fa-align-left fa-fw"></i>
+              Description
+            </button>
+            <button class="btn btn-link col-md-12 rounded-0 releases text-start" type="button" data-purpose="page-select">
+              <i class="fa fa-history fa-fw"></i>
+                Releases
+            </button>
+            <button class="btn btn-link col-md-12 rounded-0 files text-start" type="button" data-purpose="page-select">
+              <i class="fa fa-download fa-fw"></i>
+              Download files
+            </button>
+            <button class="btn btn-link col-md-12 rounded-0 dependencies text-start" type="button" data-purpose="page-select">
+              <i class="fa fa-sitemap fa-fw"></i>
+              Dependencies
+            </button>
+          </div>
+          <hr/>
+          <div id="project_urls">
+            <strong>Project Links</strong>
+          </div>
+          <hr/>
+          <div>
+              <strong>Meta</strong>
+              <div data-source="author"></div>
+              <div data-source="maintainer"></div>
+              <div data-source="requires_python"></div>
+          </div>
+          <hr/>
+          <div id="classifiers">
+              <strong>Classifiers</strong>
+              <br>
+          </div>
+        </div>
+        <div class="col-md-9">
+          <div class="row">
+            <div id="description-page" data-purpose="page-switch" data-source="description">
+              <button class="btn btn-primary" type="button" disabled>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Loading...
+              </button>
+            </div>
+          </div>
+          <div id="releases-page" data-purpose="page-switch" data-source="releases">
+          {% for _version in releases|reverse %}
+            <a href="{{ url_for('project_version', project_name=project.name, version=_version) }}">
+                <div class="card" style="margin: 1em;">
+                  <div class="card-body">
+                    <img src="{{ url_for('static', path='/images/box-icon.png') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 84px;" >
+                    {{ _version }}
+                  </div>
+                </div>
+            </a>
+          {% endfor %}
+          </div>
+          <div id="files-page" data-purpose="page-switch" data-source="files">
+            Download files for release:
+            <div id="project_files">
+            </div>
+          </div>
+          <div id="dependencies-page" data-purpose="page-switch">
+            <ul id="dependencies"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+{% endblock page_content %}
+
+
+{% block extra_footer %}
+<script src="{{ url_for('static', path='/js/pypi.project.js') }}"></script>
+<script>
+  function humanFileSize(size) {
+      var i = Math.floor( Math.log(size) / Math.log(1024) );
+      return ( size / Math.pow(1024, i) ).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
+  };
+
+
+  $.getJSON("{{ url_for('api_project_version', project_name=project.name, version=version) }}", function( data ) {
+    date = new Date(data['info']['creation_date']);
+    if(!isNaN(date.getTime()) && date.getFullYear() > 1990) {
+        date = date.toLocaleString('default', { month: 'short' }) + ' ' + date.getDate() + ', ' + date.getFullYear();
+    } else {
+        date = "Unknown";
+    }
+     $('[data-source="release_date"]').text('Released: ' + date);
+     $('[data-source="summary"]').text(data['info']['summary'] || 'No summary available' );
+     $('[data-source="description"]').html(data['info']['description'] || 'No description found.');
+
+     $('[data-source="description"]').html(data['info']['releases']);
+
+     if (data['info']['author']) {
+       $('[data-source="author"]').html(`<strong>Author: </strong> ${data['info']['author']}`)
+     }
+
+     if (data['info']['maintainer']) {
+       $('[data-source="maintainer"]').html(`<strong>Maintainer: </strong> ${data['info']['maintainer']}`)
+     }
+
+     if (data['info']['requires_python']) {
+       $('[data-source="requires_python"]').html(`<strong>Requires Python: </strong> ${data['info']['requires_python']}`)
+     }
+
+     if (data['info']['requires_dist'].length > 0) {
+       deps_ul = $('#dependencies');
+
+       data['info']['requires_dist'].forEach(
+               function(requirement) {
+                 parts = requirement.split(/[\>\<\=\!\;\[\~\s]+/);
+                 dep_name = parts[0];
+                 url = `{{ url_for('project', project_name='${dep_name}') }}`;
+                 deps_ul.append(`
+                    <li><a href="${url}">${requirement}</a></li>
+                 `);
+               }
+       );
+     }
+
+     if (data['info']['classifiers'].length > 0) {
+       classifiers_div = $('#classifiers');
+       classifiers = data['info']['classifiers'];
+
+       const classifier_groups = classifiers.reduce((groups, item) => {
+          group_value = item.split('::')[0].trim();
+          const group = (groups[group_value] || []);
+          group.push(item);
+          groups[group_value] = group;
+          return groups;
+       }, {});
+
+       Object.keys(classifier_groups).sort().forEach(
+         function(top_level_classifier) {
+           classifiers_div.append(`<br><h6>${top_level_classifier}</h6>`);
+           ul = classifiers_div.append('<ul >');
+           classifier_groups[top_level_classifier].forEach(
+             function (classifier) {
+               f = classifier.indexOf('::') + 2
+               remainder = classifier.slice(f).trim();
+               ul.append(`
+                 <li>${remainder}</li>
+               `);
+             }
+           );
+         }
+       );
+     }
+
+     // Handle project URLs
+     // https://github.com/pypa/warehouse/blob/64102a6a41f024e54bc0cfe52201d44bc80afd17/warehouse/templates/packaging/detail.html
+     // https://fontawesome.com/v5.15/icons
+     var special_icons = {
+        "Documentation": "fa-book",
+        "Source": "fa-code-branch",
+        "Source Code": "fa-code-branch",
+        "Code": "fa-code-branch",
+        "Tracker": "fa-bug",
+        "Issues": "fa-bug",
+        "Bug Tracker": "fa-bug",
+        "Discussions": "fa-comments",
+        "Changelog": "fa-scroll",
+        "Homepage": "fa-home",
+     };
+
+     desired_name = Object.keys(special_icons);
+     desired_name.forEach(function(key) {
+        special_icons[key.toLowerCase()] = special_icons[key];
+       }
+     )
+
+     project_urls = data['info']['project_urls'];
+     // Put Homepage last in the object (so that it is rendered first).
+     if (project_urls['Homepage']) {
+       home = project_urls['Homepage'];
+       delete project_urls['Homepage'];
+       project_urls['Homepage'] = home;
+     }
+     // URLS to be reversed as per https://stackoverflow.com/a/56243786/741316
+     [].concat(Object.keys(data['info']['project_urls'])).reverse().forEach(function(name) {
+       var url = data['info']['project_urls'][name]
+       fa_icon = 'fa-link'
+       if (name.toLowerCase() in special_icons) {
+         fa_icon = special_icons[name.toLowerCase()]
+       }
+       $('#project_urls').append(`
+
+        <button class="btn btn-link col-md-12 rounded-0 files text-start">
+          <a href="${url}">
+            <i class="fa fa-align-left ${fa_icon}"></i>
+            ${name}
+          </a>
+        </button>
+     `)
+     });
+
+     // Handle Files
+    data['releases']['{{ version }}'].forEach(function (file) {
+      $('#project_files').append(`
+            <a href="${file.url}">
+                <div class="card" style="margin: 1em;">
+                  <div class="card-body">
+                    <img src="{{ url_for('static', path='/images/box-icon.png') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 84px;" >
+                    ${file.filename} (${humanFileSize(file.size)})
+                  </div>
+                </div>
+            </a>
+       `)
+    });
+
+  });
+
+function show_page(page_class){
+  $('button[data-purpose="page-select"]').addClass('btn-link').removeClass('btn-primary')
+  $('button[data-purpose="page-select"].' + page_class).addClass('btn-primary').removeClass('btn-link')
+
+  $('div[data-purpose="page-switch"]').addClass('d-none');
+  $('#' + page_class + '-page').removeClass('d-none').removeClass('d-none').removeClass('d-none');
+}
+
+$('button.releases').click(
+  function() {
+    show_page('releases');
+    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=version) }}/releases' );
+  }
+)
+
+$('button.description').click(
+  function() {
+    show_page('description');
+    history.replaceState( {} , 'Description', '{{ url_for('project_version', project_name=project.name, version=version) }}/description' );
+  }
+)
+
+$('button.files').click(
+  function() {
+    show_page('files');
+    history.replaceState( {} , 'Files', '{{ url_for('project_version', project_name=project.name, version=version) }}/files' );
+  }
+)
+
+$('button.dependencies').click(
+  function() {
+    show_page('dependencies');
+    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=version) }}/dependencies' );
+  }
+)
+
+  var url_parts = window.location.href.split('/')
+  last_part = url_parts[url_parts.length - 1]
+  if (last_part == 'files') {
+    show_page('files');
+  } else if (last_part == 'releases') {
+    show_page('releases');
+  } else if (last_part == 'dependencies') {
+    show_page('dependencies');
+  } else {
+    show_page('description');
+  }
+
+</script>
+{% endblock extra_footer %}

@@ -1,0 +1,5 @@
+*.egg-info
+.idea
+simple_repository_browser/_version.py
+simple_repository_browser/static/js
+javascript/node_modules

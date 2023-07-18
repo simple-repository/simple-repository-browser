@@ -1,0 +1,70 @@
+{#
+ Copyright (C) 2023, CERN
+ This software is distributed under the terms of the MIT
+ licence, copied verbatim in the file "LICENSE".
+ In applying this license, CERN does not waive the privileges and immunities
+ granted to it by virtue of its status as Intergovernmental Organization
+ or submit itself to any jurisdiction.
+#}
+
+{% extends "page.html.jinja2" %}
+
+{% block page_banner %}
+{% endblock page_banner %}
+
+
+{% block banner_split %}
+{% endblock banner_split %}
+
+
+{% macro package_card(content) -%}
+<a href="{{ url_for('project', project_name=content[0]) }}">
+    <div class="card" style="margin: 1em;">
+      <div class="card-body">
+        <img src="{{ url_for('static', path='/images/box-icon.png') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 64px;" >
+         <div style="display: inline-block; width: calc(100% - 70px);">
+          {{ content.canonical_name }} &nbsp;&nbsp;&nbsp;{{ content.release_version or '' }}
+             <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">{{ content.release_date.strftime('%b %d, %Y') if content.release_date else '' }}</span>
+          <p style="text-decoration: none; font-size: smaller; color: gray; margin: 0.1em 0 0 0;">{{ content.summary or '' }}</p>
+         </div>
+      </div>
+    </div>
+</a>
+{%- endmacro %}
+
+{% block page_content %}
+    {{ super() }}
+    <div class="container">
+      <div class="row">
+<!--        <div class="col-md-3"></div>-->
+          <div class="col-md-9 mx-auto">
+
+            {% if exact %}
+                Exact match found:
+                {{ package_card(exact) }}
+            {% endif %}
+
+            {% if not exact and single_name_proposal %}
+              No exact match found. Were you expecting one? If so, visit the
+                <a href="{{ url_for('project', project_name=single_name_proposal) }}">
+                    "{{ single_name_proposal }}" project page
+                </a>
+              to have the index updated automatically.
+              <br><br>
+            {% elif results_count == 0 %}
+              No results found. Consider reducing the number of filters in your query.
+            {% endif %}
+
+            {% if results_count > 0 %}
+              Found {{ results_count }} results
+              <br>
+
+              {% for result in results %}
+                {{ package_card(result) }}
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+{% endblock page_content %}
