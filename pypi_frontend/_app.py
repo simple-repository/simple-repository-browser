@@ -202,7 +202,21 @@ class Customiser:
             for cache_type, name, version in cache:
                 if cache_type == 'pkg-info':
                     packages_w_dist_info.add(name)
-        await cls.crawl_recursively(app, packages_w_dist_info)
+
+        # Add the top 500 packages
+        URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
+        client: aiohttp.ClientSession = app.state.session
+        popular_projects = []
+        try:
+            async with client.get(URL, raise_for_status=False) as resp:
+                s = await resp.json()
+                for _, row in zip(range(500), s['rows']):
+                    popular_projects.append(row['project'])
+        except Exception as err:
+            print(f'Problem fetching popular projects ({err})')
+            pass
+
+        await cls.crawl_recursively(app, packages_w_dist_info | set(popular_projects))
 
     @classmethod
     async def crawl_recursively(cls, app: fastapi.FastAPI, normalized_project_names_to_crawl: typing.Set[str]) -> None:
@@ -234,7 +248,7 @@ class Customiser:
 
             for dist in release_info.requires_dist:
                 try:
-                    dep_name = packaging.requirements.Requirement(dist).name
+                    dep_name = Requirement(dist).name
                 except packaging.requirements.InvalidRequirement:
                     # See https://discuss.python.org/t/pip-supporting-non-pep508-dependency-specifiers/23107.
                     continue
@@ -522,7 +536,6 @@ def build_app(
         return meta
 
     async def run_reindex_periodically(frequency_seconds: int) -> None:
-        # Tried using startup hooks, worked on dev, didn't work in prod (seemingly the same setup)
         print("Starting the reindexing loop")
         while True:
             try:
