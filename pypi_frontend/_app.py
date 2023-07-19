@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import logging
 import sqlite3
 import typing
@@ -15,8 +16,9 @@ from acc_py_index.simple import model
 from acc_py_index.simple.repositories import http
 from acc_py_index.simple.repositories.core import SimpleRepository
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -91,6 +93,15 @@ class Customiser:
             return request.url_for(name, **path_params)
 
         templates.globals['url_for'] = url_for
+
+        def sizeof_fmt(num, suffix="B"):
+            for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
+                if abs(num) < 1024.0:
+                    return f"{num:3.1f}{unit}{suffix}"
+                num /= 1024.0
+            return f"{num:.1f}Yi{suffix}"
+
+        templates.globals['fmt_size'] = sizeof_fmt
         return templates
 
     @classmethod
@@ -380,16 +391,17 @@ def build_app(
             project_name: str,
             version: str,
             page_section: typing.Optional[ProjectPageSection] = ProjectPageSection.description,
+            recache: bool = False,
     ):
         _ = page_section  # Handled in javascript.
         try:
             _version = Version(version)
         except InvalidVersion:
             raise HTTPException(status_code=404, detail=f"Invalid version {version}.")
-        return await project_page__common_impl(request, project_name, _version)
+        return await project_page__common_impl(request, project_name, _version, recache=recache)
 
     @customiser.decorate
-    async def project_page__common_impl(request: Request, project_name: str, version: typing.Optional[Version] = None) -> str:
+    async def project_page__common_impl(request: Request, project_name: str, version: typing.Optional[Version] = None, recache: bool = False) -> str:
         index: http.HttpRepository = request.app.state.source
         canonical_name = canonicalize_name(project_name)
         try:
@@ -414,6 +426,28 @@ def build_app(
         if version not in releases:
             raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
+        t = asyncio.create_task(compute_metadata(prj, releases, version, recache=recache))
+        # Try for 5 seconds to get the response. Otherwise, fall back to a waiting page which can
+        # re-direct us back here once the data is available.
+        # TODO: Prevent infinite looping.
+        await asyncio.wait([t], timeout=5)
+        if not t.done():
+            async def iter_file():
+                yield templates.get_template('error.html').render(
+                    request=request,
+                    detail='<div>Project metadata is being fetched. This page will reload when ready.</div>',
+                )
+                for attempt in range(100):
+                    await asyncio.wait([t], timeout=1)
+                    if not t.done():
+                        yield f"<div style='visibility: hidden; max-height: 0px;' class='update-message'>Still working {attempt}</div>"
+                    else:
+                        break
+                # We are done (or were in an infinite loop). Signal that we are finished, then exit.
+                yield 'Done!<script>location.reload();</script><br>\n'
+            return StreamingResponse(iter_file(), media_type="text/html")
+
+        json_metadata = t.result()
         return templates.get_template("project.html").render(
             **{
                 "request": request,
@@ -421,33 +455,13 @@ def build_app(
                 "releases": sorted(releases),
                 "version": str(version),
                 "latest_version": str(latest_version),  # Note: May be the same release.
+                "metadata": json_metadata,
             },
         )
 
-    @router.get("/api/project/{project_name}/{version}", response_class=JSONResponse, name='api_project_version')
-    @customiser.decorate
-    async def release_api__json(request: Request, project_name: str, version: str, recache: bool = False):
-        index: SimpleRepository = request.app.state.source
-        try:
-            prj = await index.get_project_page(canonicalize_name(project_name))
-            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, canonicalize_name(prj.name), project_name)
-        except errors.PackageNotFoundError:
-            fetch_projects.remove_if_found(request.app.state.projects_db_connection, canonicalize_name(project_name))
-            raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
-
-        try:
-            _version = Version(version)
-        except InvalidVersion:
-            raise HTTPException(status_code=406, detail=f"Invalid version {version}.")
-
-        releases = get_releases(prj)
-        if not releases:
-            raise HTTPException(status_code=404, detail=f'No release found for {project_name}.')
-        if _version not in releases:
-            raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
-
-        release_files = releases[_version]
-        release_info = await customiser.fetch_pkg_info(app, prj, _version, releases, force_recache=recache)
+    async def compute_metadata(prj: model.ProjectDetail, releases: dict[Version, tuple[model.File, ...]], version: Version, recache: bool = False):
+        release_files = releases[version]
+        release_info = await customiser.fetch_pkg_info(app, prj, version, releases, force_recache=recache)
 
         if release_info is None:
             release_info = EMPTY_PKG_INFO
@@ -462,40 +476,32 @@ def build_app(
                 "author": release_info.author,
                 "author_email": "",
                 "classifiers": release_info.classifiers,
-                "creation_date": release_info.release_date.isoformat() if release_info.release_date else None,
+                "classifier_groups": itertools.groupby(release_info.classifiers, key=lambda s: s.split('::')[0]),
+                "creation_date": release_info.release_date,
                 "description": release_info.description,
                 "description_content_type": None,
                 "description_html": release_info.description,
-                "downloads": {
-                    "last_day": -1,
-                    "last_month": -1,
-                    "last_week": -1,
-                },
                 "home_page": release_info.url,
                 "license": "",
                 "maintainer": release_info.maintainer,
                 "maintainer_email": "",
-                "name": project_name,
+                "name": prj.name,
                 "platform": "",
                 # Note on project-urls: https://stackoverflow.com/a/56243786/741316
                 "project_urls": release_info.project_urls,
-                "requires_dist": release_info.requires_dist,
+                "requires_dist": [Requirement(s) for s in release_info.requires_dist],
                 "requires_python": release_info.requires_python,
                 "summary": release_info.summary,
-                "version": version,
-                "yanked": False,
-                "yanked_reason": None,
+                "version": str(version),
             },
-            "last_serial": -1,
             "releases": {
-                version: [
+                str(version): [
                     {
                         "comment_text": "",
                         # "digests": {
                         #     "md5": "bab8eb22e6710eddae3c6c7ac3453bd9",
                         #     "sha256": "7a7a8b91086deccc54cac8d631e33f6a0e232ce5775c6be3dc44f86c2154019d"
                         # },
-                        "downloads": -1,
                         "filename": file.filename,
                         "has_sig": False,
                         # "md5_digest": "bab8eb22e6710eddae3c6c7ac3453bd9",
