@@ -1,6 +1,7 @@
 import asyncio
 import itertools
 import logging
+import os
 import sqlite3
 import typing
 from enum import Enum
@@ -203,14 +204,14 @@ class Customiser:
                 if cache_type == 'pkg-info':
                     packages_w_dist_info.add(name)
 
-        # Add the top 500 packages
+        # Add the top 100 packages (and their dependencies) to the index
         URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
         client: aiohttp.ClientSession = app.state.session
         popular_projects = []
         try:
             async with client.get(URL, raise_for_status=False) as resp:
                 s = await resp.json()
-                for _, row in zip(range(500), s['rows']):
+                for _, row in zip(range(100), s['rows']):
                     popular_projects.append(row['project'])
         except Exception as err:
             print(f'Problem fetching popular projects ({err})')
@@ -565,7 +566,7 @@ def build_app(
 
 
 def make_app(
-        cache_dir: Path = Path.cwd() / 'cache',
+        cache_dir: Path = Path(os.environ.get('XDG_CACHE_DIR', Path.home() / '.cache')) / 'simple-repository-browser',
         index_url=None,
         prefix=None,
         customiser: typing.Type[Customiser] = Customiser,
