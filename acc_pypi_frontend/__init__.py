@@ -31,7 +31,7 @@ class AccPyCustomiser(base.Customiser):
 
     @classmethod
     async def crawl_recursively(cls, app: fastapi.FastAPI, normalized_project_names_to_crawl: typing.Set[str]) -> None:
-        # Add all of the release-local packages to the set of names that need to be crawled.
+        # Add all the release-local packages to the set of names that need to be crawled.
         async with aiohttp.ClientSession() as session:
             internal_index = HttpRepository(
                 url='http://acc-py-repo.cern.ch/repository/py-release-local/simple/',
