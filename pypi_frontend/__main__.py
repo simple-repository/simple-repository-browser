@@ -1,6 +1,7 @@
 import argparse
 import importlib
 import logging
+import os
 import typing
 from pathlib import Path
 
@@ -19,7 +20,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--logs-dir", type=str, default=str(pwd / 'logs'))
-    parser.add_argument("--cache-dir", type=str, default=str(pwd / 'cache'))
+    parser.add_argument("--cache-dir", type=str, default=Path(os.environ.get('XDG_CACHE_DIR', Path.home() / '.cache')) / 'simple-repository-browser')
     parser.add_argument("--index-url", type=str, default=None)
     parser.add_argument("--url-prefix", type=str, default=None)
     parser.add_argument('--customiser', type=str, default="pypi_frontend._app:Customiser")
