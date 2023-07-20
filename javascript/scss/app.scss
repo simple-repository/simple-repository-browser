@@ -31,6 +31,7 @@ $container-max-widths: (
 }
 .navbar-brand:hover {
    text-decoration: none;
+   color: white;
 }
 
 .jumbo-banner {
@@ -76,6 +77,10 @@ nav a:hover {
 
 .pip-command a, .pip-command a:hover {
    color: white;
+}
+
+.listing-icon {
+   padding: 0 1em 0 0.5em;
 }
 
 footer {

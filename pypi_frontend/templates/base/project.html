@@ -144,7 +144,7 @@
         <div class="col-md-9">
           <div class="row">
             <div id="description-page" data-purpose="page-switch" data-source="description">
-              {{ metadata['info']['description_html'] or 'No description found.' }}
+              {{ metadata['info']['description_html'] or 'Description not available' }}
             </div>
           </div>
           <div id="releases-page" data-purpose="page-switch" data-source="releases">
@@ -152,7 +152,9 @@
             <a href="{{ url_for('project_version', project_name=project.name, version=_version) }}">
                 <div class="card" style="margin: 1em;">
                   <div class="card-body">
-                    <img src="{{ url_for('static', path='/images/white-cube.8c3a6fe9.svg') }}" style="padding: 0 1em 0 0.5em;" >
+                    <span class="listing-icon">
+                      <i class="far fa-folder-open"></i>
+                    </span>
                     {{ _version }}
                   </div>
                 </div>
@@ -166,7 +168,9 @@
                 <a href="${file.url}">
                  <div class="card" style="margin: 1em;">
                   <div class="card-body">
-                    <img src="{{ url_for('static', path='/images/white-cube.8c3a6fe9.svg') }}" style="padding: 0 1em 0 0.5em;" >
+                    <span class="listing-icon">
+                      <i class="far fa-file"></i>
+                    </span>
                     {{ file['filename'] }} ({{ fmt_size(file['size']) }})
                   </div>
                  </div>
@@ -175,11 +179,26 @@
             </div>
           </div>
           <div id="dependencies-page" data-purpose="page-switch">
-            <ul id="dependencies">
-                {% for requirement in metadata['info']['requires_dist'] %}
-                    <li><a href="{{ url_for('project', project_name=requirement.name) }}">{{requirement}}</a></li>
-                {% endfor %}
-            </ul>
+              {% if not metadata['info']['requires_dist'] %}
+                No dependencies
+              {% else %}
+                Dependencies:
+                <div>
+                   {% for requirement in metadata['info']['requires_dist'] %}
+                    <a href="{{ url_for('project', project_name=requirement.name) }}">
+                     <div class="card" style="margin: 1em;">
+                      <div class="card-body">
+                        <img src="{{ url_for('static', path='/images/python-logo-only.svg') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 64px;" >
+                        {{ requirement.name }} {% if requirement.__str__() != requirement.name %} ({{ requirement }}) {% endif %}
+                      </div>
+                     </div>
+                    </a>
+                  {% endfor %}
+                  {% if not metadata['info']['requires_dist'] %}
+                    No dependencies!
+                  {% endif %}
+                </div>
+              {% endif %}
           </div>
         </div>
       </div>
