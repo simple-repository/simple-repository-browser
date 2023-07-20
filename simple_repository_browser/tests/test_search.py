@@ -1,8 +1,8 @@
 import parsley
 import pytest
 
-from pypi_frontend import _search
-from pypi_frontend._search import Filter, FilterOn
+from simple_repository_browser import _search
+from simple_repository_browser._search import Filter, FilterOn
 
 
 @pytest.mark.parametrize(
