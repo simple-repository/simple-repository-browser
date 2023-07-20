@@ -13,17 +13,18 @@
 </head>
   <body class="d-flex flex-column min-vh-100">
 
-  <div style="background-color: #0073b7; border-bottom: 1px solid #0067a3;">
+  <div class="top-nav">
     <div class="container" id="site-header">
       <nav class="navbar navbar-expand-lg navbar-light container" >
 
-      <a class="navbar-brand" href="{{ url_for('index') }}" style="font-size: xx-large; color: white; font-weight: bolder">
+      <a class="navbar-brand" href="{{ url_for('index') }}">
           {% block logo %}
             <img src="{{ url_for('static', path='/images/logo-small.95de8436.svg') }}">
           {% endblock logo %}
       </a>
 
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+              aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
 
@@ -31,9 +32,6 @@
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             {% block navbar_left %}
             {% endblock %}
-  <!--        <li class="nav-item">-->
-  <!--          <a class="nav-link disabled">Disabled</a>-->
-  <!--        </li>-->
         </ul>
         <div class="d-flex">
           {% block navbar_right %}
@@ -55,7 +53,6 @@
       <footer class="text-muted mt-auto">
       <div class="container text-center">
         <p class="float-right">
-<!--          <a href="#">Back to top</a>-->
             simple-repository-browser v{{ request.app.state.version }}
         </p>
         <p></p>
