@@ -7,7 +7,7 @@
  or submit itself to any jurisdiction.
 #}
 
-{% extends "page.html.jinja2" %}
+{% extends "page.html" %}
 
 {% block page_banner %}
 {% endblock page_banner %}
@@ -21,7 +21,7 @@
 <a href="{{ url_for('project', project_name=content[0]) }}">
     <div class="card" style="margin: 1em;">
       <div class="card-body">
-        <img src="{{ url_for('static', path='/images/box-icon.png') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 64px;" >
+         <img src="{{ url_for('static', path='/images/python-logo-only.svg') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 64px;" >
          <div style="display: inline-block; width: calc(100% - 70px);">
           {{ content.canonical_name }} &nbsp;&nbsp;&nbsp;{{ content.release_version or '' }}
              <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">{{ content.release_date.strftime('%b %d, %Y') if content.release_date else '' }}</span>

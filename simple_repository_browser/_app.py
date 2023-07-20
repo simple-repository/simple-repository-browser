@@ -6,7 +6,9 @@
 # or submit itself to any jurisdiction.
 
 import asyncio
+import itertools
 import logging
+import os
 import sqlite3
 import typing
 from enum import Enum
@@ -18,8 +20,9 @@ import fastapi
 import jinja2
 import packaging.requirements
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 from simple_repository import errors, utils
@@ -82,9 +85,9 @@ class Customiser:
 
     @classmethod
     def template_loader(cls) -> jinja2.BaseLoader:
-        # Load the base directory directly (referencable as "index.html.jinja2") as well as keeping the
-        # base namespace "base/index.html.jinja2". In this way, others can override specific pages
-        # (e.g. index.html.jinja2) but still extend from "base/index.html.jinja2".
+        # Load the base directory directly (referencable as "index.html") as well as keeping the
+        # base namespace "base/index.html". In this way, others can override specific pages
+        # (e.g. index.html) but still extend from "base/index.html".
         return jinja2.FileSystemLoader([here / "templates", here / "templates" / "base"])
 
     @classmethod
@@ -98,6 +101,15 @@ class Customiser:
             return request.url_for(name, **path_params)
 
         templates.globals['url_for'] = url_for
+
+        def sizeof_fmt(num, suffix="B"):
+            for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
+                if abs(num) < 1024.0:
+                    return f"{num:3.1f}{unit}{suffix}"
+                num /= 1024.0
+            return f"{num:.1f}Yi{suffix}"
+
+        templates.globals['fmt_size'] = sizeof_fmt
         return templates
 
     @classmethod
@@ -117,7 +129,7 @@ class Customiser:
             except Exception as err:
                 logging.exception(err, exc_info=True)
                 return HTMLResponse(
-                    cls.templates().get_template('error.html.jinja2').render(
+                    cls.templates().get_template('error.html').render(
                         **{
                             "request": request,
                             "detail": "Internal server error",
@@ -149,7 +161,7 @@ class Customiser:
             key = ('pkg-info', prj.name, str(version))
             if key in cache and not force_recache:
                 release_info = cache[key]
-                # Validate that the cached result covers all the files, and that no new
+                # Validate that the cached result covers all of the files, and that no new
                 # files have been added since the cache was made. In that case, we re-cache.
                 if all(
                     [
@@ -198,14 +210,25 @@ class Customiser:
             for cache_type, name, version in cache:
                 if cache_type == 'pkg-info':
                     packages_w_dist_info.add(name)
-        await cls.crawl_recursively(app, packages_w_dist_info)
+
+        popular_projects = []
+        if app.state.crawl_popular_projects:
+            # Add the top 100 packages (and their dependencies) to the index
+            URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
+            client: aiohttp.ClientSession = app.state.session
+            try:
+                async with client.get(URL, raise_for_status=False) as resp:
+                    s = await resp.json()
+                    for _, row in zip(range(100), s['rows']):
+                        popular_projects.append(row['project'])
+            except Exception as err:
+                print(f'Problem fetching popular projects ({err})')
+                pass
+
+        await cls.crawl_recursively(app, packages_w_dist_info | set(popular_projects))
 
     @classmethod
-    async def crawl_recursively(
-        cls,
-        app: fastapi.FastAPI,
-        normalized_project_names_to_crawl: typing.Set[str],
-    ) -> None:
+    async def crawl_recursively(cls, app: fastapi.FastAPI, normalized_project_names_to_crawl: typing.Set[str]) -> None:
         seen: set = set()
         packages_for_reindexing = set(normalized_project_names_to_crawl)
         full_index: SimpleRepository = app.state.source
@@ -213,8 +236,7 @@ class Customiser:
             remaining_packages = packages_for_reindexing - seen
             pkg_name = remaining_packages.pop()
             print(
-                f"Index iteration loop. Looking at {pkg_name}, with "
-                f"{len(remaining_packages)} remaining ({len(seen)} having been completed)",
+                f"Index iteration loop. Looking at {pkg_name}, with {len(remaining_packages)} remaining ({len(seen)} having been completed)",
             )
             seen.add(pkg_name)
             try:
@@ -229,16 +251,15 @@ class Customiser:
                 # Don't bother fetching pre-release only projects.
                 continue
 
-            release_info = await cls.fetch_pkg_info(
-                app, prj, latest_version, releases, force_recache=False,
-            )
+            release_info = await cls.fetch_pkg_info(app, prj, latest_version, releases, force_recache=False)
             if release_info is None:
                 continue
 
             for dist in release_info.requires_dist:
                 try:
-                    dep_name = packaging.requirements.Requirement(dist).name
+                    dep_name = Requirement(dist).name
                 except packaging.requirements.InvalidRequirement:
+                    # See https://discuss.python.org/t/pip-supporting-non-pep508-dependency-specifiers/23107.
                     continue
                 packages_for_reindexing.add(canonicalize_name(dep_name))
 
@@ -248,10 +269,9 @@ class Customiser:
 
 def build_app(
     app: fastapi.FastAPI,
+    index_url: str,
     customiser: typing.Type[Customiser],
     prefix: str,
-    index_url: str,
-    cache_dir: Path,
 ) -> None:
     templates = customiser.templates()
     customiser.add_exception_middleware(app)
@@ -261,7 +281,7 @@ def build_app(
 
     @router.get("/", response_class=HTMLResponse, name='index')
     async def index_page(request: Request):
-        return templates.get_template('index.html.jinja2').render(
+        return templates.get_template('index.html').render(
             **{
                 "request": request,
             },
@@ -281,7 +301,7 @@ def build_app(
                     packages_w_dist_info.add(name)
             n_packages_w_dist_info = len(packages_w_dist_info)
 
-        return templates.get_template('about.html.jinja2').render(
+        return templates.get_template('about.html').render(
             **{
                 "request": request,
                 "n_packages": n_packages,
@@ -297,7 +317,7 @@ def build_app(
             search_terms = _search.parse(query)
         except _search.ParseError:
             return HTMLResponse(
-                templates.get_template("error.html.jinja2").render(
+                templates.get_template("error.html").render(
                     **{
                         "request": request,
                         "search_query": query,
@@ -313,7 +333,7 @@ def build_app(
             condition_query, condition_terms = _search.build_sql(search_terms)
         except ValueError as err:
             return HTMLResponse(
-                templates.get_template("error.html.jinja2").render(
+                templates.get_template("error.html").render(
                     **{
                         "request": request,
                         "search_query": query,
@@ -333,8 +353,7 @@ def build_app(
         with request.app.state.projects_db_connection as cursor:
             if single_name_proposal:
                 exact = cursor.execute(
-                    'SELECT canonical_name, summary, release_version, '
-                    'release_date FROM projects WHERE canonical_name == ?',
+                    'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?',
                     (single_name_proposal,),
                 ).fetchone()
             results = cursor.execute(
@@ -350,7 +369,7 @@ def build_app(
         if exact in results:
             results.remove(exact)
 
-        return templates.get_template("search.html.jinja2").render(
+        return templates.get_template("search.html").render(
             **{
                 "request": request,
                 "search_query": query,
@@ -365,7 +384,7 @@ def build_app(
     @customiser.decorate
     async def http_exception_handler(request, exc):
         return HTMLResponse(
-            templates.get_template("error.html.jinja2").render(
+            templates.get_template("error.html").render(
                 **{
                     "request": request,
                     "detail": exc.detail,
@@ -382,45 +401,30 @@ def build_app(
     ):
         return await project_page__common_impl(request, project_name)
 
-    @router.get(
-        "/project/{project_name}/{version}",
-        response_class=HTMLResponse,
-        name='project_version',
-    )
-    @router.get(
-        "/project/{project_name}/{version}/{page_section}",
-        response_class=HTMLResponse,
-        name='project_version_section',
-    )
+    @router.get("/project/{project_name}/{version}", response_class=HTMLResponse, name='project_version')
+    @router.get("/project/{project_name}/{version}/{page_section}", response_class=HTMLResponse, name='project_version_section')
     @customiser.decorate
     async def project_page__specific_release(
             request: Request,
             project_name: str,
             version: str,
             page_section: typing.Optional[ProjectPageSection] = ProjectPageSection.description,
+            recache: bool = False,
     ):
         _ = page_section  # Handled in javascript.
         try:
             _version = Version(version)
         except InvalidVersion:
             raise HTTPException(status_code=404, detail=f"Invalid version {version}.")
-        return await project_page__common_impl(request, project_name, _version)
+        return await project_page__common_impl(request, project_name, _version, recache=recache)
 
     @customiser.decorate
-    async def project_page__common_impl(
-        request: Request,
-        project_name: str,
-        version: typing.Optional[Version] = None,
-    ) -> str:
+    async def project_page__common_impl(request: Request, project_name: str, version: typing.Optional[Version] = None, recache: bool = False) -> str:
         index: http.HttpRepository = request.app.state.source
         canonical_name = canonicalize_name(project_name)
         try:
             prj = await index.get_project_page(canonical_name)
-            fetch_projects.insert_if_missing(
-                request.app.state.projects_db_connection,
-                canonical_name,
-                project_name,
-            )
+            fetch_projects.insert_if_missing(request.app.state.projects_db_connection, canonical_name, project_name)
         except errors.PackageNotFoundError:
             # Tidy up the cache if the project is no longer found.
             with request.app.state.cache as cache:
@@ -438,65 +442,44 @@ def build_app(
         if version is None:
             version = latest_version
         if version not in releases:
-            raise HTTPException(
-                status_code=404,
-                detail=f'Release "{version}" not found for {project_name}.',
-            )
+            raise HTTPException(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
-        return templates.get_template("project.html.jinja2").render(
+        t = asyncio.create_task(compute_metadata(prj, releases, version, recache=recache))
+        # Try for 5 seconds to get the response. Otherwise, fall back to a waiting page which can
+        # re-direct us back here once the data is available.
+        # TODO: Prevent infinite looping.
+        await asyncio.wait([t], timeout=5)
+        if not t.done():
+            async def iter_file():
+                yield templates.get_template('error.html').render(
+                    request=request,
+                    detail='<div>Project metadata is being fetched. This page will reload when ready.</div>',
+                )
+                for attempt in range(100):
+                    await asyncio.wait([t], timeout=1)
+                    if not t.done():
+                        yield f"<div style='visibility: hidden; max-height: 0px;' class='update-message'>Still working {attempt}</div>"
+                    else:
+                        break
+                # We are done (or were in an infinite loop). Signal that we are finished, then exit.
+                yield 'Done!<script>location.reload();</script><br>\n'
+            return StreamingResponse(iter_file(), media_type="text/html")
+
+        json_metadata = t.result()
+        return templates.get_template("project.html").render(
             **{
                 "request": request,
                 "project": prj,
                 "releases": sorted(releases),
                 "version": str(version),
                 "latest_version": str(latest_version),  # Note: May be the same release.
+                "metadata": json_metadata,
             },
         )
 
-    @router.get(
-        "/api/project/{project_name}/{version}",
-        response_class=JSONResponse,
-        name='api_project_version',
-    )
-    @customiser.decorate
-    async def release_api__json(
-        request: Request,
-        project_name: str,
-        version: str,
-        recache: bool = False,
-    ):
-        index: SimpleRepository = request.app.state.source
-        try:
-            prj = await index.get_project_page(canonicalize_name(project_name))
-            fetch_projects.insert_if_missing(
-                request.app.state.projects_db_connection,
-                canonicalize_name(prj.name),
-                project_name,
-            )
-        except errors.PackageNotFoundError:
-            fetch_projects.remove_if_found(
-                request.app.state.projects_db_connection,
-                canonicalize_name(project_name),
-            )
-            raise HTTPException(status_code=404, detail=f"Project {project_name} not found.")
-
-        try:
-            _version = Version(version)
-        except InvalidVersion:
-            raise HTTPException(status_code=406, detail=f"Invalid version {version}.")
-
-        releases = get_releases(prj)
-        if not releases:
-            raise HTTPException(status_code=404, detail=f'No release found for {project_name}.')
-        if _version not in releases:
-            raise HTTPException(
-                status_code=404, detail=f'Release "{version}" not found for {project_name}.',
-            )
-
-        release_files = releases[_version]
-        release_info = await customiser.fetch_pkg_info(
-            app, prj, _version, releases, force_recache=recache,
-        )
+    async def compute_metadata(prj: model.ProjectDetail, releases: dict[Version, tuple[model.File, ...]], version: Version, recache: bool = False):
+        release_files = releases[version]
+        release_info = await customiser.fetch_pkg_info(app, prj, version, releases, force_recache=recache)
 
         if release_info is None:
             release_info = EMPTY_PKG_INFO
@@ -511,44 +494,42 @@ def build_app(
                 "author": release_info.author,
                 "author_email": "",
                 "classifiers": release_info.classifiers,
-                "creation_date": (
-                    release_info.release_date.isoformat()
-                    if release_info.release_date else None
-                ),
+                "classifier_groups": itertools.groupby(release_info.classifiers, key=lambda s: s.split('::')[0]),
+                "creation_date": release_info.release_date,
                 "description": release_info.description,
                 "description_content_type": None,
                 "description_html": release_info.description,
-                "downloads": {
-                    "last_day": -1,
-                    "last_month": -1,
-                    "last_week": -1,
-                },
                 "home_page": release_info.url,
                 "license": "",
                 "maintainer": release_info.maintainer,
                 "maintainer_email": "",
-                "name": project_name,
+                "name": prj.name,
                 "platform": "",
+                # Note on project-urls: https://stackoverflow.com/a/56243786/741316
                 "project_urls": release_info.project_urls,
-                "requires_dist": release_info.requires_dist,
+                "requires_dist": [Requirement(s) for s in release_info.requires_dist],
                 "requires_python": release_info.requires_python,
                 "summary": release_info.summary,
-                "version": version,
-                "yanked": True,
-                "yanked_reason": None,
+                "version": str(version),
             },
-            "last_serial": -1,
             "releases": {
-                version: [
+                str(version): [
                     {
                         "comment_text": "",
-                        "downloads": -1,
+                        # "digests": {
+                        #     "md5": "bab8eb22e6710eddae3c6c7ac3453bd9",
+                        #     "sha256": "7a7a8b91086deccc54cac8d631e33f6a0e232ce5775c6be3dc44f86c2154019d"
+                        # },
                         "filename": file.filename,
                         "has_sig": False,
+                        # "md5_digest": "bab8eb22e6710eddae3c6c7ac3453bd9",
+                        # "packagetype": "bdist_wheel",
+                        # "python_version": "2.7",
                         "size": release_info.files_info[file.filename].size,
+                        # "upload_time_iso_8601": release_info.files_info[file.filename].created.isoformat(),
                         "url": file.url,
-                        "yanked": True,
-                        "yanked_reason": "None",
+                        "yanked": False,
+                        "yanked_reason": None,
                     }
                     for file in release_files
                 ],
@@ -559,7 +540,6 @@ def build_app(
         return meta
 
     async def run_reindex_periodically(frequency_seconds: int) -> None:
-        # Tried using startup hooks, worked on dev, didn't work in prod (seemingly the same setup)
         print("Starting the reindexing loop")
         while True:
             try:
@@ -581,19 +561,6 @@ def build_app(
         app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
         app.state.session = aiohttp.ClientSession()
         app.state.source = create_source_repository(app)
-        app.state.cache = diskcache.Cache(str(cache_dir/'diskcache'))
-        con = sqlite3.connect(
-            cache_dir/'projects.sqlite',
-            # For datetimes https://stackoverflow.com/a/1830499/741316
-            detect_types=sqlite3.PARSE_DECLTYPES,
-        )
-        # For name based row access https://stackoverflow.com/a/2526294/741316.
-        con.row_factory = sqlite3.Row
-        app.state.projects_db_connection = con
-
-        app.state.version = __version__
-
-        fetch_projects.create_table(con)
 
     @app.on_event("shutdown")
     @customiser.decorate
@@ -603,16 +570,28 @@ def build_app(
 
 def make_app(
         index_url: str,
-        cache_dir: Path = Path.cwd() / 'cache',
-        prefix: typing.Optional[str] = None,
+        cache_dir: Path = Path(os.environ.get('XDG_CACHE_DIR', Path.home() / '.cache')) / 'simple-repository-browser',
+        prefix=None,
         customiser: typing.Type[Customiser] = Customiser,
+        crawl_popular_projects: bool = True,
 ) -> fastapi.FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None)
-    build_app(
-        app=app,
-        customiser=customiser,
-        prefix=prefix or "",
-        index_url=index_url,
-        cache_dir=cache_dir,
+    app.state.crawl_popular_projects = crawl_popular_projects
+    build_app(app, customiser=customiser, prefix=prefix or "", index_url=index_url)
+
+    app.state.cache = diskcache.Cache(str(cache_dir/'diskcache'))
+
+    con = sqlite3.connect(
+        cache_dir/'projects.sqlite',
+        # For datetimes https://stackoverflow.com/a/1830499/741316
+        detect_types=sqlite3.PARSE_DECLTYPES,
     )
+    # For name based row access https://stackoverflow.com/a/2526294/741316.
+    con.row_factory = sqlite3.Row
+    app.state.projects_db_connection = con
+
+    app.state.version = __version__
+
+    fetch_projects.create_table(con)
+
     return app

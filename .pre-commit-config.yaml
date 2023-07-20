@@ -32,6 +32,7 @@ repos:
       - id: flake8
         args:
           - "--max-line-length=100"
+          - '--ignore=E501,E226'
 
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.1.12

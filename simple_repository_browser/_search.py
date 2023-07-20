@@ -52,10 +52,8 @@ def normalise_name(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
-# A safe SQL statement must not use *any* user-defined input
-# n the resulting first argument (the SQL query),
-# rather any user input MUST be provided as part of the
-# arguments (second part of the value), which will be passed
+# A safe SQL statement must not use *any* user-defined input in the resulting first argument (the SQL query),
+# rather any user input MUST be provided as part of the arguments (second part of the value), which will be passed
 # to SQLITE to deal with.
 SafeSQLStmt = typing.Tuple[str, typing.Tuple[typing.Any, ...]]
 
@@ -81,10 +79,8 @@ def prepare_summary(term: Filter) -> SafeSQLStmt:
 
 
 def build_sql(term: typing.Union[Term, typing.Tuple[Term, ...]]) -> SafeSQLStmt:
-    # Return query and params to be used in SQL. query MUST
-    # not be produced using untrusted input, as is vulnerable to SQL injection.
-    # Instead, any user input must be in the parameters,
-    # which undergoes sqlite built-in cleaning.
+    # Return query and params to be used in SQL. query MUST not be produced using untrusted input, as is vulnerable to SQL injection.
+    # Instead, any user input must be in the parameters, which undergoes sqllite built-in cleaning.
     if isinstance(term, tuple):
         if len(term) == 0:
             return '', ()
@@ -173,8 +169,7 @@ ParseError = parsley.ParseError
 
 
 def simple_name_from_query(terms: typing.Tuple[Term, ...]) -> typing.Optional[str]:
-    """If possible, give a simple (normalized) package
-    name which represents the query terms provided"""
+    """If possible, give a simple (normalized) package name which represents the query terms provided"""
     for term in terms:
         if isinstance(term, Filter):
             if term.filter_on in [FilterOn.name_or_summary, FilterOn.name]:
