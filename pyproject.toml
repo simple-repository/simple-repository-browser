@@ -2,4 +2,4 @@
 requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
 
 [tool.setuptools_scm]
-write_to = "pypi_frontend/_version.py"
+write_to = "simple_repository_browser/_version.py"

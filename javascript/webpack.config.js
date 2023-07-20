@@ -2,12 +2,12 @@ const path = require('path');
 
 module.exports = {
   entry: {
-    'pypi.core.js': './pypi.core.js',
-    'pypi.project.js': './pypi.project.js',
+    'simple-repository-browser.core.js': './simple-repository-browser.core.js',
+    'simple-repository-browser.project.js': './simple-repository-browser.project.js',
   },
   output: {
     filename: '[name]',
-    path: path.resolve(__dirname, '../pypi_frontend/static/js/')
+    path: path.resolve(__dirname, '../simple_repository_browser/static/js/')
   },
   resolve: {
     extensions: [".ts", ".js"],
