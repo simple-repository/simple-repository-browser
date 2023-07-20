@@ -74,6 +74,11 @@ setup(
     },
 
     install_requires=REQUIREMENTS['core'],
+    entry_points={
+        'console_scripts': [
+            'simple-repository-browser = simple_repository_browser.__main__:main',
+        ],
+    },
     extras_require={
         **REQUIREMENTS,
         # The 'dev' extra is the union of 'test' and 'doc', with an option
