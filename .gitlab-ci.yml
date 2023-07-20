@@ -4,7 +4,7 @@ include:
 
 
 variables:
-  project_name: pypi_frontend
+  project_name: simple_repository_browser
   PY_VERSION: '3.9'
 
 
@@ -21,7 +21,7 @@ fetch_external_deps:
     - npm run build
   artifacts:
     paths:
-     - pypi_frontend/static/js
+     - simple_repository_browser/static/js
 
 build_wheel:
   needs:

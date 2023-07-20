@@ -1,5 +1,5 @@
 """
-Documentation for the pypi_frontend package
+Documentation for the simple_repository_browser package
 
 """
 

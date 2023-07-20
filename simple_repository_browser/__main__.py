@@ -23,7 +23,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--cache-dir", type=str, default=Path(os.environ.get('XDG_CACHE_DIR', Path.home() / '.cache')) / 'simple-repository-browser')
     parser.add_argument("--index-url", type=str, default=None)
     parser.add_argument("--url-prefix", type=str, default=None)
-    parser.add_argument('--customiser', type=str, default="pypi_frontend._app:Customiser")
+    parser.add_argument('--customiser', type=str, default="simple_repository_browser._app:Customiser")
 
 
 def load_customiser(name: str) -> typing.Type[_app.Customiser]:

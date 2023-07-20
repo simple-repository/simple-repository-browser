@@ -1,6 +1,6 @@
-# pypi-frontend
+# simple-repository-browser
 
-A frontend to a simple package index ([PEP503](https://www.python.org/dev/peps/pep-0503/))
+A web interface to explore and discover packages in a simple package repository ([PEP503](https://www.python.org/dev/peps/pep-0503/)), inspired by PyPI / warehouse.
 
 
 ## Development
@@ -13,27 +13,4 @@ pushd javascript
   npm run build
 popd
 pip install -e .[dev]
-```
-
-## Deployment
-
-On development machine:
-
-```
-npm run build
-
-python -m build
-```
-
-Then, copy the built wheel to acc-py-repo.cern.ch. On that machine:
-
-```
-source /opt/acc-py/base/2020.11/setup.sh
-acc-py app deploy /path/to/wheel --deploy-base /opt/acc-py/apps/
-```
-
-Restart the acc-pypi-frontend service:
-
-```
-systemctrl restart acc-pypi-frontend
 ```

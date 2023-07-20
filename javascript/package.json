@@ -1,7 +1,7 @@
 {
-  "name": "pypi-frontend",
+  "name": "simple-repository-browser",
   "version": "1.0.0",
-  "description": "SHORT DESCRIPTION OF PROJECT",
+  "description": "A web application for a browsing a Python PEP-503 simple repository",
   "main": "index.js",
   "scripts": {
     "build": "webpack",

@@ -8,7 +8,7 @@ from acc_py_index import errors
 from acc_py_index.simple import model
 from acc_py_index.simple.repositories.http import HttpRepository
 
-import pypi_frontend._app as base
+import simple_repository_browser._app as base
 
 here = Path(__file__).absolute().parent
 

@@ -49,11 +49,11 @@ REQUIREMENTS: dict = {
 
 
 setup(
-    name='pypi-frontend',
+    name='simple-repository-browser',
 
     author='Phil Elson',
     author_email='philip.elson@cern.ch',
-    description='A frontend for a simple pypi index',
+    description='A web application for a browsing a Python PEP-503 simple repository',
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     url='',
