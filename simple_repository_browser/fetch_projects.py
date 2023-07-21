@@ -1,6 +1,4 @@
-import asyncio
 import datetime
-import sqlite3
 
 from acc_py_index.simple.repositories.core import SimpleRepository
 
@@ -83,6 +81,7 @@ async def fully_populate_db(connection, index: SimpleRepository):
 
 
 async def _devel_to_be_turned_into_test():
+    import sqlite3
     con = sqlite3.connect('../.cache/projects.sqlite')
 
     create_table(con)
@@ -99,4 +98,5 @@ async def _devel_to_be_turned_into_test():
 
 
 if __name__ == '__main__':
+    import asyncio
     asyncio.run(_devel_to_be_turned_into_test())
