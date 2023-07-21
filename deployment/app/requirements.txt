@@ -1,8 +1,8 @@
 ### generated_by: acc-py app lock
 ### base_python: 2021.12
-### reqdist_hash: 8c2087240449d2bfdbbec0f55e5fa7563f5d309f588f7d0567f7e310c3891ccc
-acc-py-index==3.0.1
-aiohttp==3.8.4
+### reqdist_hash: 41201ec27fb54f76f749fae776a1ba778cc20399c3165d18a99e9215d14c5c07
+acc-py-index==3.1.0
+aiohttp==3.8.5
 aiosignal==1.3.1
 anyio==3.7.1
 async-timeout==4.0.2
@@ -11,17 +11,17 @@ beautifulsoup4==4.12.2
 bleach==6.0.0
 cffi==1.15.1
 charset-normalizer==3.2.0
-click==8.1.4
+click==8.1.6
 cmarkgfm==2022.10.27
 cmw-tracing==0.6.0
 diskcache==5.6.1
 docutils==0.20.1
 exceptiongroup==1.1.2
-fastapi==0.100.0
+fastapi==0.99.1
 fastapi-utils==0.2.1
 frozenlist==1.4.0
 greenlet==2.0.2
-gunicorn==20.1.0
+gunicorn==21.2.0
 h11==0.14.0
 httptools==0.6.0
 idna==3.4
@@ -37,23 +37,23 @@ pkginfo==1.9.6
 pycparser==2.21
 pydantic==1.10.11
 Pygments==2.15.1
-pypi-frontend
 pypi-simple==1.1.0
 python-dotenv==1.0.0
-PyYAML==6.0
+PyYAML==6.0.1
 readme-renderer==40.0
 requests==2.31.0
+simple-repository-browser
 six==1.16.0
 sniffio==1.3.0
 soupsieve==2.4.1
 SQLAlchemy==1.4.49
 starlette==0.27.0
 typing_extensions==4.7.1
-urllib3==2.0.3
-uvicorn==0.22.0
+urllib3==2.0.4
+uvicorn==0.23.1
 uvloop==0.17.0
 watchfiles==0.19.0
 webencodings==0.5.1
 websockets==11.0.3
 yarl==1.9.2
-zipp==3.16.1
+zipp==3.16.2
