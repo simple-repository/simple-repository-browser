@@ -1,5 +1,5 @@
-pypi_frontend/static/js
-pypi_frontend/_version.py
+simple_repository_browser/static/js
+*/_version.py
 node_modules
 *.egg-info
 venv
