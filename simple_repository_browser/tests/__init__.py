@@ -4,12 +4,3 @@
 # In applying this license, CERN does not waive the privileges and immunities
 # granted to it by virtue of its status as Intergovernmental Organization
 # or submit itself to any jurisdiction.
-
-"""
-Documentation for the simple_repository_browser package
-
-"""
-
-from . import _version  # type: ignore
-
-__version__ = _version.version  # type: ignore

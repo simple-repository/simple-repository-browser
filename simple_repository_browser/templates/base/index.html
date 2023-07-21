@@ -7,14 +7,14 @@
  or submit itself to any jurisdiction.
 #}
 
-{% extends "base.html.jinja2" %}
+{% extends "base.html" %}
 
 {% macro page_banner() -%}
           <div class="container">
             <div class="col-md-10 mx-auto text-center">
               <h1 class="jumbotron-heading" style="padding: 50px 50px;">
                   {% block index_heading %}
-                  Find, install and publish Python packages with the Python Package Index
+                  Find and explore Python projects with the Simple Repository Browser
                   {% endblock index_heading %}
               </h1>
             </div>
@@ -43,15 +43,21 @@
 
 
 {% block page_content %}
-        <section class="jumbotron" style="background-color: #006dad; color: white ; padding: 0px; margin: 0px;" id="page-banner">
+        <section class="jumbotron jumbo-banner" id="page-banner">
             <div class="container">
             {{ page_banner() }}
             </div>
         </section>
 
-        <section class="jumbotron" style="background-color: #ececec; color: #464646; border-bottom: 1px solid #d3d3d3; padding: 1em; margin-bottom: 1em;" id="banner-split">
+        <section class="jumbotron jumbo-separator" id="banner-split">
             <div class="container">
             {{ banner_split() }}
+            </div>
+        </section>
+
+        <section>
+            <div class="container">
+                <img src="{{ url_for('static', path='/images/logo-large.svg') }}" class="mx-auto d-block" style="max-height: 40vh;">
             </div>
         </section>
 {% endblock page_content %}

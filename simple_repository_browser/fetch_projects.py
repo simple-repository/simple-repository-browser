@@ -14,9 +14,9 @@ def create_table(connection):
     con = connection
     with con as cursor:
         cursor.execute(
-            'CREATE TABLE IF NOT EXISTS projects '
-            '(canonical_name text unique, preferred_name text, '
-            'summary text, release_date timestamp, release_version text)',
+            '''CREATE TABLE IF NOT EXISTS projects
+            (canonical_name text unique, preferred_name text, summary text, release_date timestamp, release_version text)
+            ''',
         )
 
 
@@ -33,13 +33,7 @@ def remove_if_found(connection, canonical_name):
         cursor.execute('DELETE FROM projects where canonical_name = ?;', (canonical_name,))
 
 
-def update_summary(
-    conn,
-    name: str,
-    summary: str,
-    release_date: datetime.datetime,
-    release_version: str,
-):
+def update_summary(conn, name: str, summary: str, release_date: datetime.datetime, release_version: str):
     with conn as cursor:
         cursor.execute(
             '''
@@ -67,25 +61,18 @@ async def fully_populate_db(connection, index: SimpleRepository):
             )
 
     with con as cursor:
-        db_canonical_names = {
-            row[0] for row in
-            cursor.execute("SELECT canonical_name FROM projects").fetchall()
-        }
+        db_canonical_names = {row[0] for row in cursor.execute("SELECT canonical_name FROM projects").fetchall()}
 
     index_canonical_names = {normed_name for normed_name, _ in project_names}
 
     if not index_canonical_names:
-        print(
-            "No names found on the index. Not removing from"
-            " the database, as this is likely a problem with the index.",
-        )
+        print("No names found on the index. Not removing from the database, as this is likely a problem with the index.")
         return
 
     names_in_db_no_longer_in_index = db_canonical_names - index_canonical_names
     if names_in_db_no_longer_in_index:
         print(
-            f'Removing the following { len(names_in_db_no_longer_in_index) }'
-            ' names from the database:\n   '
+            f'Removing the following { len(names_in_db_no_longer_in_index) } names from the database:\n   '
             "\n   ".join(list(names_in_db_no_longer_in_index)[:2000]),
         )
     with con as cursor:

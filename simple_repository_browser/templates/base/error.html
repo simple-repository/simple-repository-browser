@@ -7,15 +7,19 @@
  or submit itself to any jurisdiction.
 #}
 
-{% extends "base.html.jinja2" %}
-{# Like base, but with a search bar in the top nav -#}
+{% extends "page.html" %}
 
-{% block navbar_left %}
-        <form action="{{ url_for('search') }}" type="GET">
-          <input type="text" name="query" value="{{ search_query|escape or '' }}" placeholder="Search projects" >
-        </form>
-{% endblock %}
+{% block page_banner %}
+{% endblock page_banner %}
+
+
+{% block banner_split %}
+{% endblock banner_split %}
+
 
 {% block page_content %}
-<div style="padding-top:2em"></div>
+{{ super() }}
+<div class="container">
+    {{ detail }}
+</div>
 {% endblock page_content %}

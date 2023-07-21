@@ -224,10 +224,7 @@ async def package_info(
             maintainer=info.maintainer,
             classifiers=info.classifiers,
             release_date=ts_capture.timestamp,
-            project_urls={
-                url.split(',')[0].strip(): url.split(',')[1].strip()
-                for url in info.project_urls or []
-            },
+            project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
             files_info=files_info,
             requires_python=info.requires_python,
             requires_dist=info.requires_dist,
@@ -249,10 +246,7 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
     if description_type == 'text/x-rst' or description_type.startswith('text/x-rst;'):
         return readme_renderer.rst.render(raw_description)
 
-    elif (
-        description_type == 'text/markdown' or
-        description_type.startswith('text/markdown;')  # Seen longer form with orjson
-    ):
+    elif description_type == 'text/markdown' or description_type.startswith('text/markdown;'):  # Seen longer form with orjson
         return readme_renderer.markdown.render(raw_description)
     else:
         # Plain, or otherwise.

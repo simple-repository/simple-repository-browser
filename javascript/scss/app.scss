@@ -1,3 +1,5 @@
+$base-color: #91a49e;
+$base-color2: #ffc5ca;
 
 // Limit the width as seen on pypi.
 $container-max-widths: (
@@ -10,9 +12,10 @@ $container-max-widths: (
 
 @import "~bootstrap/scss/bootstrap";
 
-.navbar {
-   background-color: #0073b7;
+.top-nav {
+   background: $base-color;
 }
+
 .nav-link {
    color: white;
 }
@@ -20,9 +23,32 @@ $container-max-widths: (
 .nav-link:hover {
    color: white;
 }
+
+.navbar-brand {
+   font-size: xx-large;
+   color: white;
+   font-weight: bolder;
+}
 .navbar-brand:hover {
    text-decoration: none;
+   color: white;
 }
+
+.jumbo-banner {
+   background: $base-color2;
+   color: white;
+   padding: 0px;
+   margin: 0px;
+}
+
+.jumbo-separator {
+   background-color: #ececec;
+   color: #464646;
+   border-bottom: 1px solid #d3d3d3;
+   padding: 1em;
+   margin-bottom: 1em;
+}
+
 
 a:hover, a:visited, a:link, a:active
 {
@@ -53,8 +79,12 @@ nav a:hover {
    color: white;
 }
 
+.listing-icon {
+   padding: 0 1em 0 0.5em;
+}
+
 footer {
-   background-color: #0073b7;
+   background-color: $base-color;
    color: white;
    padding: 2em;
 }
@@ -65,13 +95,13 @@ footer.text-muted.mt-auto {
 }
 
 .btn-primary, .btn-primary:hover, .btn-primary:active, .btn-primary:focus {
-   background-color: #0073b7;
-   border-color: #0073b7;
+   background-color:  $base-color;
+   border-color:  $base-color;
    box-shadow: none;  // On focus otherwise
 }
 
 dev#page-content a:hover {
-   color: #0073b7;
+   color: $base-color;
 }
 
 

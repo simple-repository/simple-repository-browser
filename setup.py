@@ -5,6 +5,13 @@
 # granted to it by virtue of its status as Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
+"""
+setup.py for simple-repository-browser.
+
+For reference see
+https://packaging.python.org/guides/distributing-packages-using-setuptools/
+
+"""
 from pathlib import Path
 
 from setuptools import find_packages, setup
@@ -14,30 +21,8 @@ with (HERE / 'README.md').open('rt') as fh:
     LONG_DESCRIPTION = fh.read().strip()
 
 
-setup(
-    name='simple-repository-browser',
-
-    author='BE-CSS-SET, CERN',
-    description='A frontend for a simple python package index',
-    long_description=LONG_DESCRIPTION,
-    long_description_content_type='text/markdown',
-    url='',
-    packages=find_packages(),
-    python_requires='~=3.9',
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "Operating System :: OS Independent",
-    ],
-    # include_package_data=True,
-    package_data={
-        '': [
-            'static/*/*',
-            'static/*',
-            'templates/*',
-            'templates/base/*',
-        ],
-    },
-    install_requires=[
+REQUIREMENTS: dict = {
+    'core': [
         'simple-repository',
         'aiohttp',
         'bleach',
@@ -55,15 +40,55 @@ setup(
         'readme-renderer[md]',
         'uvicorn',
     ],
-    extras_require={
-        'dev': [
-            'build',
-            'pre-commit',
+    'test': [
+        'pytest',
+    ],
+    'dev': [
+        'build',
+        'pre-commit',
+    ],
+}
+
+
+setup(
+    name='simple-repository-browser',
+
+    author='CERN Accelerators and Technology, BE-CSS-SET, Phil Elson',
+    author_email='philip.elson@cern.ch',
+    description='A web application for a browsing a Python PEP-503 simple repository',
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type='text/markdown',
+    url='',
+
+    packages=find_packages(),
+    python_requires='~=3.9',
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+    ],
+    package_data={
+        '': [
+            'static/*/*',
+            'static/*',
+            'templates/*',
+            'templates/base/*',
         ],
     },
+
+    install_requires=REQUIREMENTS.pop('core'),
     entry_points={
         'console_scripts': [
             'simple-repository-browser = simple_repository_browser.__main__:main',
+        ],
+    },
+    extras_require={
+        **REQUIREMENTS,
+        # The 'dev' extra is the union of 'test' and 'doc', with an option
+        # to have explicit development dependencies listed.
+        'dev': [
+            req
+            for extra in ['dev', 'test', 'doc']
+            for req in REQUIREMENTS.get(extra, [])
         ],
     },
 )
