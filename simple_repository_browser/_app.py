@@ -241,7 +241,7 @@ class Customiser:
             releases = get_releases(prj)
             latest_version = get_latest_version(releases.keys())
             if not latest_version or latest_version.is_devrelease or latest_version.is_prerelease:
-                # Don't bother fetching devrelease only projects.
+                # Don't bother fetching pre-release only projects.
                 continue
 
             release_info = await cls.fetch_pkg_info(app, prj, latest_version, releases, force_recache=False)
@@ -283,12 +283,6 @@ def build_app(
     @router.get("/about", response_class=HTMLResponse, name='about')
     @customiser.decorate
     async def about_page(request: Request):
-
-        if app.state.periodic_reindexing_task is None:
-            # Note that on_event('startup') does not reliably get called in our production
-            # environment (unclear why not, as it does in local development).
-            app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
-
         with request.app.state.projects_db_connection as cursor:
             [n_packages] = cursor.execute('SELECT COUNT(canonical_name) FROM projects').fetchone()
 

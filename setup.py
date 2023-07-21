@@ -1,5 +1,5 @@
 """
-setup.py for pypi-frontend.
+setup.py for simple-repository-browser.
 
 For reference see
 https://packaging.python.org/guides/distributing-packages-using-setuptools/
@@ -40,17 +40,13 @@ REQUIREMENTS: dict = {
         'build',
         'pre-commit',
     ],
-    'doc': [
-        'sphinx',
-        'acc-py-sphinx',
-    ],
 }
 
 
 setup(
     name='simple-repository-browser',
 
-    author='Phil Elson',
+    author='Accelerators and Technology, BE-CSS-SET, Phil Elson',
     author_email='philip.elson@cern.ch',
     description='A web application for a browsing a Python PEP-503 simple repository',
     long_description=LONG_DESCRIPTION,
@@ -73,7 +69,7 @@ setup(
         ],
     },
 
-    install_requires=REQUIREMENTS['core'],
+    install_requires=REQUIREMENTS.pop('core'),
     entry_points={
         'console_scripts': [
             'simple-repository-browser = simple_repository_browser.__main__:main',
@@ -88,7 +84,5 @@ setup(
             for extra in ['dev', 'test', 'doc']
             for req in REQUIREMENTS.get(extra, [])
         ],
-        # The 'all' extra is the union of all requirements.
-        'all': [req for reqs in REQUIREMENTS.values() for req in reqs],
     },
 )
