@@ -204,18 +204,19 @@ class Customiser:
                 if cache_type == 'pkg-info':
                     packages_w_dist_info.add(name)
 
-        # Add the top 100 packages (and their dependencies) to the index
-        URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
-        client: aiohttp.ClientSession = app.state.session
         popular_projects = []
-        try:
-            async with client.get(URL, raise_for_status=False) as resp:
-                s = await resp.json()
-                for _, row in zip(range(100), s['rows']):
-                    popular_projects.append(row['project'])
-        except Exception as err:
-            print(f'Problem fetching popular projects ({err})')
-            pass
+        if app.state.crawl_popular_projects:
+            # Add the top 100 packages (and their dependencies) to the index
+            URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
+            client: aiohttp.ClientSession = app.state.session
+            try:
+                async with client.get(URL, raise_for_status=False) as resp:
+                    s = await resp.json()
+                    for _, row in zip(range(100), s['rows']):
+                        popular_projects.append(row['project'])
+            except Exception as err:
+                print(f'Problem fetching popular projects ({err})')
+                pass
 
         await cls.crawl_recursively(app, packages_w_dist_info | set(popular_projects))
 
@@ -261,6 +262,7 @@ class Customiser:
 
 def build_app(
     app: fastapi.FastAPI,
+    index_url: str,
     customiser: typing.Type[Customiser],
     prefix: str,
 ) -> None:
@@ -548,7 +550,7 @@ def build_app(
     @customiser.decorate
     def create_source_repository(app: fastapi.FastAPI):
         return http.HttpRepository(
-            url="https://pypi.org/simple/",
+            url=index_url,
             session=app.state.session,
         )
 
@@ -566,19 +568,15 @@ def build_app(
 
 
 def make_app(
+        index_url: str,
         cache_dir: Path = Path(os.environ.get('XDG_CACHE_DIR', Path.home() / '.cache')) / 'simple-repository-browser',
-        index_url=None,
         prefix=None,
         customiser: typing.Type[Customiser] = Customiser,
+        crawl_popular_projects: bool = True,
 ) -> fastapi.FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None)
-    build_app(app, customiser=customiser, prefix=prefix or "")
-
-    kwargs = {}
-    if index_url is not None:
-        kwargs.update({'source_url': index_url})
-
-    app.state.periodic_reindexing_task = None
+    app.state.crawl_popular_projects = crawl_popular_projects
+    build_app(app, customiser=customiser, prefix=prefix or "", index_url=index_url)
 
     app.state.cache = diskcache.Cache(str(cache_dir/'diskcache'))
 
