@@ -23,7 +23,6 @@ REQUIREMENTS: dict = {
         'docutils',
         'fastapi',
         'fastapi-utils',
-        'gunicorn',
         'importlib_metadata>=6.0',
         'jinja2',
         'markdown',
