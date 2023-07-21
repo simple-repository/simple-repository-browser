@@ -25,7 +25,13 @@ shutil.rmtree(build / 'javascript' / 'node_modules')
 
 
 for file in build.glob('**/*.py'):
-    file.write_text(file.read_text().replace('acc_py_index', 'simple_repository'))
+    content = file.read_text().replace('acc_py_index', 'simple_repository')
+
+    if '_devel_to_be_turned_into_test' in content:
+        content = content.split('async def _devel_to_be_turned_into_test')[0]
+
+    file.write_text(content)
+
 
 for file in [here / 'setup.py', here / 'pyproject.toml']:
     shutil.copy(file, build)
