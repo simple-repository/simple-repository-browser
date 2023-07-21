@@ -46,7 +46,7 @@ REQUIREMENTS: dict = {
 setup(
     name='simple-repository-browser',
 
-    author='Accelerators and Technology, BE-CSS-SET, Phil Elson',
+    author='CERN Accelerators and Technology, BE-CSS-SET, Phil Elson',
     author_email='philip.elson@cern.ch',
     description='A web application for a browsing a Python PEP-503 simple repository',
     long_description=LONG_DESCRIPTION,
@@ -59,7 +59,6 @@ setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
-    # include_package_data=True,
     package_data={
         '': [
             'static/*/*',
