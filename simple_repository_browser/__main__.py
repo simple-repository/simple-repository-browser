@@ -17,12 +17,15 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     # parsed arguments.
     parser.set_defaults(handler=handler)
 
+    parser.add_argument("index_url", type=str, nargs='?', default='https://pypi.org/simple/')
+
+    parser.add_argument("--index-url", dest='index_url_legacy', help=argparse.SUPPRESS)
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--cache-dir", type=str, default=Path(os.environ.get('XDG_CACHE_DIR', Path.home() / '.cache')) / 'simple-repository-browser')
-    parser.add_argument("--index-url", type=str, default=None)
     parser.add_argument("--url-prefix", type=str, default=None)
     parser.add_argument('--customiser', type=str, default="simple_repository_browser._app:Customiser")
+    parser.add_argument('--no-popular-project-crawl', dest='crawl_popular_projects', action='store_false', default=True)
 
 
 def load_customiser(name: str) -> typing.Type[_app.Customiser]:
@@ -33,18 +36,22 @@ def load_customiser(name: str) -> typing.Type[_app.Customiser]:
 
 
 def handler(args: typing.Any) -> None:
+    if args.index_url_legacy:
+        raise ValueError("Please replace --index-url with a positional argument")
     customiser = load_customiser(args.customiser)
+    print(f'Cache directory: {args.cache_dir}')
     app = _app.make_app(
-        cache_dir=Path(args.cache_dir),
         index_url=args.index_url,
+        cache_dir=Path(args.cache_dir),
         prefix=args.url_prefix,
         customiser=customiser,
+        crawl_popular_projects=args.crawl_popular_projects,
     )
     uvicorn.run(
         app=app,
         host=args.host,
         port=args.port,
-    ).run()
+    )
 
 
 def main():
