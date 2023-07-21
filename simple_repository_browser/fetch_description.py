@@ -192,7 +192,7 @@ async def package_info(
 
         # If there is email information, but not a name in the "author" or "maintainer"
         # attribute, extract this information from the first person's email address.
-        # Will take something like ``"Ivan" foo@cern.ch`` and extract the "Ivan" part.
+        # Will take something like ``"Ivan" foo@example.com`` and extract the "Ivan" part.
         def extract_usernames(emails):
             names = []
             parsed = email.parser.Parser(policy=email.policy.default).parsestr(
