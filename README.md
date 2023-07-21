@@ -2,10 +2,6 @@
 
 A web-based browser for **any** PEP-503 simple python package repository
 
-Features:
-
- *
-
 ## Example
 
 Homepage:
