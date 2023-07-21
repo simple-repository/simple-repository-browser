@@ -29,9 +29,28 @@ for file in build.glob('**/*.py'):
 
     if '_devel_to_be_turned_into_test' in content:
         content = content.split('async def _devel_to_be_turned_into_test')[0]
+        while content.strip().endswith('#'):
+            content = content.rstrip()[:-1].rstrip()
+
+    content = content.replace('https://gitlab.cern.ch/acc-co/devops/python/prototypes/simple-pypi-frontend', 'https://github.com/simple-repository/simple-repository-browser')
 
     file.write_text(content)
 
 
 for file in [here / 'setup.py', here / 'pyproject.toml']:
     shutil.copy(file, build)
+
+content = (build/'setup.py').read_text()
+content = content.replace('acc-py-index~=3.0', 'simple-repository')
+(build/'setup.py').write_text(content)
+
+
+for file in build.glob('**/templates/base/*'):
+    if not file.is_file():
+        continue
+    content = file.read_text()
+    content = content.replace(
+        'https://gitlab.cern.ch/acc-co/devops/python/prototypes/simple-pypi-frontend',
+        'https://github.com/simple-repository/simple-repository-browser',
+    )
+    file.write_text(content)
