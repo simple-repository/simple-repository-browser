@@ -6,6 +6,7 @@ import email.parser
 import email.policy
 import logging
 import os.path
+import pathlib
 import tarfile
 import tempfile
 import typing
@@ -127,6 +128,16 @@ class ArchiveTimestampCapture:
 EMPTY_PKG_INFO = PackageInfo('', '', '')
 
 
+class PkgInfoFromFile(pkginfo.Distribution):
+    def __init__(self, filename: str):
+        self._filename = filename
+        self.extractMetadata()
+
+    def read(self):
+        content = pathlib.Path(self._filename).read_text()
+        return content.encode()
+
+
 async def package_info(
     release_files: tuple[model.File, ...],
 ) -> typing.Optional[PackageInfo]:
@@ -136,14 +147,26 @@ async def package_info(
     files = sorted(
         release_files,
         key=lambda file: (
+            not file.dist_info_metadata,  # Put those with dist info metadata first.
             file.filename.endswith('.whl'),
             file.filename.endswith('.tar.gz'),
             file.filename.endswith('.zip'),
+            file.upload_time,  # Provide some way to distinguish the order of wheels. Choose the earliest one.
         ),
     )
 
-    files_info = {}
+    files_info: typing.Dict[str, FileInfo] = {}
+
+    # Get the size from the repository, if possible.
+    for file in files:
+        if file.size:
+            files_info[file.filename] = FileInfo(
+                size=file.size,
+            )
+
     limited_concurrency = asyncio.Semaphore(10)
+    # Compute the size of each file.
+    # TODO: This should be done as part of the repository component interface.
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         async def semaphored_head(filename, url):
             async with limited_concurrency:
@@ -154,6 +177,7 @@ async def package_info(
         coros = [
             semaphored_head(file.filename, file.url)
             for file in files
+            if file.filename not in files_info
         ]
         for coro in asyncio.as_completed(coros):
             filename, response = await coro
@@ -162,19 +186,26 @@ async def package_info(
             )
 
     file = files[0]
-    logging.info(f'Downloading {file.filename} from {file.url}')
 
-    is_wheel = file.filename.endswith('.whl')
-    # Limiting ourselves to wheels and sdists is the 80-20 rule.
-    archive_type = pkginfo.Wheel if is_wheel else SDist
+    if file.dist_info_metadata:
+        archive_type = PkgInfoFromFile
+        url = file.url + '.metadata'
+    elif file.filename.endswith('.whl'):
+        archive_type = pkginfo.Wheel
+        url = file.url
+    else:
+        archive_type = pkginfo.SDist
+        url = file.url
+
+    logging.info(f'Downloading metadata for {file.filename} from {url}')
 
     with tempfile.NamedTemporaryFile(
             suffix=os.path.splitext(file.filename)[1],
     ) as tmp:
         try:
-            await fetch_file(file.url, tmp.name)
+            await fetch_file(url, tmp.name)
         except IOError as err:
-            logging.warning(f"Unable to fetch {file.url}: {str(err)}")
+            logging.warning(f"Unable to fetch {url}: {str(err)}")
             return None
         tmp.flush()
         tmp.seek(0)
@@ -185,7 +216,7 @@ async def package_info(
             with ts_capture.patch_archive_classes():
                 info = archive_type(tmp.name)
         except ValueError as err:
-            logging.warning(f'Unable to open {file.url}: { str(err) }')
+            logging.warning(f'Unable to open {url}: { str(err) }')
             return None
 
         description = generate_safe_description_html(info)
@@ -216,7 +247,7 @@ async def package_info(
             author=info.author,
             maintainer=info.maintainer,
             classifiers=info.classifiers,
-            release_date=ts_capture.timestamp,
+            release_date=file.upload_time or ts_capture.timestamp,
             project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
             files_info=files_info,
             requires_python=info.requires_python,
