@@ -22,7 +22,7 @@
 
   <div class="offset-md-2 col-md-4 text-end">
     <br>
-    {% if latest_release == release %}
+    {% if latest_version == version %}
     <a class="status-badge status-badge--good" href="">
       <i class="fa fa-check fa-fw"></i>&nbsp
         <span>Latest version</span>
@@ -30,7 +30,7 @@
     {% else %}
     <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_version) }}">
       <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
-        <span>Newer version available ({{ latest_release }})</span>
+        <span>Newer version available ({{ latest_version }})</span>
     </a>
     {% endif %}
     <br><br>
@@ -108,7 +108,7 @@
                 <button class="btn btn-link col-md-12 rounded-0 files text-start">
                      <a href="{{ url }}">
                          <i class="fa fa-align-left {{ fa_icon }}"></i>
-                            {{name}}
+                            {{ name.title() }}
                      </a>
                 </button>
               {% endfor %}
@@ -165,7 +165,7 @@
             Download files for release:
             <div id="project_files">
                {% for file in metadata['releases'][version] %}
-                <a href="${file.url}">
+                <a href="{{file.url}}">
                  <div class="card" style="margin: 1em;">
                   <div class="card-body">
                     <span class="listing-icon">

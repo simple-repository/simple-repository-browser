@@ -409,7 +409,7 @@ def build_app(
             _version = Version(version)
         except InvalidVersion:
             raise HTTPException(status_code=404, detail=f"Invalid version {version}.")
-        return await project_page__common_impl(request, project_name, _version, recache=recache)
+        return await project_page__common_impl(request, project_name, version=_version, recache=recache)
 
     @customiser.decorate
     async def project_page__common_impl(request: Request, project_name: str, version: typing.Optional[Version] = None, recache: bool = False) -> str:
