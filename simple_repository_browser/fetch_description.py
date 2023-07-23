@@ -148,10 +148,10 @@ async def package_info(
         release_files,
         key=lambda file: (
             not file.dist_info_metadata,  # Put those with dist info metadata first.
-            file.filename.endswith('.whl'),
-            file.filename.endswith('.tar.gz'),
-            file.filename.endswith('.zip'),
-            file.upload_time,  # Provide some way to distinguish the order of wheels. Choose the earliest one.
+            not file.filename.endswith('.whl'),
+            not file.filename.endswith('.tar.gz'),
+            not file.filename.endswith('.zip'),
+            file.upload_time,  # Distinguish conflicts by picking the earliest one.
         ),
     )
 
