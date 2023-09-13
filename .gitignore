@@ -1,3 +1,5 @@
+acc-py-repository-browser/js_build/
+acc-py-repository-browser/acc_py_repository_browser/static/js
 simple_repository_browser/static/js
 */_version.py
 node_modules

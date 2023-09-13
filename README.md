@@ -14,3 +14,13 @@ pushd javascript
 popd
 pip install -e .[dev]
 ```
+
+
+If you want to build the acc-py-browser:
+
+```
+cd acc-py-repository-browser/javascript
+./build.sh
+```
+
+Note that any static resources in simple-repository-browser must also be mirrored in the acc-py-repository-browser.

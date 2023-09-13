@@ -6,6 +6,7 @@ include:
 variables:
   project_name: simple_repository_browser
   PY_VERSION: '3.9'
+  ACC_PY_BASE_IMAGE_TAG: '2021.12'
 
 
 pre-commit:
@@ -35,8 +36,10 @@ freeze_wheel:
   stage: build
   needs:
     - build_wheel
+  extends: .acc_py_run_on_acc_py
   # NOTE: use a "_ci" image with the same tag as your Dockerfile
-  image: registry.cern.ch/acc/acc-py_cc7_ci:2021.12
+  variables:
+      ACC_PY_BASE_IMAGE_NAME: acc-py_cc7_ci
   script:
     # Figure out the wheel to install, compatible with this python version.
     - python -m pip wheel ${project_name}

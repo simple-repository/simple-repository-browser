@@ -7,6 +7,7 @@ import jinja2
 from acc_py_index import errors
 from acc_py_index.simple import model
 from acc_py_index.simple.repositories.http import HttpRepository
+from starlette.staticfiles import StaticFiles
 
 import simple_repository_browser._app as base
 
@@ -53,6 +54,11 @@ class AccPyCustomiser(base.Customiser):
                 )
             return new_f
         return fn
+
+    @classmethod
+    def prepare_static(cls, router: fastapi.APIRouter) -> None:
+        print('sstatic: ', here)
+        router.mount("/static", StaticFiles(directory=here / "static"), name="static")
 
 
 class SourceContext:
