@@ -5,8 +5,8 @@ include:
 
 variables:
   project_name: simple_repository_browser
-  PY_VERSION: '3.9'
-  ACC_PY_BASE_IMAGE_TAG: '2021.12'
+  PY_VERSION: '3.11'
+  ACC_PY_BASE_IMAGE_TAG: '2023.06'
 
 
 pre-commit:

@@ -22,14 +22,12 @@ REQUIREMENTS: dict = {
         'diskcache',
         'docutils',
         'fastapi',
-        'fastapi-utils',
         'importlib_metadata>=6.0',
         'jinja2',
         'markdown',
         'packaging',
         'parsley',
         'pkginfo',
-        'pypi_simple>=1.0',
         'readme-renderer[md]',
         'uvicorn',
     ],
@@ -54,7 +52,7 @@ setup(
     url='',
 
     packages=find_packages(),
-    python_requires='~=3.9',
+    python_requires='~=3.11',
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
