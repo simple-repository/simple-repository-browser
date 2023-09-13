@@ -10,7 +10,7 @@ RUN cd /opt/src \
 # ---------------
 
 
-FROM python:3.7 as py_builder
+FROM python:3.11 as py_builder
 COPY --from=js_builder /opt/src /opt/src
 COPY . /opt/src
 RUN cd /opt/src/ \
@@ -19,7 +19,7 @@ RUN cd /opt/src/ \
 # ---------------
 
 
-FROM python:3.7 as runner
+FROM python:3.11 as runner
 
 COPY --from=py_builder /opt/src/dist /opt/src/dist
 RUN pip install /opt/src/dist/*
