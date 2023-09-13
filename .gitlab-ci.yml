@@ -17,14 +17,29 @@ fetch_external_deps:
   image: registry.cern.ch/docker.io/library/node:15
   stage: build
   script:
-    - cd javascript
+    - pushd javascript
     - npm install --include=dev
     - npm run build
+    - popd
+
+    # Build the JS for the acc-py repository browser.
+    - ./acc-py-repository-browser/javascript/build.sh
   artifacts:
     paths:
      - simple_repository_browser/static/js
+     - acc-py-repository-browser/acc_py_repository_browser/static/js
 
 build_wheel:
+  needs:
+    - fetch_external_deps
+  stage: build
+  extends: .acc_py_build_wheel
+
+
+build_wheel_acc_py:
+  variables:
+    project_name: acc_py_repository_browser
+    project_root: acc-py-repository-browser/
   needs:
     - fetch_external_deps
   stage: build
@@ -53,6 +68,15 @@ freeze_wheel:
       - ${project_root}/.wheel-to-deploy/*.whl
 
 
+freeze_wheel_acc_py:
+  extends: freeze_wheel
+  variables:
+    project_name: acc_py_repository_browser
+    project_root: acc-py-repository-browser/
+  needs:
+    - build_wheel_acc_py
+
+
 build_and_publish_container_image:
   # Build a container image with Kaniko, for more details see
   # https://gitlab.cern.ch/gitlabci-examples/build_docker_image
@@ -75,6 +99,7 @@ build_and_publish_container_image:
       --context ${project_root}/context
       --dockerfile ${project_root}/deployment/Dockerfile
       --destination "${CI_REGISTRY_IMAGE}:${VERSION}"
+
 
 publish_wheel:
   extends: .acc_py_publish
