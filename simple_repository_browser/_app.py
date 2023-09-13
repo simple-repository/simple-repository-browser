@@ -551,7 +551,8 @@ def build_app(
     @app.on_event('startup')
     @customiser.decorate
     async def create_task():
-        app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
+        if os.environ.get("DISABLE_REPOSITORY_INDEXING") != "1":
+            app.state.periodic_reindexing_task = asyncio.create_task(run_reindex_periodically(60*60*24))
         app.state.session = aiohttp.ClientSession()
         app.state.source = create_source_repository(app)
 
