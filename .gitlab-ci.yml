@@ -121,7 +121,7 @@ publish_wheel:
   needs:
     - freeze_wheel_acc_py
   before_script:
-    - rm -rf ./dist; mkdir -p ./dist
-    - cp ${project_root}/.wheel-to-deploy/* ./dist/
-    - find ./dist/
+    - rm -rf ${project_root}/dist; mkdir -p ${project_root}/dist
+    - cp ${project_root}/.wheel-to-deploy/* ${project_root}/dist/
+    - find ${project_root}/dist/
     - !reference [.acc_py_publish, before_script]
