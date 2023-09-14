@@ -67,12 +67,13 @@ freeze_wheel:
       ACC_PY_BASE_IMAGE_NAME: acc-py_cc7_ci
   script:
     # Figure out the wheel to install, compatible with this python version.
+    - cd ${project_root}  # Important - means we are in the right directory to find the distribution directory.
     - python -m pip wheel ${project_name}
       --no-deps --no-index
-      --find-links ${project_root}/dist/
-      --wheel-dir ${project_root}/.wheel-to-deploy
+      --find-links ./dist/
+      --wheel-dir ./.wheel-to-deploy
     # Lock the wheel using the existing lock-files.
-    - acc-py -vv app lock ${project_root}/.wheel-to-deploy/*.whl
+    - acc-py -vv app lock ./.wheel-to-deploy/*.whl
   artifacts:
     paths:
       - ${project_root}/.wheel-to-deploy/*.whl
@@ -84,6 +85,7 @@ freeze_wheel_acc_py:
     - .acc_py_repo_variables
   needs:
     - build_wheel_acc_py
+    - fetch_external_deps  # Because we need the distribution/requirements.txt to have been updated
 
 
 build_and_publish_container_image:
