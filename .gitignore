@@ -1,6 +1,11 @@
 acc-py-repository-browser/js_build/
-acc-py-repository-browser/acc_py_repository_browser/static/js
+acc-py-repository-browser/setup.py
+acc-py-repository-browser/deployment
 simple_repository_browser/static/js
+acc-py-repository-browser/acc_py_repository_browser/static/js
+acc-py-repository-browser/acc_py_repository_browser/static/images/python-logo-only.svg
+acc-py-repository-browser/acc_py_repository_browser/static/images/favicon.6a76275d.ico
+
 */_version.py
 node_modules
 *.egg-info
