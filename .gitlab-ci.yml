@@ -94,6 +94,7 @@ build_and_publish_container_image:
     - .acc_py_on_tag
     - .acc_py_repo_variables
   needs:
+    - fetch_external_deps
     - freeze_wheel_acc_py
   image:
     name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
