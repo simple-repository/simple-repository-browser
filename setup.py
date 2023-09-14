@@ -7,7 +7,7 @@ https://packaging.python.org/guides/distributing-packages-using-setuptools/
 """
 from pathlib import Path
 
-from setuptools import find_packages, setup
+from setuptools import setup
 
 HERE = Path(__file__).parent.absolute()
 with (HERE / 'README.md').open('rt') as fh:
@@ -51,7 +51,7 @@ setup(
     long_description_content_type='text/markdown',
     url='',
 
-    packages=find_packages(),
+    packages=['simple_repository_browser'],
     python_requires='~=3.11',
     classifiers=[
         "Programming Language :: Python :: 3",

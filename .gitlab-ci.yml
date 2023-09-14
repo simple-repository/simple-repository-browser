@@ -22,12 +22,18 @@ fetch_external_deps:
     - npm run build
     - popd
 
-    # Build the JS for the acc-py repository browser.
-    - ./acc-py-repository-browser/javascript/build.sh
+    # Build the acc-py repository browser project pre-requisites.
+    - ./acc-py-repository-browser/build.sh
   artifacts:
     paths:
      - simple_repository_browser/static/js
-     - acc-py-repository-browser/acc_py_repository_browser/static/js
+     - acc-py-repository-browser/acc_py_repository_browser/
+
+
+.acc_py_repo_variables:
+  variables:
+    project_name: acc_py_repository_browser
+    project_root: acc-py-repository-browser/
 
 build_wheel:
   needs:
@@ -37,13 +43,12 @@ build_wheel:
 
 
 build_wheel_acc_py:
-  variables:
-    project_name: acc_py_repository_browser
-    project_root: acc-py-repository-browser/
   needs:
     - fetch_external_deps
   stage: build
-  extends: .acc_py_build_wheel
+  extends:
+    - .acc_py_build_wheel
+    - .acc_py_repo_variables
 
 
 freeze_wheel:
@@ -69,10 +74,9 @@ freeze_wheel:
 
 
 freeze_wheel_acc_py:
-  extends: freeze_wheel
-  variables:
-    project_name: acc_py_repository_browser
-    project_root: acc-py-repository-browser/
+  extends:
+    - freeze_wheel
+    - .acc_py_repo_variables
   needs:
     - build_wheel_acc_py
 
@@ -83,6 +87,9 @@ build_and_publish_container_image:
   stage: deploy
   extends:
     - .acc_py_on_tag
+    - .acc_py_repo_variables
+  needs:
+    - freeze_wheel_acc_py
   image:
     name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
     entrypoint: ['']
@@ -102,7 +109,9 @@ build_and_publish_container_image:
 
 
 publish_wheel:
-  extends: .acc_py_publish
+  extends:
+    - .acc_py_publish
+    - .acc_py_repo_variables
   before_script:
     - mkdir -p dist
     - cp ${project_root}/.wheel-to-deploy/* ./dist/
