@@ -118,7 +118,10 @@ publish_wheel:
   extends:
     - .acc_py_publish
     - .acc_py_repo_variables
+  needs:
+    - freeze_wheel_acc_py
   before_script:
-    - mkdir -p dist
+    - rm -rf ./dist; mkdir -p ./dist
     - cp ${project_root}/.wheel-to-deploy/* ./dist/
+    - find ./dist/
     - !reference [.acc_py_publish, before_script]
