@@ -1,6 +1,7 @@
 import asyncio
 import itertools
 import logging
+import os
 import sqlite3
 import typing
 from enum import Enum
@@ -187,8 +188,8 @@ async def refetch_hook(
     # gets called when the periodic reindexing occurs.
     # We periodically want to refresh the project database to make sure we are up-to-date.
     await fetch_projects.fully_populate_db(
-        database,
-        cache,
+        connection=database,
+        index=source,
     )
     packages_w_dist_info = set()
     for cache_type, name, version in cache:
@@ -307,16 +308,40 @@ async def compute_metadata(
 Context = dict[str, typing.Any]
 
 
+class Crawler:
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        crawl_popular_projects: bool,
+        source: SimpleRepository,
+        projects_db: sqlite3.Connection,
+        cache: diskcache.Cache,
+    ) -> None:
+        if os.environ.get("DISABLE_REPOSITORY_INDEXING") != "1":
+            self._task = asyncio.create_task(
+                run_reindex_periodically(
+                    frequency_seconds=60*60*24,
+                    session=session,
+                    source=source,
+                    database=projects_db,
+                    cache=cache,
+                    crawl_popular_projects=crawl_popular_projects,
+                ),
+            )
+
+
 class Model:
     def __init__(
         self,
         source: SimpleRepository,
         projects_db: sqlite3.Connection,
         cache: diskcache.Cache,
+        crawler: Crawler,
     ) -> None:
         self.projects_db = projects_db
         self.source = source
         self.cache = cache
+        self.crawler = crawler
 
     def indexing_info(self) -> Context:
         with self.projects_db as cursor:
