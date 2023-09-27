@@ -25,4 +25,3 @@ npm run build
 
 rm -rf ${SCRIPT_DIR}/../acc_py_repository_browser/static/js
 mv ${SCRIPT_DIR}/../simple_repository_browser/static/js ${SCRIPT_DIR}/../acc_py_repository_browser/static/
-rm -rf ${SCRIPT_DIR}/../simple_repository_browser
