@@ -4,6 +4,7 @@ import logging
 import os
 import sqlite3
 import typing
+from datetime import timedelta
 from enum import Enum
 from functools import partial
 from pathlib import Path
@@ -134,107 +135,6 @@ async def fetch_pkg_info(
     return release_info
 
 
-async def crawl_recursively(
-    source: SimpleRepository,
-    cache: diskcache.Cache,
-    database: sqlite3.Connection,
-    normalized_project_names_to_crawl: typing.Set[str],
-) -> None:
-    seen: set = set()
-    packages_for_reindexing = set(normalized_project_names_to_crawl)
-    while packages_for_reindexing - seen:
-        remaining_packages = packages_for_reindexing - seen
-        pkg_name = remaining_packages.pop()
-        print(
-            f"Index iteration loop. Looking at {pkg_name}, with {len(remaining_packages)} remaining ({len(seen)} having been completed)",
-        )
-        seen.add(pkg_name)
-        try:
-            prj = await source.get_project_page(pkg_name)
-        except errors.PackageNotFoundError:
-            # faulthandler
-            continue
-
-        releases = get_releases(prj)
-        latest_version = get_latest_version(releases.keys())
-        if not latest_version or latest_version.is_devrelease or latest_version.is_prerelease:
-            # Don't bother fetching pre-release only projects.
-            continue
-
-        release_info = await fetch_pkg_info(cache, database, prj, latest_version, releases, force_recache=False)
-        if release_info is None:
-            continue
-
-        for dist in release_info.requires_dist:
-            try:
-                dep_name = Requirement(dist).name
-            except packaging.requirements.InvalidRequirement:
-                # See https://discuss.python.org/t/pip-supporting-non-pep508-dependency-specifiers/23107.
-                continue
-            packages_for_reindexing.add(canonicalize_name(dep_name))
-
-        # Don't DOS the service, we aren't in a rush here.
-        await asyncio.sleep(0.01)
-
-
-async def refetch_hook(
-    session: aiohttp.ClientSession,
-    source: SimpleRepository,
-    database: sqlite3.Connection,
-    cache: diskcache.Cache,
-    crawl_popular_projects: bool,
-) -> None:
-    # A hook, that can take as long as it likes to execute (asynchronously), which
-    # gets called when the periodic reindexing occurs.
-    # We periodically want to refresh the project database to make sure we are up-to-date.
-    await fetch_projects.fully_populate_db(
-        connection=database,
-        index=source,
-    )
-    packages_w_dist_info = set()
-    for cache_type, name, version in cache:
-        if cache_type == 'pkg-info':
-            packages_w_dist_info.add(name)
-
-    popular_projects = []
-    if crawl_popular_projects:
-        # Add the top 100 packages (and their dependencies) to the index
-        URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
-        try:
-            async with session.get(URL, raise_for_status=False) as resp:
-                s = await resp.json()
-                for _, row in zip(range(100), s['rows']):
-                    popular_projects.append(row['project'])
-        except Exception as err:
-            print(f'Problem fetching popular projects ({err})')
-            pass
-
-    await crawl_recursively(source, cache, database, packages_w_dist_info | set(popular_projects))
-
-
-async def run_reindex_periodically(
-    frequency_seconds: int,
-    session: aiohttp.ClientSession,
-    source: SimpleRepository,
-    database: sqlite3.Connection,
-    cache: diskcache.Cache,
-    crawl_popular_projects: bool,
-) -> None:
-    print("Starting the reindexing loop")
-    while True:
-        try:
-            await refetch_hook(
-                session=session,
-                source=source,
-                database=database,
-                cache=cache,
-                crawl_popular_projects=crawl_popular_projects,
-            )
-        except Exception as err:
-            logging.exception(err, exc_info=True)
-        await asyncio.sleep(frequency_seconds)
-
-
 async def compute_metadata(
     database: sqlite3.Connection,
     cache: diskcache.Cache,
@@ -316,18 +216,100 @@ class Crawler:
         source: SimpleRepository,
         projects_db: sqlite3.Connection,
         cache: diskcache.Cache,
+        reindex_frequency: timedelta = timedelta(days=1),
     ) -> None:
+        self.frequency_seconds = reindex_frequency.total_seconds()
+        self._session = session
+        self._source = source
+        self._projects_db = projects_db
+        self._cache = cache
+        self._crawl_popular_projects = crawl_popular_projects
         if os.environ.get("DISABLE_REPOSITORY_INDEXING") != "1":
-            self._task = asyncio.create_task(
-                run_reindex_periodically(
-                    frequency_seconds=60*60*24,
-                    session=session,
-                    source=source,
-                    database=projects_db,
-                    cache=cache,
-                    crawl_popular_projects=crawl_popular_projects,
-                ),
+            self._task = asyncio.create_task(self.run_reindex_periodically())
+
+    async def crawl_recursively(
+        self,
+        normalized_project_names_to_crawl: typing.Set[str],
+    ) -> None:
+        seen: set = set()
+        packages_for_reindexing = set(normalized_project_names_to_crawl)
+        while packages_for_reindexing - seen:
+            remaining_packages = packages_for_reindexing - seen
+            pkg_name = remaining_packages.pop()
+            print(
+                f"Index iteration loop. Looking at {pkg_name}, with {len(remaining_packages)} remaining ({len(seen)} having been completed)",
             )
+            seen.add(pkg_name)
+            try:
+                prj = await self._source.get_project_page(pkg_name)
+            except errors.PackageNotFoundError:
+                # faulthandler
+                continue
+
+            releases = get_releases(prj)
+            latest_version = get_latest_version(releases.keys())
+            if not latest_version or latest_version.is_devrelease or latest_version.is_prerelease:
+                # Don't bother fetching pre-release only projects.
+                continue
+
+            release_info = await fetch_pkg_info(
+                cache=self._cache,
+                database=self._projects_db,
+                prj=prj,
+                version=latest_version,
+                releases=releases,
+                force_recache=False,
+            )
+            if release_info is None:
+                continue
+
+            for dist in release_info.requires_dist:
+                try:
+                    dep_name = Requirement(dist).name
+                except packaging.requirements.InvalidRequirement:
+                    # See https://discuss.python.org/t/pip-supporting-non-pep508-dependency-specifiers/23107.
+                    continue
+                packages_for_reindexing.add(canonicalize_name(dep_name))
+
+            # Don't DOS the service, we aren't in a rush here.
+            await asyncio.sleep(0.01)
+
+    async def refetch_hook(self) -> None:
+        # A hook, that can take as long as it likes to execute (asynchronously), which
+        # gets called when the periodic reindexing occurs.
+        # We periodically want to refresh the project database to make sure we are up-to-date.
+        await fetch_projects.fully_populate_db(
+            connection=self._projects_db,
+            index=self._source,
+        )
+        packages_w_dist_info = set()
+        for cache_type, name, version in self._cache:
+            if cache_type == 'pkg-info':
+                packages_w_dist_info.add(name)
+
+        popular_projects = []
+        if self._crawl_popular_projects:
+            # Add the top 100 packages (and their dependencies) to the index
+            URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
+            try:
+                async with self._session.get(URL, raise_for_status=False) as resp:
+                    s = await resp.json()
+                    for _, row in zip(range(100), s['rows']):
+                        popular_projects.append(row['project'])
+            except Exception as err:
+                print(f'Problem fetching popular projects ({err})')
+                pass
+
+        await self.crawl_recursively(packages_w_dist_info | set(popular_projects))
+
+    async def run_reindex_periodically(self) -> None:
+        print("Starting the reindexing loop")
+        while True:
+            try:
+                await self.refetch_hook()
+            except Exception as err:
+                logging.exception(err, exc_info=True)
+            await asyncio.sleep(self.frequency_seconds)
 
 
 class Model:
