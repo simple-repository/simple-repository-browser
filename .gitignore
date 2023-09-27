@@ -5,6 +5,7 @@ simple_repository_browser/static/js
 acc-py-repository-browser/acc_py_repository_browser/static/js
 acc-py-repository-browser/acc_py_repository_browser/static/images/python-logo-only.svg
 acc-py-repository-browser/acc_py_repository_browser/static/images/favicon.6a76275d.ico
+acc-py-repository-browser/simple_repository_browser
 
 */_version.py
 node_modules

@@ -26,8 +26,6 @@ fetch_external_deps:
     - ./acc-py-repository-browser/build.sh
     # Get rid of the unnecessary node_modules now we have built the static files.
     - rm -rf ./acc-py-repository-browser/js_build ./acc-py-repository-browser/javascript
-    # Unclear why the build script isn't copying the directory correctly, but do it manually for now... :(
-    - cp -r simple_repository_browser ./acc-py-repository-browser/
   artifacts:
     paths:
      - simple_repository_browser/static/js
