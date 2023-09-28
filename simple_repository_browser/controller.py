@@ -72,7 +72,7 @@ class Controller:
 
     @router.get("/about", name="about")
     async def about(self, request: fastapi.Request) -> str:
-        resp = self.model.indexing_info()
+        resp = self.model.repository_stats()
         return self.view.about_page(resp | {"request": request})
 
     @router.get("/search", name="search")

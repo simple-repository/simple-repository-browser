@@ -27,7 +27,7 @@ def configure_parser(parser: argparse.ArgumentParser):
 
 
 def handler(args: typing.Any) -> None:
-    parent_dir = base.here
+    base_app_directory = base.here
     app = create_app(
         index_url=args.index_url,
         internal_index_url=args.internal_index_url,
@@ -35,8 +35,8 @@ def handler(args: typing.Any) -> None:
         cache_dir=pathlib.Path(args.cache_dir),
         template_paths=[
             here / "templates",
-            parent_dir / "templates",
-            parent_dir / "templates" / "base",
+            base_app_directory / "templates",
+            base_app_directory / "templates" / "base",
         ],
         static_files_path=here / "static",
         crawl_popular_projects=args.crawl_popular_projects,

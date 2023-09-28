@@ -38,6 +38,7 @@ class View:
     def render_template(self, context: Context, template: str) -> str:
         return self.templates_env.get_template(template).render(**context)
 
+    # TODO: use typed arguments in the views
     def about_page(self, context) -> str:
         return self.render_template(context, "about.html")
 

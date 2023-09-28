@@ -43,6 +43,11 @@ class Crawler:
         self,
         normalized_project_names_to_crawl: typing.Set[str],
     ) -> None:
+        """
+        Crawl the matadata of the packages in
+        normalized_project_names_to_crawl and
+        of their dependecies.
+        """
         seen: set = set()
         packages_for_reindexing = set(normalized_project_names_to_crawl)
         while packages_for_reindexing - seen:

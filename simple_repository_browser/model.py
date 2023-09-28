@@ -22,7 +22,7 @@ class Model:
         self.cache = cache
         self.crawler = crawler
 
-    def indexing_info(self) -> Context:
+    def repository_stats(self) -> Context:
         with self.projects_db as cursor:
             [n_packages] = cursor.execute('SELECT COUNT(canonical_name) FROM projects').fetchone()
 
@@ -44,6 +44,7 @@ class Model:
         try:
             search_terms = _search.parse(query)
         except _search.ParseError:
+            # Handle this logic in the model
             raise errors.RequestError(
                 detail={
                     "search_query": query,
@@ -89,6 +90,7 @@ class Model:
 
         return {
             "exact": exact,
+            "search_query": query,
             "results": results,
             "results_count": n_results,
             "single_name_proposal": single_name_proposal,
@@ -115,7 +117,6 @@ class Model:
         if version is None:
             version = latest_version
         if version not in releases:
-            print(version)
             raise errors.RequestError(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
         json_metadata = await self.crawler.compute_metadata(prj, releases, version, recache=recache)
