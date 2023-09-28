@@ -23,6 +23,7 @@ def create_app(
     template_paths: typing.Sequence[Path],
     static_files_path: Path,
     crawl_popular_projects: bool,
+    browser_version: str,
 ) -> fastapi.FastAPI:
     async def lifespan(app: fastapi.FastAPI):
         async with aiohttp.ClientSession() as session:
@@ -45,7 +46,7 @@ def create_app(
             )
             con.row_factory = sqlite3.Row
 
-            _view = BaseView(template_paths)
+            _view = BaseView(template_paths, browser_version)
             _crawler = Crawler(
                 internal_index=intenal_index,
                 external_index=external_index,

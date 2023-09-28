@@ -8,8 +8,9 @@ from . import Context
 
 
 class View:
-    def __init__(self, templates_paths: typing.Sequence[Path]):
+    def __init__(self, templates_paths: typing.Sequence[Path], browser_version: str):
         self.templates_paths = templates_paths
+        self.version = browser_version
         self.templates_env = self.create_templates_environment()
 
     def create_templates_environment(self) -> jinja2.Environment:
@@ -30,6 +31,7 @@ class View:
 
         templates.globals['url_for'] = url_for
         templates.globals['fmt_size'] = sizeof_fmt
+        templates.globals['browser_version'] = self.version
 
         return templates
 

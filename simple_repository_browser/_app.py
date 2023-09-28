@@ -17,6 +17,7 @@ def create_app(
     template_paths: typing.Sequence[Path],
     static_files_path: Path,
     crawl_popular_projects: bool,
+    browser_version: str,
     *,
     crawler_class: type[crawler.Crawler] = crawler.Crawler,
     view_class: type[view.View] = view.View,
@@ -36,7 +37,7 @@ def create_app(
             )
             con.row_factory = sqlite3.Row
 
-            _view = view_class(template_paths)
+            _view = view_class(template_paths, browser_version)
             _crawler = crawler_class(
                 session=session,
                 crawl_popular_projects=crawl_popular_projects,

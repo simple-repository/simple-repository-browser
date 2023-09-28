@@ -6,6 +6,7 @@ import typing
 import uvicorn
 
 import simple_repository_browser.__main__ as base
+from simple_repository_browser import __version__
 
 from ._app import create_app
 
@@ -40,6 +41,7 @@ def handler(args: typing.Any) -> None:
         static_files_path=here / "static",
         crawl_popular_projects=args.crawl_popular_projects,
         url_prefix=args.url_prefix,
+        browser_version=__version__,
     )
     uvicorn.run(
         app=app,

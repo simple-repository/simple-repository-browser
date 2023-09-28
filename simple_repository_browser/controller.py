@@ -42,8 +42,8 @@ class Router:
         router = fastapi.APIRouter()
         for path, route in self._routes_register.items():
             endpoint, methods, response_class, kwargs = route
-            _endpoint = partial(endpoint, controller)
-            router.add_api_route(path=path, endpoint=_endpoint, response_class=response_class, methods=methods, **kwargs)
+            bound_endpoint = partial(endpoint, controller)
+            router.add_api_route(path=path, endpoint=bound_endpoint, response_class=response_class, methods=methods, **kwargs)
         return router
 
 
@@ -60,7 +60,6 @@ class Controller:
     def __init__(self, model: model.Model, view: view.View) -> None:
         self.model = model
         self.view = view
-        self.version = "__version__"
 
     def create_router(self, static_file_path: Path) -> fastapi.APIRouter:
         router = self.router.build_fastapi_router(self)
@@ -109,9 +108,9 @@ class Controller:
         await asyncio.wait([t], timeout=5)
         if not t.done():
             async def iter_file():
+                # TODO: use a different view for this.
                 yield self.view.error_page({
                     "detail": "<div>Project metadata is being fetched. This page will reload when ready.</div>",
-                    "browser_version": self.version,
                 })
                 for attempt in range(100):
                     await asyncio.wait([t], timeout=1)

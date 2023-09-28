@@ -6,6 +6,7 @@ from pathlib import Path
 
 import uvicorn
 
+from . import __version__
 from ._app import create_app
 
 here = Path(__file__).absolute().parent
@@ -34,6 +35,7 @@ def handler(args: typing.Any) -> None:
         static_files_path=here / "static",
         crawl_popular_projects=args.crawl_popular_projects,
         url_prefix=args.url_prefix,
+        browser_version=__version__,
     )
     uvicorn.run(
         app=app,
