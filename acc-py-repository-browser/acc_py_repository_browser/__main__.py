@@ -16,10 +16,8 @@ here = pathlib.Path(__file__).absolute().parent
 def configure_parser(parser: argparse.ArgumentParser):
     base.configure_parser(parser)
     parser.set_defaults(
-        **{
-            'handler': handler,
-            'index_url': 'https://acc-py-repo.cern.ch/repository/vr-py-releases/simple/',
-        },
+        handler=handler,
+        index_url='https://acc-py-repo.cern.ch/repository/vr-py-releases/simple/',
     )
 
     parser.add_argument("--internal_index_url", type=str, default='https://acc-py-repo.cern.ch/repository/py-release-local/simple/')

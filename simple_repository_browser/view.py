@@ -4,7 +4,7 @@ from pathlib import Path
 import fastapi
 import jinja2
 
-from . import Context
+from . import model
 
 
 class View:
@@ -18,7 +18,7 @@ class View:
         templates = jinja2.Environment(loader=loader)
 
         @jinja2.pass_context
-        def url_for(context: dict, name: str, **path_params: typing.Any) -> str:
+        def url_for(context: typing.Mapping[str, typing.Any], name: str, **path_params: typing.Any) -> str:
             request: fastapi.Request = context["request"]
             return request.url_for(name, **path_params)
 
@@ -35,21 +35,26 @@ class View:
 
         return templates
 
-    def render_template(self, context: Context, template: str) -> str:
-        return self.templates_env.get_template(template).render(**context)
+    def render_template(
+        self,
+        context: typing.Mapping[str, typing.Any],
+        request: fastapi.Request,
+        template: str,
+    ) -> str:
+        return self.templates_env.get_template(template).render(request=request, **context)
 
     # TODO: use typed arguments in the views
-    def about_page(self, context) -> str:
-        return self.render_template(context, "about.html")
+    def about_page(self, context: model.RepositoryStatsModel, request: fastapi.Request) -> str:
+        return self.render_template(context, request, "about.html")
 
-    def search_page(self, context) -> str:
-        return self.render_template(context, "search.html")
+    def search_page(self, context: model.QueryResultModel, request: fastapi.Request) -> str:
+        return self.render_template(context, request, "search.html")
 
-    def index_page(self, context) -> str:
-        return self.render_template(context, "index.html")
+    def index_page(self, request: fastapi.Request) -> str:
+        return self.render_template({}, request, "index.html")
 
-    def project_page(self, context) -> str:
-        return self.render_template(context, "project.html")
+    def project_page(self, context: model.ProjectPageModel, request: fastapi.Request) -> str:
+        return self.render_template(context, request, "project.html")
 
-    def error_page(self, context) -> str:
-        return self.render_template(context, "error.html")
+    def error_page(self, context: model.ErrorModel, request: fastapi.Request) -> str:
+        return self.render_template(context, request, "error.html")

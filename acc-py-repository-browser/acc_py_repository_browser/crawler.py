@@ -7,6 +7,7 @@ import diskcache
 from acc_py_index import errors
 from acc_py_index.simple import model
 from acc_py_index.simple.repositories.core import SimpleRepository
+from acc_py_index.simple.repositories.http import HttpRepository
 
 import simple_repository_browser.crawler as base
 from simple_repository_browser.fetch_description import PackageInfo
@@ -30,6 +31,7 @@ class Crawler(base.Crawler):
         self.source_context = SourceContext(internal_index, external_index)
 
     async def release_info_retrieved(self, project: model.ProjectDetail, package_info: PackageInfo) -> None:
+        """Extend the metadata with the source repository classifier"""
         extra_classifiers = []
         for source in await self.source_context.determine_source(project):
             extra_classifiers.append(f'Package index :: {source}')
@@ -89,3 +91,26 @@ class SourceContext:
             return ['PyPI.org']
 
         return ['PyPI.org', 'Acc-PyPI']
+
+
+async def _to_be_turned_into_a_test():
+    async with aiohttp.ClientSession() as session:
+        index = HttpRepository(
+            url='https://acc-py-repo.cern.ch/repository/vr-py-releases/simple/',
+            session=session,
+        )
+        sc = SourceContext(session)
+        prj = await index.get_project_page('pylogbook')
+        sources = await sc.determine_source(prj)
+        print('SOURCES:', sources)
+
+        numpy = await index.get_project_page('numpy')
+        print("numpy:", await sc.determine_source(numpy))
+
+        jpype = await index.get_project_page('jpype1')
+        print("jpype:", await sc.determine_source(jpype))
+
+
+if __name__ == '__main__':
+    import asyncio
+    asyncio.run(_to_be_turned_into_a_test())

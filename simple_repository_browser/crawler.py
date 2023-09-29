@@ -21,6 +21,10 @@ from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
 
 
 class Crawler:
+    """
+    A crawler designed to populate and periodically reindex
+    the content of the project's metadata database.
+    """
     def __init__(
         self,
         session: aiohttp.ClientSession,

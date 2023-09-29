@@ -68,19 +68,28 @@ class Controller:
 
     @router.get("/", name="index")
     async def index(self, request: fastapi.Request = None) -> str:
-        return self.view.index_page({"request": request})
+        return self.view.index_page(request)
 
     @router.get("/about", name="about")
     async def about(self, request: fastapi.Request) -> str:
-        resp = self.model.repository_stats()
-        return self.view.about_page(resp | {"request": request})
+        response = self.model.repository_stats()
+        return self.view.about_page(response, request)
 
     @router.get("/search", name="search")
     async def search(self, request: fastapi.Request, query: str, page: int = 0) -> str:
         page_size = 50
         offset = page * page_size
-        resp = self.model.project_query(query=query, size=page_size, offset=offset)
-        return self.view.search_page(resp | {"request": request})
+        try:
+            response = self.model.project_query(query=query, size=page_size, offset=offset)
+        except model.InvalidSearchQuery as e:
+            raise errors.RequestError(
+                detail={
+                    "search_query": query,
+                    "detail": str(e),
+                },
+                status_code=400,
+            )
+        return self.view.search_page(response, request)
 
     @router.get("/project/{project_name}", name="project")
     @router.get("/project/{project_name}/{version}", name='project_version')
@@ -122,5 +131,5 @@ class Controller:
                 yield 'Done!<script>location.reload();</script><br>\n'
             return StreamingResponse(iter_file(), media_type="text/html")
 
-        res = t.result()
-        return self.view.project_page(res | {"request": request})
+        response = t.result()
+        return self.view.project_page(response, request)

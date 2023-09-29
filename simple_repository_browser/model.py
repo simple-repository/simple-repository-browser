@@ -1,12 +1,50 @@
 import sqlite3
+from typing import Any, TypedDict
 
 import diskcache
 from acc_py_index.errors import PackageNotFoundError
+from acc_py_index.simple.model import ProjectDetail
 from acc_py_index.simple.repositories.core import SimpleRepository
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
-from . import Context, _search, crawler, errors, fetch_projects, projects
+from . import _search, crawler, errors, fetch_projects, projects
+
+
+class InvalidSearchQuery(ValueError):
+    def __init__(self, msg) -> None:
+        super().__init__(msg)
+
+
+class RepositoryStatsModel(TypedDict):
+    n_packages: int
+    n_dist_info: int
+    n_packages_w_dist_info: int
+
+
+class QueryResultModel(TypedDict):
+    exact: tuple[str, str, str, str] | None
+    search_query: str
+    results: list[tuple[str, str, str, str]]
+    results_count: int
+    single_name_proposal: str | None
+
+
+class ProjectPageModel(TypedDict):
+    project: ProjectDetail
+    releases: list[Version]
+    version: str
+    latest_version: str
+    metadata: dict[str, Any]
+
+
+class ErrorModel(TypedDict):
+    detail: str
+
+
+class InvalidSearchQuery(ValueError):
+    def __init__(self, msg) -> None:
+        super().__init__(msg)
 
 
 class Model:
@@ -22,7 +60,7 @@ class Model:
         self.cache = cache
         self.crawler = crawler
 
-    def repository_stats(self) -> Context:
+    def repository_stats(self) -> RepositoryStatsModel:
         with self.projects_db as cursor:
             [n_packages] = cursor.execute('SELECT COUNT(canonical_name) FROM projects').fetchone()
 
@@ -34,37 +72,24 @@ class Model:
                     packages_w_dist_info.add(name)
             n_packages_w_dist_info = len(packages_w_dist_info)
 
-        return {
-            "n_packages": n_packages,
-            "n_dist_info": n_dist_info,
-            "n_packages_w_dist_info": n_packages_w_dist_info,
-        }
+        return RepositoryStatsModel(
+            n_packages=n_packages,
+            n_dist_info=n_dist_info,
+            n_packages_w_dist_info=n_packages_w_dist_info,
+        )
 
-    def project_query(self, query: str, size: int, offset: int) -> Context:
+    def project_query(self, query: str, size: int, offset: int) -> QueryResultModel:
         try:
             search_terms = _search.parse(query)
         except _search.ParseError:
-            # Handle this logic in the model
-            raise errors.RequestError(
-                detail={
-                    "search_query": query,
-                    "detail": "Invalid search pattern",
-                },
-                status_code=400,
-            )
+            raise InvalidSearchQuery("Invalid search pattern")
 
         try:
             if len(search_terms) == 0:
                 raise ValueError("Please specify a search query")
             condition_query, condition_terms = _search.build_sql(search_terms)
         except ValueError as err:
-            raise errors.RequestError(
-                detail={
-                    "search_query": query,
-                    "detail": f"Search query invalid ({str(err)})",
-                },
-                status_code=400,
-            )
+            raise InvalidSearchQuery(f"Search query invalid ({str(err)})")
 
         single_name_proposal = _search.simple_name_from_query(search_terms)
         exact = None
@@ -88,15 +113,20 @@ class Model:
         if exact in results:
             results.remove(exact)
 
-        return {
-            "exact": exact,
-            "search_query": query,
-            "results": results,
-            "results_count": n_results,
-            "single_name_proposal": single_name_proposal,
-        }
+        return QueryResultModel(
+            exact=exact,
+            search_query=query,
+            results=results,
+            results_count=n_results,
+            single_name_proposal=single_name_proposal,
+        )
 
-    async def project_page(self, project_name: str, version: Version, recache: bool) -> Context:
+    async def project_page(
+        self,
+        project_name: str,
+        version: Version,
+        recache: bool,
+    ) -> ProjectPageModel:
         canonical_name = canonicalize_name(project_name)
         try:
             prj = await self.source.get_project_page(canonical_name)
@@ -120,11 +150,10 @@ class Model:
             raise errors.RequestError(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
         json_metadata = await self.crawler.compute_metadata(prj, releases, version, recache=recache)
-
-        return {
-            "project": prj,
-            "releases": sorted(releases),
-            "version": str(version),
-            "latest_version": str(latest_version),  # Note: May be the same release.
-            "metadata": json_metadata,
-        }
+        return ProjectPageModel(
+            project=prj,
+            releases=sorted(releases),
+            version=str(version),
+            latest_version=str(latest_version),  # Note: May be the same release.
+            metadata=json_metadata,
+        )
