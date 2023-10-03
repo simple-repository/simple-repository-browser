@@ -1,100 +1,55 @@
-import sqlite3
 import typing
 from pathlib import Path
 
-import aiohttp
-import diskcache
-import fastapi
 from acc_py_index.simple.repositories.http import HttpRepository
+from aiohttp import ClientSession
 
-from simple_repository_browser import errors
-from simple_repository_browser.controller import Controller as BaseController
-from simple_repository_browser.model import ErrorModel
-from simple_repository_browser.model import Model as BaseModel
-from simple_repository_browser.view import View as BaseView
+from simple_repository_browser._app import AppBuilder
 
 from .crawler import Crawler
 
 
-def create_app(
-    url_prefix: str,
-    index_url: str,
-    internal_index_url: str,
-    external_index_url: str,
-    cache_dir: Path,
-    template_paths: typing.Sequence[Path],
-    static_files_path: Path,
-    crawl_popular_projects: bool,
-    browser_version: str,
-) -> fastapi.FastAPI:
-    _view = BaseView(template_paths, browser_version)
-
-    async def lifespan(app: fastapi.FastAPI):
-        async with aiohttp.ClientSession() as session:
-            full_index = HttpRepository(
-                url=index_url,
-                session=session,
-            )
-            intenal_index = HttpRepository(
-                url=internal_index_url,
-                session=session,
-            )
-            external_index = HttpRepository(
-                url=external_index_url,
-                session=session,
-            )
-            cache = diskcache.Cache(str(cache_dir/'diskcache'))
-            con = sqlite3.connect(
-                cache_dir/'projects.sqlite',
-                detect_types=sqlite3.PARSE_DECLTYPES,
-            )
-            con.row_factory = sqlite3.Row
-
-            _crawler = Crawler(
-                internal_index=intenal_index,
-                external_index=external_index,
-                full_index=full_index,
-                session=session,
-                crawl_popular_projects=crawl_popular_projects,
-                projects_db=con,
-                cache=cache,
-            )
-            _model = BaseModel(
-                source=full_index,
-                projects_db=con,
-                cache=cache,
-                crawler=_crawler,
-            )
-            _controller = BaseController(
-                model=_model,
-                view=_view,
-            )
-
-            router = _controller.create_router(static_files_path)
-            app.mount(url_prefix or "/", router)
-
-            yield
-
-    app = fastapi.FastAPI(
-        lifespan=lifespan,
-    )
-
-    async def catch_exceptions_middleware(request: fastapi.Request, call_next):
-        try:
-            return await call_next(request)
-        except errors.RequestError as e:
-            status_code = e.status_code
-            detail = e.detail
-        except Exception:
-            status_code = 500
-            detail = "Internal server error"
-        content = _view.error_page(
-            request=request,
-            context=ErrorModel(detail=detail),
+class AccAppBuilder(AppBuilder):
+    def __init__(
+        self,
+        url_prefix: str,
+        index_url: str,
+        cache_dir: Path,
+        template_paths: typing.Sequence[Path],
+        static_files_path: Path,
+        crawl_popular_projects: bool,
+        browser_version: str,
+        internal_index_url: str,
+        external_index_url: str,
+    ) -> None:
+        super().__init__(
+            url_prefix,
+            index_url,
+            cache_dir,
+            template_paths,
+            static_files_path,
+            crawl_popular_projects,
+            browser_version,
         )
-        return fastapi.responses.HTMLResponse(
-            content=content,
-            status_code=status_code,
+        self.internal_index_url = internal_index_url
+        self.external_index_url = external_index_url
+
+    def create_crawler(self, session: ClientSession, source: HttpRepository) -> Crawler:
+        intenal_index = HttpRepository(
+            url=self.internal_index_url,
+            session=session,
+        )
+        external_index = HttpRepository(
+            url=self.external_index_url,
+            session=session,
         )
 
-    app.middleware('http')(catch_exceptions_middleware)
+        return Crawler(
+            internal_index=intenal_index,
+            external_index=external_index,
+            full_index=source,
+            session=session,
+            crawl_popular_projects=self.crawl_popular_projects,
+            projects_db=self.con,
+            cache=self.cache,
+        )

@@ -8,7 +8,7 @@ import uvicorn
 import simple_repository_browser.__main__ as base
 from simple_repository_browser import __version__
 
-from ._app import create_app
+from ._app import AccAppBuilder
 
 here = pathlib.Path(__file__).absolute().parent
 
@@ -26,7 +26,7 @@ def configure_parser(parser: argparse.ArgumentParser):
 
 def handler(args: typing.Any) -> None:
     base_app_directory = base.here
-    app = create_app(
+    app = AccAppBuilder(
         index_url=args.index_url,
         internal_index_url=args.internal_index_url,
         external_index_url=args.external_index_url,
@@ -40,7 +40,7 @@ def handler(args: typing.Any) -> None:
         crawl_popular_projects=args.crawl_popular_projects,
         url_prefix=args.url_prefix,
         browser_version=__version__,
-    )
+    ).create_app()
     uvicorn.run(
         app=app,
         host=args.host,

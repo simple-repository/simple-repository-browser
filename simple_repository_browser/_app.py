@@ -7,84 +7,104 @@ import diskcache
 import fastapi
 from acc_py_index.simple.repositories.http import HttpRepository
 
-from . import controller, crawler, errors, model, view
+from . import controller, crawler, errors, fetch_projects, model, view
 
 
-def create_app(
-    url_prefix: str,
-    index_url: str,
-    cache_dir: Path,
-    template_paths: typing.Sequence[Path],
-    static_files_path: Path,
-    crawl_popular_projects: bool,
-    browser_version: str,
-    *,
-    crawler_class: type[crawler.Crawler] = crawler.Crawler,
-    view_class: type[view.View] = view.View,
-    model_class: type[model.Model] = model.Model,
-    controller_class: type[controller.Controller] = controller.Controller,
-) -> fastapi.FastAPI:
-    _view = view_class(template_paths, browser_version)
+class AppBuilder:
+    def __init__(
+        self,
+        url_prefix: str,
+        index_url: str,
+        cache_dir: Path,
+        template_paths: typing.Sequence[Path],
+        static_files_path: Path,
+        crawl_popular_projects: bool,
+        browser_version: str,
+    ) -> None:
+        self.url_prefix = url_prefix
+        self.index_url = index_url
+        self.cache_dir = cache_dir
+        self.template_paths = template_paths
+        self.static_files_path = static_files_path
+        self.crawl_popular_projects = crawl_popular_projects
+        self.browser_version = browser_version
 
-    async def lifespan(app: fastapi.FastAPI):
-        async with aiohttp.ClientSession() as session:
-            source = HttpRepository(
-                url=index_url,
-                session=session,
-            )
-            cache = diskcache.Cache(str(cache_dir/'diskcache'))
-            con = sqlite3.connect(
-                cache_dir/'projects.sqlite',
-                detect_types=sqlite3.PARSE_DECLTYPES,
-            )
-            con.row_factory = sqlite3.Row
-
-            _crawler = crawler_class(
-                session=session,
-                crawl_popular_projects=crawl_popular_projects,
-                source=source,
-                projects_db=con,
-                cache=cache,
-            )
-            _model = model_class(
-                source=source,
-                projects_db=con,
-                cache=cache,
-                crawler=_crawler,
-            )
-            _controller = controller_class(
-                model=_model,
-                view=_view,
-            )
-
-            router = _controller.create_router(static_files_path)
-            app.mount(url_prefix or "/", router)
-
-            yield
-
-    app = fastapi.FastAPI(
-        lifespan=lifespan,
-    )
-
-    # TODO: refactor into a controller
-    async def catch_exceptions_middleware(request: fastapi.Request, call_next):
-        try:
-            return await call_next(request)
-        except errors.RequestError as e:
-            status_code = e.status_code
-            detail = e.detail
-        except Exception:
-            status_code = 500
-            detail = "Internal server error"
-        content = _view.error_page(
-            request=request,
-            context=model.ErrorModel(detail=detail),
+        self.cache = diskcache.Cache(str(cache_dir/'diskcache'))
+        self.con = sqlite3.connect(
+            cache_dir/'projects.sqlite',
+            detect_types=sqlite3.PARSE_DECLTYPES,
         )
-        return fastapi.responses.HTMLResponse(
-            content=content,
-            status_code=status_code,
+        self.con.row_factory = sqlite3.Row
+        fetch_projects.create_table(self.con)
+
+    def create_app(self) -> fastapi.FastAPI:
+        _view = self.create_view()
+
+        async def lifespan(app: fastapi.FastAPI):
+            async with aiohttp.ClientSession() as session:
+                _controller = self.create_controller(
+                    model=self.create_model(
+                        session=session,
+                    ),
+                    view=_view,
+                )
+                router = _controller.create_router(self.static_files_path)
+                app.mount(self.url_prefix or "/", router)
+                yield
+
+        app = fastapi.FastAPI(
+            lifespan=lifespan,
         )
 
-    app.middleware('http')(catch_exceptions_middleware)
+        # TODO: refactor into a controller
+        async def catch_exceptions_middleware(request: fastapi.Request, call_next):
+            try:
+                return await call_next(request)
+            except errors.RequestError as e:
+                status_code = e.status_code
+                detail = e.detail
+            except Exception:
+                status_code = 500
+                detail = "Internal server error"
+            content = _view.error_page(
+                request=request,
+                context=model.ErrorModel(detail=detail),
+            )
+            return fastapi.responses.HTMLResponse(
+                content=content,
+                status_code=status_code,
+            )
 
-    return app
+        app.middleware('http')(catch_exceptions_middleware)
+
+        return app
+
+    def create_view(self) -> view.View:
+        return view.View(self.template_paths, self.browser_version)
+
+    def create_crawler(self, session: aiohttp.ClientSession, source: HttpRepository) -> crawler.Crawler:
+        return crawler.Crawler(
+            session=session,
+            crawl_popular_projects=self.crawl_popular_projects,
+            source=source,
+            projects_db=self.con,
+            cache=self.cache,
+        )
+
+    def create_model(self, session: aiohttp.ClientSession) -> model.Model:
+        source = HttpRepository(
+            url=self.index_url,
+            session=session,
+        )
+        return model.Model(
+            source=source,
+            projects_db=self.con,
+            cache=self.cache,
+            crawler=self.create_crawler(session, source),
+        )
+
+    def create_controller(self, view: view.View, model: model.Model) -> controller.Controller:
+        return controller.Controller(
+            model=model,
+            view=view,
+        )

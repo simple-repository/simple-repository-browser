@@ -7,7 +7,7 @@ from pathlib import Path
 import uvicorn
 
 from . import __version__
-from ._app import create_app
+from ._app import AppBuilder
 
 here = Path(__file__).absolute().parent
 
@@ -28,7 +28,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def handler(args: typing.Any) -> None:
-    app = create_app(
+    app = AppBuilder(
         index_url=args.index_url,
         cache_dir=Path(args.cache_dir),
         template_paths=[here / "templates", here / "templates" / "base"],
@@ -36,7 +36,8 @@ def handler(args: typing.Any) -> None:
         crawl_popular_projects=args.crawl_popular_projects,
         url_prefix=args.url_prefix,
         browser_version=__version__,
-    )
+    ).create_app()
+
     uvicorn.run(
         app=app,
         host=args.host,
