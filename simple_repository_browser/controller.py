@@ -115,9 +115,12 @@ class Controller:
         if not t.done():
             async def iter_file():
                 # TODO: use a different view for this.
-                yield self.view.error_page({
-                    "detail": "<div>Project metadata is being fetched. This page will reload when ready.</div>",
-                })
+                yield self.view.error_page(
+                    context=model.ErrorModel(
+                        detail="<div>Project metadata is being fetched. This page will reload when ready.</div>",
+                    ),
+                    request=request,
+                )
                 for attempt in range(100):
                     await asyncio.wait([t], timeout=1)
                     if not t.done():

@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 import typing
 from pathlib import Path
@@ -63,9 +64,10 @@ class AppBuilder:
             except errors.RequestError as e:
                 status_code = e.status_code
                 detail = e.detail
-            except Exception:
+            except Exception as err:
                 status_code = 500
-                detail = "Internal server error"
+                detail = f"Internal server error ({err})"
+                logging.error(err)
             content = _view.error_page(
                 request=request,
                 context=model.ErrorModel(detail=detail),
