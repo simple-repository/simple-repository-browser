@@ -81,12 +81,9 @@ class Controller:
         offset = page * page_size
         try:
             response = self.model.project_query(query=query, size=page_size, offset=offset)
-        except model.InvalidSearchQuery as e:
+        except errors.InvalidSearchQuery as e:
             raise errors.RequestError(
-                detail={
-                    "search_query": query,
-                    "detail": str(e),
-                },
+                detail=str(e),
                 status_code=400,
             )
         return self.view.search_page(response, request)

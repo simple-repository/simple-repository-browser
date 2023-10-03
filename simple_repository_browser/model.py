@@ -11,11 +11,6 @@ from packaging.version import Version
 from . import _search, crawler, errors, fetch_projects, projects
 
 
-class InvalidSearchQuery(ValueError):
-    def __init__(self, msg) -> None:
-        super().__init__(msg)
-
-
 class RepositoryStatsModel(TypedDict):
     n_packages: int
     n_dist_info: int
@@ -40,11 +35,6 @@ class ProjectPageModel(TypedDict):
 
 class ErrorModel(TypedDict):
     detail: str
-
-
-class InvalidSearchQuery(ValueError):
-    def __init__(self, msg) -> None:
-        super().__init__(msg)
 
 
 class Model:
@@ -82,14 +72,14 @@ class Model:
         try:
             search_terms = _search.parse(query)
         except _search.ParseError:
-            raise InvalidSearchQuery("Invalid search pattern")
+            raise errors.InvalidSearchQuery("Invalid search pattern")
 
         try:
             if len(search_terms) == 0:
                 raise ValueError("Please specify a search query")
             condition_query, condition_terms = _search.build_sql(search_terms)
         except ValueError as err:
-            raise InvalidSearchQuery(f"Search query invalid ({str(err)})")
+            raise errors.InvalidSearchQuery(f"Search query invalid ({str(err)})")
 
         single_name_proposal = _search.simple_name_from_query(search_terms)
         exact = None

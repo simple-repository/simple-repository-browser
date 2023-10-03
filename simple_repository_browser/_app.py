@@ -7,7 +7,7 @@ import diskcache
 import fastapi
 from acc_py_index.simple.repositories.http import HttpRepository
 
-from . import controller, crawler, model, view
+from . import controller, crawler, errors, model, view
 
 
 def create_app(
@@ -24,6 +24,8 @@ def create_app(
     model_class: type[model.Model] = model.Model,
     controller_class: type[controller.Controller] = controller.Controller,
 ) -> fastapi.FastAPI:
+    _view = view_class(template_paths, browser_version)
+
     async def lifespan(app: fastapi.FastAPI):
         async with aiohttp.ClientSession() as session:
             source = HttpRepository(
@@ -37,7 +39,6 @@ def create_app(
             )
             con.row_factory = sqlite3.Row
 
-            _view = view_class(template_paths, browser_version)
             _crawler = crawler_class(
                 session=session,
                 crawl_popular_projects=crawl_popular_projects,
@@ -61,6 +62,29 @@ def create_app(
 
             yield
 
-    return fastapi.FastAPI(
+    app = fastapi.FastAPI(
         lifespan=lifespan,
     )
+
+    # TODO: refactor into a controller
+    async def catch_exceptions_middleware(request: fastapi.Request, call_next):
+        try:
+            return await call_next(request)
+        except errors.RequestError as e:
+            status_code = e.status_code
+            detail = e.detail
+        except Exception:
+            status_code = 500
+            detail = "Internal server error"
+        content = _view.error_page(
+            request=request,
+            context=model.ErrorModel(detail=detail),
+        )
+        return fastapi.responses.HTMLResponse(
+            content=content,
+            status_code=status_code,
+        )
+
+    app.middleware('http')(catch_exceptions_middleware)
+
+    return app
