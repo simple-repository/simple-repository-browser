@@ -17,11 +17,11 @@ def configure_parser(parser: argparse.ArgumentParser):
     base.configure_parser(parser)
     parser.set_defaults(
         handler=handler,
-        index_url='https://acc-py-repo.cern.ch/repository/vr-py-releases/simple/',
+        index_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple/',
     )
 
-    parser.add_argument("--internal_index_url", type=str, default='https://acc-py-repo.cern.ch/repository/py-release-local/simple/')
-    parser.add_argument("--external_index_url", type=str, default='https://acc-py-repo.cern.ch/repository/py-thirdparty-remote/simple/')
+    parser.add_argument("--internal_index_url", type=str, default='http://acc-py-repo.cern.ch/repository/py-release-local/simple/')
+    parser.add_argument("--external_index_url", type=str, default='http://acc-py-repo.cern.ch/repository/py-thirdparty-remote/simple/')
 
 
 def handler(args: typing.Any) -> None:
