@@ -1,24 +1,20 @@
 import asyncio
-import contextlib
 import dataclasses
-import datetime
 import email.parser
 import email.policy
 import logging
 import os.path
 import pathlib
-import tarfile
 import tempfile
 import typing
-import zipfile
 
 import aiohttp
 import bleach
-import importlib_metadata
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
 from acc_py_index.simple import model
+from acc_py_index.simple.repositories.core import SimpleRepository
 from packaging.requirements import Requirement
 
 
@@ -46,38 +42,6 @@ class PackageInfo:
     files_info: dict[str, FileInfo] = dataclasses.field(default_factory=dict)
 
 
-class SDist(pkginfo.SDist):
-    def read(self):
-        fqn = os.path.abspath(
-            os.path.normpath(self.filename),
-        )
-
-        archive, names, read_file = self._get_archive(fqn)
-
-        try:
-            tuples = [x.split('/') for x in names if 'PKG-INFO' in x]
-            schwarz = sorted([(-len(x), x) for x in tuples])
-
-            for path in [x[1] for x in schwarz]:
-                candidate = '/'.join(path)
-                data = read_file(candidate)
-                if b'Metadata-Version' in data:
-                    reqs = '/'.join(path[:-1] + ['requires.txt'])
-                    if reqs in names:
-                        contents = read_file(reqs).decode()
-                        # Private method to read the pkg-info metadata from the sdist.
-                        r = importlib_metadata.Distribution._convert_egg_info_reqs_to_simple_reqs(
-                            importlib_metadata.Sectioned.read(contents),
-                        )
-                        data = data.decode().split('\n')
-                        inject = [f'Requires-Dist: {req}' for req in r]
-                        data[2:2] = inject
-                        data = '\n'.join(data).encode('utf-8')
-                    return data
-        finally:
-            archive.close()
-
-
 async def fetch_file(url, dest):
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         async with session.get(url) as r:
@@ -94,41 +58,6 @@ async def fetch_file(url, dest):
                     fd.write(chunk)
 
 
-class _ZipfileTimeTracker(zipfile.ZipFile):
-    def read(self, name):
-        info = self.getinfo(name)
-        t = datetime.datetime(*info.date_time)
-        _ZipfileTimeTracker.captured_time = t
-        return super().read(name)
-
-
-class _TarfileTimeTracker(tarfile.TarFile):
-    def extractfile(self, name):
-        t = self.getmember(name).mtime
-        _TarfileTimeTracker.captured_time = datetime.datetime.fromtimestamp(t)
-        return super().extractfile(name)
-
-
-class ArchiveTimestampCapture:
-    def __init__(self):
-        self.timestamp = None
-
-    @contextlib.contextmanager
-    def patch_archive_classes(self):
-        """
-        Patch zipfile and tarfile to capture the timestamp of any opened files.
-
-        """
-        tarfile.TarFile, orig_tarfile = _TarfileTimeTracker, tarfile.TarFile
-        zipfile.ZipFile, orig_zipfile = _ZipfileTimeTracker, zipfile.ZipFile
-        _ZipfileTimeTracker.captured_time = _TarfileTimeTracker.captured_time = None
-        try:
-            yield
-            self.timestamp = _ZipfileTimeTracker.captured_time or _TarfileTimeTracker.captured_time
-        finally:
-            zipfile.ZipFile, tarfile.TarFile = orig_zipfile, orig_tarfile
-
-
 class PkgInfoFromFile(pkginfo.Distribution):
     def __init__(self, filename: str):
         self._filename = filename
@@ -141,6 +70,8 @@ class PkgInfoFromFile(pkginfo.Distribution):
 
 async def package_info(
     release_files: tuple[model.File, ...],
+    repository: SimpleRepository,
+    project_name: str,
 ) -> tuple[model.File, PackageInfo]:
     files = sorted(
         release_files,
@@ -186,29 +117,33 @@ async def package_info(
     file = files[0]
 
     if file.dist_info_metadata:
-        archive_type = PkgInfoFromFile
-        url = file.url + '.metadata'
-    elif file.filename.endswith('.whl'):
-        archive_type = pkginfo.Wheel
-        url = file.url
+        resource_name = file.filename + '.metadata'
     else:
-        archive_type = pkginfo.SDist
-        url = file.url
+        raise ValueError(f"Metadata not available for {file}")
 
-    logging.info(f'Downloading metadata for {file.filename} from {url}')
+    logging.info(f'Downloading metadata for {file.filename} from {resource_name}')
 
     with tempfile.NamedTemporaryFile(
             suffix=os.path.splitext(file.filename)[1],
     ) as tmp:
-        await fetch_file(url, tmp.name)
+        resource = await repository.get_resource(project_name, resource_name)
+
+        if isinstance(resource, model.TextResource):
+            tmp.write(resource.text.encode())
+            if not file.upload_time:
+                # If the repository doesn't provide information about the upload time, estimate
+                # it from the headers of the resource, if they exist.
+                ct = getattr(resource, 'headers', {}).get('creation-date')
+                if ct:
+                    file = dataclasses.replace(file, upload_time=ct)
+        elif isinstance(resource, model.HttpResource):
+            await fetch_file(resource.url, tmp.name)
+        else:
+            raise ValueError(f"Unhandled resource type ({type(resource)})")
+
         tmp.flush()
         tmp.seek(0)
-        # Capture the timestamp of the file that pkginfo opens so that we
-        # can estimate the release date.
-        ts_capture = ArchiveTimestampCapture()
-        with ts_capture.patch_archive_classes():
-            info = archive_type(tmp.name)
-
+        info = PkgInfoFromFile(tmp.name)
         description = generate_safe_description_html(info)
 
         # If there is email information, but not a name in the "author" or "maintainer"
@@ -245,14 +180,10 @@ async def package_info(
             # component.
             files_info=files_info,
         )
-        if not file.upload_time:
-            # If the repository doesn't provide information about the upload time, estimate
-            # it from the zipfile.
-            file = dataclasses.replace(file, upload_time=ts_capture.timestamp)
 
         if not file.size:
-            # If the repository doesn't provide information about the upload time, estimate
-            # it from the zipfile.
+            # If the repository doesn't provide information about the size take it from
+            # the file info that we gathered.
             file = dataclasses.replace(file, size=files_info[file.filename].size)
 
         # Ensure that a Homepage exists in the project urls
