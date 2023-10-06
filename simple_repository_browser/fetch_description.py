@@ -19,6 +19,7 @@ import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
 from acc_py_index.simple import model
+from packaging.requirements import Requirement
 
 
 @dataclasses.dataclass
@@ -29,17 +30,20 @@ class FileInfo:
 
 @dataclasses.dataclass
 class PackageInfo:
+    """Represents a simplified pkg-info/dist-info metadata, suitable for easy (and safe) use in html templates"""
     summary: str
     description: str
     url: str
     author: typing.Optional[str] = None
     maintainer: typing.Optional[str] = None
     classifiers: typing.Sequence[str] = ()
-    release_date: typing.Optional[datetime.datetime] = None
     project_urls: typing.Dict[str, str] = dataclasses.field(default_factory=dict)
-    files_info: typing.Dict[str, FileInfo] = dataclasses.field(default_factory=dict)
     requires_python: typing.Optional[str] = None
-    requires_dist: typing.Sequence[str] = ()
+    requires_dist: typing.Sequence[Requirement] = ()
+
+    # A mapping of filename to FileInfo. This must only be used for sharing size information,
+    # and will be removed once this code moves to a component based repository definition.
+    files_info: dict[str, FileInfo] = dataclasses.field(default_factory=dict)
 
 
 class SDist(pkginfo.SDist):
@@ -125,9 +129,6 @@ class ArchiveTimestampCapture:
             zipfile.ZipFile, tarfile.TarFile = orig_zipfile, orig_tarfile
 
 
-EMPTY_PKG_INFO = PackageInfo('', '', '')
-
-
 class PkgInfoFromFile(pkginfo.Distribution):
     def __init__(self, filename: str):
         self._filename = filename
@@ -140,10 +141,7 @@ class PkgInfoFromFile(pkginfo.Distribution):
 
 async def package_info(
     release_files: tuple[model.File, ...],
-) -> typing.Optional[PackageInfo]:
-    if not release_files:
-        return None
-
+) -> tuple[model.File, PackageInfo]:
     files = sorted(
         release_files,
         key=lambda file: (
@@ -202,22 +200,14 @@ async def package_info(
     with tempfile.NamedTemporaryFile(
             suffix=os.path.splitext(file.filename)[1],
     ) as tmp:
-        try:
-            await fetch_file(url, tmp.name)
-        except IOError as err:
-            logging.warning(f"Unable to fetch {url}: {str(err)}")
-            return None
+        await fetch_file(url, tmp.name)
         tmp.flush()
         tmp.seek(0)
-        try:
-            # Capture the timestamp of the file that pkginfo opens so that we
-            # can estimate the release date.
-            ts_capture = ArchiveTimestampCapture()
-            with ts_capture.patch_archive_classes():
-                info = archive_type(tmp.name)
-        except ValueError as err:
-            logging.warning(f'Unable to open {url}: { str(err) }')
-            return None
+        # Capture the timestamp of the file that pkginfo opens so that we
+        # can estimate the release date.
+        ts_capture = ArchiveTimestampCapture()
+        with ts_capture.patch_archive_classes():
+            info = archive_type(tmp.name)
 
         description = generate_safe_description_html(info)
 
@@ -247,18 +237,29 @@ async def package_info(
             author=info.author,
             maintainer=info.maintainer,
             classifiers=info.classifiers,
-            release_date=file.upload_time or ts_capture.timestamp,
             project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
-            files_info=files_info,
             requires_python=info.requires_python,
-            requires_dist=info.requires_dist,
+            requires_dist=[Requirement(s) for s in info.requires_dist],
+            # We include files info as it is the only way to influence the file.size of
+            # all files (for the files list page). In the future, this can be a standalone
+            # component.
+            files_info=files_info,
         )
+        if not file.upload_time:
+            # If the repository doesn't provide information about the upload time, estimate
+            # it from the zipfile.
+            file = dataclasses.replace(file, upload_time=ts_capture.timestamp)
+
+        if not file.size:
+            # If the repository doesn't provide information about the upload time, estimate
+            # it from the zipfile.
+            file = dataclasses.replace(file, size=files_info[file.filename].size)
 
         # Ensure that a Homepage exists in the project urls
         if pkg.url and 'Homepage' not in pkg.project_urls:
             pkg.project_urls['Homepage'] = pkg.url
 
-        return pkg
+        return file, pkg
 
 
 def generate_safe_description_html(package_info: pkginfo.Distribution):
