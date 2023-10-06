@@ -1,5 +1,4 @@
 import asyncio
-import itertools
 import logging
 import os
 import sqlite3
@@ -8,16 +7,15 @@ from datetime import timedelta
 
 import aiohttp
 import diskcache
-import packaging.requirements
 from acc_py_index.errors import PackageNotFoundError
 from acc_py_index.simple import model
 from acc_py_index.simple.repositories.core import SimpleRepository
-from packaging.requirements import Requirement
+from packaging.requirements import InvalidRequirement
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
 from . import fetch_projects, projects
-from .fetch_description import EMPTY_PKG_INFO, PackageInfo, package_info
+from .fetch_description import PackageInfo, package_info
 
 
 class Crawler:
@@ -50,7 +48,7 @@ class Crawler:
         """
         Crawl the matadata of the packages in
         normalized_project_names_to_crawl and
-        of their dependecies.
+        of their dependencies.
         """
         seen: set = set()
         packages_for_reindexing = set(normalized_project_names_to_crawl)
@@ -73,21 +71,20 @@ class Crawler:
                 # Don't bother fetching pre-release only projects.
                 continue
 
-            release_info = await self.fetch_pkg_info(
-                prj=prj,
-                version=latest_version,
-                releases=releases,
-                force_recache=False,
-            )
-            if release_info is None:
+            try:
+                file, release_info = await self.fetch_pkg_info(
+                    prj=prj,
+                    version=latest_version,
+                    releases=releases,
+                    force_recache=False,
+                )
+            except InvalidRequirement as err:
+                # See https://discuss.python.org/t/pip-supporting-non-pep508-dependency-specifiers/23107.
+                print(f"Problem handling package {pkg_name}: {err}")
                 continue
 
             for dist in release_info.requires_dist:
-                try:
-                    dep_name = Requirement(dist).name
-                except packaging.requirements.InvalidRequirement:
-                    # See https://discuss.python.org/t/pip-supporting-non-pep508-dependency-specifiers/23107.
-                    continue
+                dep_name = dist.name
                 packages_for_reindexing.add(canonicalize_name(dep_name))
 
             # Don't DOS the service, we aren't in a rush here.
@@ -137,22 +134,20 @@ class Crawler:
         version: Version,
         releases: dict[Version, tuple[model.File, ...]],
         force_recache: bool,
-    ) -> typing.Optional[PackageInfo]:
-        if version not in releases:
-            return None
+    ) -> tuple[model.File, PackageInfo]:
 
         key = ('pkg-info', prj.name, str(version))
         if key in self._cache and not force_recache:
-            release_info = self._cache[key]
+            info_file, files_used_for_cache, release_info = self._cache[key]
             # Validate that the cached result covers all of the files, and that no new
             # files have been added since the cache was made. In that case, we re-cache.
             if all(
                 [
-                    file.filename in release_info.files_info
+                    file.filename in files_used_for_cache
                     for file in releases[version]
                 ],
             ):
-                return release_info
+                return info_file, release_info
 
         if force_recache:
             print('Recaching')
@@ -163,92 +158,23 @@ class Crawler:
             prj.name,
         )
 
-        release_info = await package_info(releases[version])
+        info_file, release_info = await package_info(releases[version])
         if release_info is not None:
             await self.release_info_retrieved(prj, release_info)
 
-        self._cache[key] = release_info
+        self._cache[key] = info_file, releases[version], release_info
         is_latest = version == projects.get_latest_version(releases.keys())
         if is_latest and release_info is not None:
             fetch_projects.update_summary(
                 self._projects_db,
                 name=canonicalize_name(prj.name),
                 summary=release_info.summary,
-                release_date=release_info.release_date,
+                release_date=info_file.upload_time,
                 release_version=str(version),
             )
 
-        return release_info
+        return info_file, release_info
 
-    # TODO: Remove json representation.
-    async def compute_metadata(
-        self,
-        prj: model.ProjectDetail,
-        releases: dict[Version, tuple[model.File, ...]],
-        version: Version,
-        recache: bool = False,
-    ):
-        release_files = releases[version]
-        release_info = await self.fetch_pkg_info(prj, version, releases, force_recache=recache)
-
-        if release_info is None:
-            release_info = EMPTY_PKG_INFO
-            release_files = ()  # crcmod as an example.
-
-        # https://packaging.python.org/en/latest/specifications/core-metadata/
-        # https://peps.python.org/pep-0566/
-        # https://peps.python.org/pep-0621/
-        # But also, the JSON API in practice https://warehouse.pypa.io/api-reference/json.html.
-        meta = {
-            "info": {
-                "author": release_info.author,
-                "author_email": "",
-                "classifiers": release_info.classifiers,
-                "classifier_groups": itertools.groupby(release_info.classifiers, key=lambda s: s.split('::')[0]),
-                "creation_date": release_info.release_date,
-                "description": release_info.description,
-                "description_content_type": None,
-                "description_html": release_info.description,
-                "home_page": release_info.url,
-                "license": "",
-                "maintainer": release_info.maintainer,
-                "maintainer_email": "",
-                "name": prj.name,
-                "platform": "",
-                # Note on project-urls: https://stackoverflow.com/a/56243786/741316
-                "project_urls": release_info.project_urls,
-                "requires_dist": [Requirement(s) for s in release_info.requires_dist],
-                "requires_python": release_info.requires_python,
-                "summary": release_info.summary,
-                "version": str(version),
-            },
-            "releases": {
-                str(version): [
-                    {
-                        "comment_text": "",
-                        # "digests": {
-                        #     "md5": "bab8eb22e6710eddae3c6c7ac3453bd9",
-                        #     "sha256": "7a7a8b91086deccc54cac8d631e33f6a0e232ce5775c6be3dc44f86c2154019d"
-                        # },
-                        "filename": file.filename,
-                        "has_sig": False,
-                        # "md5_digest": "bab8eb22e6710eddae3c6c7ac3453bd9",
-                        # "packagetype": "bdist_wheel",
-                        # "python_version": "2.7",
-                        "size": release_info.files_info[file.filename].size,
-                        # "upload_time_iso_8601": release_info.files_info[file.filename].created.isoformat(),
-                        "url": file.url,
-                        "yanked": False,
-                        "yanked_reason": None,
-                    }
-                    for file in release_files
-                ],
-            },
-            "urls": [],
-            "vulnerabilities": [],
-        }
-        return meta
-
-    # TODO: Remove this function
+    # TODO: Document this function, or remove it.
     async def release_info_retrieved(self, project: model.ProjectDetail, package_info: PackageInfo) -> None:
         pass

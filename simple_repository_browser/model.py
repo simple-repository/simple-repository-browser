@@ -1,23 +1,25 @@
+import itertools
 import sqlite3
-from typing import Any, TypedDict
+import typing
 
 import diskcache
 from acc_py_index.errors import PackageNotFoundError
-from acc_py_index.simple.model import ProjectDetail
+from acc_py_index.simple.model import File, ProjectDetail
 from acc_py_index.simple.repositories.core import SimpleRepository
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
 from . import _search, crawler, errors, fetch_projects, projects
+from .fetch_description import PackageInfo
 
 
-class RepositoryStatsModel(TypedDict):
+class RepositoryStatsModel(typing.TypedDict):
     n_packages: int
     n_dist_info: int
     n_packages_w_dist_info: int
 
 
-class QueryResultModel(TypedDict):
+class QueryResultModel(typing.TypedDict):
     exact: tuple[str, str, str, str] | None
     search_query: str
     results: list[tuple[str, str, str, str]]
@@ -25,15 +27,33 @@ class QueryResultModel(TypedDict):
     single_name_proposal: str | None
 
 
-class ProjectPageModel(TypedDict):
+class ProjectPageModel(typing.TypedDict):
+    # The project detail contents for this project.
     project: ProjectDetail
+
+    # The list of versions for this project.
     releases: list[Version]
+
+    # This version.
     version: str
+
+    # The files for this version.
+    files_for_version: tuple[File, ...]
+
+    # Classifiers, grouped by the first part of the classifier
+    classifiers_by_top_level: dict[str, tuple[str, ...]]
+
+    # The latest stable version of this project.
     latest_version: str
-    metadata: dict[str, Any]
+
+    # The file, found in the project detail page, for which the metadata applies.
+    file_info: File
+
+    # The pkg-info metadata, in dictionary form.
+    file_metadata: PackageInfo
 
 
-class ErrorModel(TypedDict):
+class ErrorModel(typing.TypedDict):
     detail: str
 
 
@@ -139,11 +159,19 @@ class Model:
         if version not in releases:
             raise errors.RequestError(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
-        json_metadata = await self.crawler.compute_metadata(prj, releases, version, recache=recache)
+        info_file, pkg_info = await self.crawler.fetch_pkg_info(prj, version, releases, force_recache=recache)
+        classifiers_by_top_level = {
+            top_level: tuple(classifier) for top_level, classifier in itertools.groupby(
+                pkg_info.classifiers, key=lambda s: s.split('::')[0],
+            )
+        }
         return ProjectPageModel(
             project=prj,
             releases=sorted(releases),
             version=str(version),
+            classifiers_by_top_level=classifiers_by_top_level,
+            files_for_version=releases[version],
             latest_version=str(latest_version),  # Note: May be the same release.
-            metadata=json_metadata,
+            file_info=info_file,
+            file_metadata=pkg_info,
         )

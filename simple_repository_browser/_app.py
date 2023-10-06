@@ -61,12 +61,13 @@ class AppBuilder:
         async def catch_exceptions_middleware(request: fastapi.Request, call_next):
             try:
                 return await call_next(request)
-            except errors.RequestError as e:
-                status_code = e.status_code
-                detail = e.detail
+            except errors.RequestError as err:
+                status_code = err.status_code
+                detail = err.detail
             except Exception as err:
                 status_code = 500
                 detail = f"Internal server error ({err})"
+                # raise
                 logging.error(err)
             content = _view.error_page(
                 request=request,
