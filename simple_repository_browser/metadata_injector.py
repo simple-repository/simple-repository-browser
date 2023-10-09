@@ -22,18 +22,18 @@ class MetadataInjector(MetadataInjectorRepository):
     async def get_project_page(self, project_name: str) -> model.ProjectDetail:
         project_page = await super().get_project_page(project_name)
 
-        some_sdists = False
+        files_changed = False
         files = []
         for file in project_page.files:
             if file.url and file.filename.endswith(".tar.gz") and not file.dist_info_metadata:
                 file = replace(file, dist_info_metadata=True)
-                some_sdists = True
+                files_changed = True
 
             if file.url and file.filename.endswith(".whl") and not file.dist_info_metadata:
                 file = replace(file, dist_info_metadata=True)
-                some_sdists = True
+                files_changed = True
             files.append(file)
-        if some_sdists:
+        if files_changed:
             project_page = replace(project_page, files=tuple(files))
         return project_page
 
@@ -41,8 +41,7 @@ class MetadataInjector(MetadataInjectorRepository):
 
         try:
             # Attempt to get the resource from upstream.
-            # TODO: In the acc-py-index implementation it goes to super. This is wrong.
-            return await self.source.get_resource(project_name, resource_name)
+            return await super().get_resource(project_name, resource_name)
         except errors.ResourceUnavailable:
             if not resource_name.endswith(".metadata"):
                 # If we tried to get a resource that wasn't a .metadata one, and it failed,
@@ -62,6 +61,8 @@ class MetadataInjector(MetadataInjectorRepository):
         else:
             # Get hold of the actual artefact from which we want to extract
             # the metadata.
+            # FIXME: We should be calling the root of the repository here.
+            #  We can't do that until we have context though (currently only on master).
             resource = await super().get_resource(
                 project_name, resource_name.removesuffix(".metadata"),
             )
