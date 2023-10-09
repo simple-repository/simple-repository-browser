@@ -9,6 +9,7 @@ import fastapi
 from acc_py_index.simple.repositories.http import HttpRepository
 
 from . import controller, crawler, errors, fetch_projects, model, view
+from .metadata_injector import MetadataInjector
 
 
 class AppBuilder:
@@ -95,8 +96,12 @@ class AppBuilder:
         )
 
     def create_model(self, session: aiohttp.ClientSession) -> model.Model:
-        source = HttpRepository(
-            url=self.index_url,
+        source = MetadataInjector(
+            HttpRepository(
+                url=self.index_url,
+                session=session,
+            ),
+            database=self.con,
             session=session,
         )
         return model.Model(

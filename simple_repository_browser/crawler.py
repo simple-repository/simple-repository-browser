@@ -158,7 +158,7 @@ class Crawler:
             prj.name,
         )
 
-        info_file, release_info = await package_info(releases[version])
+        info_file, release_info = await package_info(releases[version], self._source, prj.name)
         if release_info is not None:
             await self.release_info_retrieved(prj, release_info)
 

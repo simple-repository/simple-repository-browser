@@ -16,7 +16,7 @@ with (HERE / 'README.md').open('rt') as fh:
 
 REQUIREMENTS: dict = {
     'core': [
-        'acc-py-index~=3.0',
+        'acc-py-index~=3.0,<=3.1',
         'aiohttp',
         'bleach',
         'diskcache',
