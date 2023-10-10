@@ -13,9 +13,8 @@ import bleach
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
-from acc_py_index.simple import model
-from acc_py_index.simple.repositories.core import SimpleRepository
 from packaging.requirements import Requirement
+from simple_repository import SimpleRepository, model
 
 
 @dataclasses.dataclass

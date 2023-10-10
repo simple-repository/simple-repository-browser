@@ -1,9 +1,9 @@
 import typing
 
-from acc_py_index import utils
-from acc_py_index.simple import model
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
+from simple_repository import model
+from simple_repository.packaging import extract_package_version
 
 
 def get_releases(
@@ -14,7 +14,7 @@ def get_releases(
     for file in project_page.files:
         try:
             release = Version(
-                version=utils.extract_package_version(
+                version=extract_package_version(
                     filename=file.filename,
                     project_name=canonical_name,
                 ),

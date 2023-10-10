@@ -4,10 +4,8 @@ from datetime import timedelta
 
 import aiohttp
 import diskcache
-from acc_py_index import errors
-from acc_py_index.simple import model
-from acc_py_index.simple.repositories.core import SimpleRepository
-from acc_py_index.simple.repositories.http import HttpRepository
+from simple_repository import SimpleRepository, errors, model
+from simple_repository.components.http import HttpRepository
 
 import simple_repository_browser.crawler as base
 from simple_repository_browser.fetch_description import PackageInfo

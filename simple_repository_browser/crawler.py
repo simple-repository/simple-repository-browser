@@ -7,12 +7,11 @@ from datetime import timedelta
 
 import aiohttp
 import diskcache
-from acc_py_index.errors import PackageNotFoundError
-from acc_py_index.simple import model
-from acc_py_index.simple.repositories.core import SimpleRepository
 from packaging.requirements import InvalidRequirement
 from packaging.utils import canonicalize_name
 from packaging.version import Version
+from simple_repository import SimpleRepository, model
+from simple_repository.errors import PackageNotFoundError
 
 from . import fetch_projects, projects
 from .fetch_description import PackageInfo, package_info
