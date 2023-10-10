@@ -3,11 +3,11 @@ import sqlite3
 import typing
 
 import diskcache
-from acc_py_index.errors import PackageNotFoundError
-from acc_py_index.simple.model import File, ProjectDetail
-from acc_py_index.simple.repositories.core import SimpleRepository
 from packaging.utils import canonicalize_name
 from packaging.version import Version
+from simple_repository import SimpleRepository
+from simple_repository.errors import PackageNotFoundError
+from simple_repository.model import File, ProjectDetail
 
 from . import _search, crawler, errors, fetch_projects, projects
 from .fetch_description import PackageInfo

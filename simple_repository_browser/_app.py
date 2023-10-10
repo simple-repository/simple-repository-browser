@@ -6,7 +6,7 @@ from pathlib import Path
 import aiohttp
 import diskcache
 import fastapi
-from acc_py_index.simple.repositories.http import HttpRepository
+from simple_repository.components.http import HttpRepository
 
 from . import controller, crawler, errors, fetch_projects, model, view
 from .metadata_injector import MetadataInjector

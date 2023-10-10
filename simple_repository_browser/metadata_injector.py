@@ -10,9 +10,8 @@ from dataclasses import replace
 from pathlib import Path
 
 import aiohttp
-from acc_py_index import errors, utils
-from acc_py_index.simple import model
-from acc_py_index.simple.repositories.metadata_injector import \
+from simple_repository import errors, model, utils
+from simple_repository.components.metadata_injector import \
     MetadataInjectorRepository
 
 ResourceHeaders = typing.TypedDict('ResourceHeaders', {'creation-date': datetime.datetime}, total=False)

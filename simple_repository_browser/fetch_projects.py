@@ -1,6 +1,6 @@
 import datetime
 
-from acc_py_index.simple.repositories.core import SimpleRepository
+from simple_repository import SimpleRepository
 
 
 def create_table(connection):

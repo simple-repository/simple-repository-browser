@@ -1,8 +1,8 @@
 import typing
 from pathlib import Path
 
-from acc_py_index.simple.repositories.http import HttpRepository
 from aiohttp import ClientSession
+from simple_repository.components.http import HttpRepository
 
 from simple_repository_browser._app import AppBuilder
 
