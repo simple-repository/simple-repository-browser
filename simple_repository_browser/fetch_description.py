@@ -132,8 +132,7 @@ async def package_info(
             if not file.upload_time:
                 # If the repository doesn't provide information about the upload time, estimate
                 # it from the headers of the resource, if they exist.
-                ct = getattr(resource, 'headers', {}).get('creation-date')
-                if ct:
+                if ct := resource.context.get('creation-date'):
                     file = dataclasses.replace(file, upload_time=ct)
         elif isinstance(resource, model.HttpResource):
             await fetch_file(resource.url, tmp.name)

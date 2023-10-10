@@ -1,4 +1,3 @@
-import dataclasses
 import datetime
 import pathlib
 import pickle
@@ -18,8 +17,13 @@ ResourceHeaders = typing.TypedDict('ResourceHeaders', {'creation-date': datetime
 
 
 class MetadataInjector(MetadataInjectorRepository):
-    async def get_project_page(self, project_name: str) -> model.ProjectDetail:
-        project_page = await super().get_project_page(project_name)
+    async def get_project_page(
+        self,
+        project_name: str,
+        *,
+        request_context: model.RequestContext = model.RequestContext.DEFAULT,
+    ) -> model.ProjectDetail:
+        project_page = await super().get_project_page(project_name, request_context=request_context)
 
         files_changed = False
         files = []
@@ -36,11 +40,17 @@ class MetadataInjector(MetadataInjectorRepository):
             project_page = replace(project_page, files=tuple(files))
         return project_page
 
-    async def get_resource(self, project_name: str, resource_name: str) -> model.Resource:
+    async def get_resource(
+        self,
+        project_name: str,
+        resource_name: str,
+        *,
+        request_context: model.RequestContext = model.RequestContext.DEFAULT,
+    ) -> model.Resource:
 
         try:
             # Attempt to get the resource from upstream.
-            return await super().get_resource(project_name, resource_name)
+            return await super().get_resource(project_name, resource_name, request_context=request_context)
         except errors.ResourceUnavailable:
             if not resource_name.endswith(".metadata"):
                 # If we tried to get a resource that wasn't a .metadata one, and it failed,
@@ -51,7 +61,7 @@ class MetadataInjector(MetadataInjectorRepository):
         # requested. Let's try to fetch the underlying resource and compute the metadata.
 
         # First, let's attempt to get the metadata out of the cache.
-        encoded_metadata = self._cache.get(project_name + "/" + resource_name)
+        encoded_metadata = await self._cache.get(project_name + "/" + resource_name)
         if encoded_metadata:
             decoded_metadata = pickle.loads(encoded_metadata)
             metadata = decoded_metadata['body']
@@ -89,12 +99,11 @@ class MetadataInjector(MetadataInjectorRepository):
 
             # Cache the result for a faster response in the future.
             encoded_metadata = pickle.dumps({'headers': headers, 'body': metadata})
-            self._cache[project_name + "/" + resource_name] = encoded_metadata
+            await self._cache.set(project_name + "/" + resource_name, encoded_metadata)
 
-        return TextResourceWithHeaders(
-            text=metadata,
-            headers=headers,
-        )
+        result = model.TextResource(text=metadata)
+        result.context.update(headers)
+        return result
 
     async def download_metadata(
             self,
@@ -117,11 +126,6 @@ def get_metadata_from_package(package_path: pathlib.Path) -> tuple[str, Resource
     elif package_path.name.endswith('.tar.gz'):
         return get_metadata_from_sdist(package_path)
     raise ValueError("Package provided is not a wheel or an sdist")
-
-
-@dataclasses.dataclass(frozen=True)
-class TextResourceWithHeaders(model.TextResource):
-    headers: ResourceHeaders
 
 
 def get_metadata_from_wheel(package_path: pathlib.Path) -> tuple[str, ResourceHeaders]:
