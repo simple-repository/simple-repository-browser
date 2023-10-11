@@ -18,7 +18,6 @@ REQUIREMENTS: dict = {
     'core': [
         'aiohttp',
         'aiosqlite',
-        'bleach',
         'diskcache',
         'docutils',
         'fastapi',

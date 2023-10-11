@@ -1,3 +1,4 @@
+import base64
 import datetime
 import pathlib
 import pickle
@@ -35,6 +36,9 @@ class MetadataInjector(MetadataInjectorRepository):
             if file.url and file.filename.endswith(".whl") and not file.dist_info_metadata:
                 file = replace(file, dist_info_metadata=True)
                 files_changed = True
+            if file.url and file.filename.endswith(".zip") and not file.dist_info_metadata:
+                file = replace(file, dist_info_metadata=True)
+                files_changed = True
             files.append(file)
         if files_changed:
             project_page = replace(project_page, files=tuple(files))
@@ -60,10 +64,14 @@ class MetadataInjector(MetadataInjectorRepository):
         # The resource doesn't exist upstream, and looks like a metadata file has been
         # requested. Let's try to fetch the underlying resource and compute the metadata.
 
+        # Give the cache-key a unique name, to avoid colliding with the cache from other components
+        # (such as MetadataInjectorRepository)
+        cache_key = f'MetadataInjector__{project_name}/{resource_name}'
+
         # First, let's attempt to get the metadata out of the cache.
-        encoded_metadata = await self._cache.get(project_name + "/" + resource_name)
+        encoded_metadata = await self._cache.get(cache_key)
         if encoded_metadata:
-            decoded_metadata = pickle.loads(encoded_metadata)
+            decoded_metadata = pickle.loads(base64.b64decode(encoded_metadata.encode('ascii')))
             metadata = decoded_metadata['body']
             headers = decoded_metadata['headers']
 
@@ -99,7 +107,7 @@ class MetadataInjector(MetadataInjectorRepository):
 
             # Cache the result for a faster response in the future.
             encoded_metadata = pickle.dumps({'headers': headers, 'body': metadata})
-            await self._cache.set(project_name + "/" + resource_name, encoded_metadata)
+            await self._cache.set(cache_key, base64.b64encode(encoded_metadata).decode('ascii'))
 
         result = model.TextResource(text=metadata)
         result.context.update(headers)
@@ -125,6 +133,8 @@ def get_metadata_from_package(package_path: pathlib.Path) -> tuple[str, Resource
         return get_metadata_from_wheel(package_path)
     elif package_path.name.endswith('.tar.gz'):
         return get_metadata_from_sdist(package_path)
+    elif package_path.name.endswith('.zip'):
+        return get_metadata_from_zip(package_path)
     raise ValueError("Package provided is not a wheel or an sdist")
 
 
@@ -168,3 +178,24 @@ def get_metadata_from_sdist(package_path: pathlib.Path) -> tuple[str, ResourceHe
             metadata: ResourceHeaders = {'creation-date': datetime.datetime.fromtimestamp(info.mtime)}
             return data, metadata
     raise ValueError(f"No metadata found in {package_path.name}")
+
+
+def get_metadata_from_zip(package_path: pathlib.Path) -> tuple[str, ResourceHeaders]:
+    # Used by pyreadline. (a zipfile)
+    with zipfile.ZipFile(package_path) as archive:
+        names = archive.namelist()
+
+        pkg_info_files = [x.split('/') for x in names if 'PKG-INFO' in x]
+        ordered_pkg_info = sorted(pkg_info_files, key=lambda pth: -len(pth))
+
+        for path in ordered_pkg_info:
+            candidate = '/'.join(path)
+            f = archive.open(candidate, mode='r')
+            if f is None:
+                continue
+            data = f.read().decode()
+            if 'Metadata-Version' in data:
+                info = archive.getinfo(candidate)
+                metadata: ResourceHeaders = {'creation-date': datetime.datetime(*info.date_time)}
+                return data, metadata
+        raise ValueError(f"No metadata found in {package_path.name}")
