@@ -48,6 +48,7 @@
 
             {% if results_count > 0 %}
               Found {{ results_count }} results
+                {% if n_pages > 1%}. Page {{ page }} of {{  n_pages }}:{% endif %}
               <br>
 
               {% for result in results %}
@@ -55,6 +56,12 @@
               {% endfor %}
             {% endif %}
           </div>
+            {% if page > 1 %}{# Note: page starts at 1. #}
+                <a href="{{ url_for('search').include_query_params(query=search_query, page=page-1) }}">Previous page</a>
+            {% endif %}
+            {% if page < n_pages %}
+                <a href="{{ url_for('search').include_query_params(query=search_query, page=page+1) }}">Next page</a>
+            {% endif %}
         </div>
       </div>
     </div>
