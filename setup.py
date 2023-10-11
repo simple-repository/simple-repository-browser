@@ -24,6 +24,7 @@ REQUIREMENTS: dict = {
         'importlib_metadata>=6.0',
         'jinja2',
         'markdown',
+        'markupsafe',
         'packaging',
         'parsley',
         'pkginfo',

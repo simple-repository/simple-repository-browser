@@ -12,6 +12,7 @@ import aiohttp
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
+import readme_renderer.txt
 from packaging.requirements import Requirement
 from simple_repository import SimpleRepository, model
 
@@ -201,6 +202,8 @@ def generate_safe_description_html(package_info: pkginfo.Distribution) -> str:
 
     elif description_type == 'text/markdown' or description_type.startswith('text/markdown;'):  # Seen longer form with orjson
         return readme_renderer.markdown.render(raw_description)
+    elif description_type == 'text/plain' or description_type.startswith('text/plain;'):  # seen with nbformat
+        return readme_renderer.txt.render(raw_description)
     else:
         raise ValueError(f"Unknown readme format {description_type}")
 

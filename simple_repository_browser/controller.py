@@ -7,6 +7,7 @@ from pathlib import Path
 import fastapi
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from markupsafe import Markup
 from packaging.version import InvalidVersion, Version
 
 from . import errors, model, view
@@ -117,7 +118,7 @@ class Controller:
                 # TODO: use a different view for this.
                 yield self.view.error_page(
                     context=model.ErrorModel(
-                        detail="<div>Project metadata is being fetched. This page will reload when ready.</div>",
+                        detail=Markup("<div>Project metadata is being fetched. This page will reload when ready.</div>"),
                     ),
                     request=request,
                 )
