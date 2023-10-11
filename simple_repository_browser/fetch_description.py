@@ -28,7 +28,6 @@ class PackageInfo:
     """Represents a simplified pkg-info/dist-info metadata, suitable for easy (and safe) use in html templates"""
     summary: str
     description: str  # This is HTML safe (rendered with readme_renderer).
-    url: str
     author: typing.Optional[str] = None
     maintainer: typing.Optional[str] = None
     classifiers: typing.Sequence[str] = ()
@@ -162,15 +161,28 @@ async def package_info(
         if not info.maintainer and info.maintainer_email:
             info.maintainer = extract_usernames(info.maintainer_email)
 
-        # TODO: More metadata could be extracted here.
+        project_urls = {
+            url.split(',')[0].strip().title(): url.split(',')[1].strip()
+            for url in info.project_urls or []
+        }
+        # Ensure that a Homepage exists in the project urls
+        if info.home_page and 'Homepage' not in project_urls:
+            project_urls['Homepage'] = info.home_page
+
+        sorted_urls = {
+            name: url for name, url in sorted(
+                project_urls.items(),
+                key=lambda item: (item[0] != 'Homepage', item[0]),
+            )
+        }
+
         pkg = PackageInfo(
             summary=info.summary or '',
             description=description,
-            url=info.home_page,
             author=info.author,
             maintainer=info.maintainer,
             classifiers=info.classifiers,
-            project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
+            project_urls=sorted_urls,
             requires_python=info.requires_python,
             requires_dist=[Requirement(s) for s in info.requires_dist],
             # We include files info as it is the only way to influence the file.size of
@@ -183,10 +195,6 @@ async def package_info(
             # If the repository doesn't provide information about the size take it from
             # the file info that we gathered.
             file = dataclasses.replace(file, size=files_info[file.filename].size)
-
-        # Ensure that a Homepage exists in the project urls
-        if pkg.url and 'Homepage' not in pkg.project_urls:
-            pkg.project_urls['Homepage'] = pkg.url
 
         return file, pkg
 
