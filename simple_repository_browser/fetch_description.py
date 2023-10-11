@@ -9,10 +9,10 @@ import tempfile
 import typing
 
 import aiohttp
-import bleach
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
+import readme_renderer.txt
 from packaging.requirements import Requirement
 from simple_repository import SimpleRepository, model
 
@@ -191,7 +191,7 @@ async def package_info(
         return file, pkg
 
 
-def generate_safe_description_html(package_info: pkginfo.Distribution):
+def generate_safe_description_html(package_info: pkginfo.Distribution) -> str:
     # Handle the valid description content types.
     # https://packaging.python.org/specifications/core-metadata
     description_type = package_info.description_content_type or 'text/x-rst'
@@ -202,31 +202,10 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
 
     elif description_type == 'text/markdown' or description_type.startswith('text/markdown;'):  # Seen longer form with orjson
         return readme_renderer.markdown.render(raw_description)
+    elif description_type == 'text/plain' or description_type.startswith('text/plain;'):  # seen with nbformat
+        return readme_renderer.txt.render(raw_description)
     else:
-        # Plain, or otherwise.
-        description = raw_description
-
-    ALLOWED_TAGS = [
-        "h1", "h2", "h3", "h4", "h5", "h6", "hr",
-        "div", "object",
-        "ul", "ol", "li", "p", "br",
-        "pre", "code", "blockquote",
-        "strong", "em", "a", "img", "b", "i",
-        "table", "thead", "tbody", "tr", "th", "td", "tt",
-    ]
-    ALLOWED_ATTRIBUTES = {
-        "h1": ["id"], "h2": ["id"], "h3": ["id"], "h4": ["id"],
-        "a": ["href", "title"],
-        "img": ["src", "title", "alt"],
-    }
-
-    description = bleach.clean(
-        description,
-        tags=set(bleach.sanitizer.ALLOWED_TAGS) | set(ALLOWED_TAGS),
-        attributes=ALLOWED_ATTRIBUTES,
-    )
-    description = bleach.linkify(description, parse_email=True)
-    return description
+        raise ValueError(f"Unknown readme format {description_type}")
 
 
 # async def _devel_to_be_turned_into_test():
