@@ -97,9 +97,9 @@ class Model:
         except _search.ParseError:
             raise errors.InvalidSearchQuery("Invalid search pattern")
 
+        if not search_terms:
+            raise errors.InvalidSearchQuery("Please specify a search query")
         try:
-            if not search_terms:
-                raise ValueError("Please specify a search query")
             condition_query, condition_terms = _search.build_sql(search_terms)
         except ValueError as err:
             raise errors.InvalidSearchQuery(f"Search query invalid ({str(err)})")
