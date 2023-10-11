@@ -56,8 +56,8 @@
               {% endfor %}
             {% endif %}
           </div>
-
-          <nav aria-label="...">
+          {% if n_pages > 1 %}
+            <nav aria-label="...">
               <ul class="pagination justify-content-center">
                 {% if page > 1 %}{# Note: page starts at 1. #}
                     <li class="page-item">
@@ -91,7 +91,8 @@
                     </li>
                 {% endif %}
               </ul>
-          </nav>
+            </nav>
+          {% endif %}
         </div>
       </div>
     </div>
