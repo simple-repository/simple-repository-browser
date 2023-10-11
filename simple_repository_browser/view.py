@@ -15,7 +15,7 @@ class View:
 
     def create_templates_environment(self) -> jinja2.Environment:
         loader = jinja2.FileSystemLoader(self.templates_paths)
-        templates = jinja2.Environment(loader=loader)
+        templates = jinja2.Environment(loader=loader, autoescape=True)
 
         @jinja2.pass_context
         def url_for(context: typing.Mapping[str, typing.Any], name: str, **path_params: typing.Any) -> str:

@@ -144,7 +144,7 @@
         <div class="col-md-9">
           <div class="row">
             <div id="description-page" data-purpose="page-switch" data-source="description">
-              {{ file_metadata.description or 'Description not available' }}
+              {{ file_metadata.description|safe or 'Description not available' }}
             </div>
           </div>
           <div id="releases-page" data-purpose="page-switch" data-source="releases">

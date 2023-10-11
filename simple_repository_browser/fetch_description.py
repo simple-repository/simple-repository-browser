@@ -27,7 +27,7 @@ class FileInfo:
 class PackageInfo:
     """Represents a simplified pkg-info/dist-info metadata, suitable for easy (and safe) use in html templates"""
     summary: str
-    description: str
+    description: str  # This is HTML safe (rendered with readme_renderer).
     url: str
     author: typing.Optional[str] = None
     maintainer: typing.Optional[str] = None
