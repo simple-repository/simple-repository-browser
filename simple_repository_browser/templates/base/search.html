@@ -56,12 +56,42 @@
               {% endfor %}
             {% endif %}
           </div>
-            {% if page > 1 %}{# Note: page starts at 1. #}
-                <a href="{{ url_for('search').include_query_params(query=search_query, page=page-1) }}">Previous page</a>
-            {% endif %}
-            {% if page < n_pages %}
-                <a href="{{ url_for('search').include_query_params(query=search_query, page=page+1) }}">Next page</a>
-            {% endif %}
+
+          <nav aria-label="...">
+              <ul class="pagination justify-content-center">
+                {% if page > 1 %}{# Note: page starts at 1. #}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('search').include_query_params(query=search_query, page=page-1) }}">
+                            Previous
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            Previous
+                        </span>
+                    </li>
+                {% endif %}
+                <li class="page-item active">
+                  <span class="page-link">
+                    Page {{ page }} of {{ n_pages }}
+                  </span>
+                </li>
+                {% if page < n_pages %}
+                    <li class="page-item">
+                      <a class="page-link" href="{{ url_for('search').include_query_params(query=search_query, page=page+1) }}">
+                          Next
+                      </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            Next
+                        </span>
+                    </li>
+                {% endif %}
+              </ul>
+          </nav>
         </div>
       </div>
     </div>
