@@ -2,14 +2,13 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   version="1.1"
-   id="svg12783"
-   width="228"
-   height="541"
-   viewBox="0 0 228 541"
-   sodipodi:docname="logo-small.svg"
+   id="svg2"
+   sodipodi:docname="logo-large.svg"
+   viewBox="0 0 188.33 197.75"
+   sodipodi:version="0.32"
+   version="1.0"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
    inkscape:version="1.2.2 (732a01da63, 2022-12-09, custom)"
-   xml:space="preserve"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -17,193 +16,260 @@
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:dc="http://purl.org/dc/elements/1.1/"><metadata
-     id="metadata12789"><rdf:RDF><cc:Work
-         rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
-           rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><defs
-     id="defs12787"><linearGradient
-       id="linearGradient4671"><stop
-         style="stop-color:#ffd43b;stop-opacity:1;"
-         offset="0"
-         id="stop4673" /><stop
-         style="stop-color:#ffe873;stop-opacity:1"
-         offset="1"
-         id="stop4675" /></linearGradient><linearGradient
-       id="linearGradient4689"><stop
-         style="stop-color:#5a9fd4;stop-opacity:1;"
-         offset="0"
-         id="stop4691" /><stop
-         style="stop-color:#306998;stop-opacity:1;"
-         offset="1"
-         id="stop4693" /></linearGradient><linearGradient
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="base"
+     bordercolor="#666666"
+     inkscape:pageshadow="2"
+     guidetolerance="10.0"
+     pagecolor="#ffffff"
+     gridtolerance="10.0"
+     inkscape:zoom="2.8284272"
+     objecttolerance="10.0"
+     borderopacity="1.0"
+     inkscape:current-layer="layer2"
+     inkscape:cx="105.00535"
+     inkscape:guide-bbox="true"
+     inkscape:cy="109.42477"
+     inkscape:window-y="27"
+     inkscape:window-x="70"
+     inkscape:window-height="1016"
+     showgrid="false"
+     inkscape:pageopacity="0.0"
+     inkscape:window-width="1850"
+     showguides="true"
+     inkscape:showpageshadow="2"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:window-maximized="1">
+    <sodipodi:guide
+       id="guide2886"
+       position="555.07882,515.48084"
+       orientation="0,1"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       id="guide3436"
+       position="1801,402.99999"
+       orientation="1,0"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <defs
+     id="defs5">
+    <inkscape:path-effect
+       effect="perspective-envelope"
+       up_left_point="58.788148,63.186239"
+       up_right_point="185.25794,35.541835"
+       down_left_point="59.48835,193.27294"
+       down_right_point="185.45949,146.75874"
+       id="path-effect7280"
+       is_visible="true"
+       lpeversion="1"
+       deform_type="perspective"
+       horizontal_mirror="false"
+       vertical_mirror="false"
+       overflow_perspective="false" />
+    <linearGradient
+       id="linearGradient3498"
+       y2="722.69"
+       gradientUnits="userSpaceOnUse"
+       x2="1800.9"
+       gradientTransform="matrix(2.5111 0 0 2.5111 -4465.6 -1731)"
+       y1="721.07"
+       x1="1779.5"
+       inkscape:collect="always">
+      <stop
+         id="stop3359"
+         style="stop-color:#bb9652"
+         offset="0" />
+      <stop
+         id="stop3361"
+         style="stop-color:#d4bf8a"
+         offset="1" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient3501"
+       y2="707.71"
+       gradientUnits="userSpaceOnUse"
+       x2="1828.8"
+       gradientTransform="matrix(2.5111 0 0 2.5111 -4464.8 -1730.2)"
+       y1="754.31"
+       x1="1834"
+       inkscape:collect="always">
+      <stop
+         id="stop3375"
+         style="stop-color:#a28650"
+         offset="0" />
+      <stop
+         id="stop3377"
+         style="stop-color:#dac491"
+         offset="1" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient3504"
+       y2="695.62"
+       gradientUnits="userSpaceOnUse"
+       x2="1835.6"
+       gradientTransform="matrix(2.5111 0 0 2.5111 -4464.8 -1730.2)"
+       y1="704.37"
+       x1="1788.1"
+       inkscape:collect="always">
+      <stop
+         id="stop3367"
+         style="stop-color:#dccb94"
+         offset="0" />
+      <stop
+         id="stop3369"
+         style="stop-color:#c4a95a"
+         offset="1" />
+    </linearGradient>
+    <linearGradient
        inkscape:collect="always"
        xlink:href="#linearGradient4689"
-       id="linearGradient348"
+       id="linearGradient1478"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(0.562541,0,0,0.567972,-14.99112,-11.702371)"
+       gradientTransform="matrix(0.54745616,0,0,0.53966443,57.913116,45.781844)"
        x1="26.648937"
        y1="20.603781"
        x2="135.66525"
-       y2="114.39767" /><linearGradient
+       y2="114.39767" />
+    <linearGradient
+       id="linearGradient4689">
+      <stop
+         style="stop-color:#5a9fd4;stop-opacity:1;"
+         offset="0"
+         id="stop4691" />
+      <stop
+         style="stop-color:#306998;stop-opacity:1;"
+         offset="1"
+         id="stop4693" />
+    </linearGradient>
+    <linearGradient
        inkscape:collect="always"
        xlink:href="#linearGradient4671"
-       id="linearGradient350"
+       id="linearGradient1475"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(0.562541,0,0,0.567972,-14.99112,-11.702371)"
+       gradientTransform="matrix(0.54745616,0,0,0.53966443,57.913116,45.781844)"
        x1="150.96111"
        y1="192.35176"
        x2="112.03144"
-       y2="137.27299" /></defs><sodipodi:namedview
-     pagecolor="#ffffff"
-     bordercolor="#666666"
-     borderopacity="1"
-     objecttolerance="10"
-     gridtolerance="10"
-     guidetolerance="10"
-     inkscape:pageopacity="0"
-     inkscape:pageshadow="2"
-     inkscape:window-width="1846"
-     inkscape:window-height="1016"
-     id="namedview12785"
-     showgrid="false"
-     inkscape:zoom="0.70910507"
-     inkscape:cx="554.2197"
-     inkscape:cy="480.18272"
-     inkscape:window-x="74"
-     inkscape:window-y="27"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="svg12783"
-     inkscape:showpageshadow="2"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1" /><path
-     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     d="M 29.761521,523.75521 43.035851,270.95285 H 197.31314 l 11.79941,253.68731"
-     id="path13352"
-     inkscape:connector-curvature="0"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><path
-     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     d="M 39.431811,116.81467 119.7657,62.725301 199.45949,117.45478 c -53.34256,6.33259 -106.685119,6.67826 -160.027679,-0.64011 2.56044,-0.32006 -3.52061,-0.32005 0,0"
-     id="path13461-3"
-     inkscape:connector-curvature="0"
-     sodipodi:nodetypes="ccccc"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><path
-     style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:8;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     id="path13360-3"
-     sodipodi:type="arc"
-     sodipodi:cx="118.9929"
-     sodipodi:cy="54.978504"
-     sodipodi:rx="7.7917128"
-     sodipodi:ry="6.8968487"
-     sodipodi:start="6.2309651"
-     sodipodi:end="6.1919395"
-     sodipodi:open="true"
-     d="m 126.77399,54.618513 a 7.7917128,6.8968487 0 0 1 -7.2985,7.243598 7.7917128,6.8968487 0 0 1 -8.25427,-6.389299 7.7917128,6.8968487 0 0 1 7.13744,-7.36827 7.7917128,6.8968487 0 0 1 8.39354,6.245527"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96"
-     sodipodi:arc-type="arc" /><path
-     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     d="m 118.85088,47.697411 c 1.28022,-6.72117 -0.64011,-32.64565 -0.64011,-32.64565 0,0 35.8462,8.64149 33.28576,8.64149 -2.56044,0 -33.28576,7.04122 -33.28576,7.04122"
-     id="path13430-8"
-     inkscape:connector-curvature="0"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><path
-     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     d="m 28.073451,252.032 v -3.53982 h 0.29499 v -34.51327 h 20.64896 v 22.41888 h 18.58408 v -23.30384 h 21.8289 v 20.64897 h 21.238939 v -22.71387 h 22.41888 v 22.1239 h 17.69912 v -23.59882 h 23.30383 v 24.77876 h 17.69912 V 208.0792 h 21.53392 l -4.12979,43.06785"
-     id="path13358-8"
-     inkscape:connector-curvature="0"
-     sodipodi:nodetypes="cccccccccccccccccccccc"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><path
-     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     d="m 51.423001,118.24838 -6.67297,96.04305"
-     id="path13535"
-     inkscape:connector-curvature="0"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><path
-     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     d="m 187.50384,118.24838 7.86457,89.6084"
-     id="path13537"
-     inkscape:connector-curvature="0"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><path
-     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     d="m 197.31314,270.95285 11.88126,-19.8058 -181.120949,0.88495 14.9624,18.92085"
-     id="path13539"
-     inkscape:connector-curvature="0"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><path
-     style="fill:none;stroke:#000000;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     d="m 29.761521,523.75521 c 59.78368,6.18634 119.567349,6.77207 179.351029,0.88495"
-     id="path13541"
-     inkscape:connector-curvature="0"
-     inkscape:transform-center-x="1.6682415"
-     inkscape:transform-center-y="-4.5280841"
-     sodipodi:nodetypes="cc"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><rect
-     style="opacity:0.99;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:150;stroke-opacity:1;paint-order:stroke fill markers"
-     id="rect13432-00"
-     width="18.563211"
-     height="48.968468"
-     x="63.53413"
-     y="135.97673"
-     rx="0.87732399"
-     ry="5.8523598"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><rect
-     style="opacity:0.99;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:150;stroke-opacity:1;paint-order:stroke fill markers"
-     id="rect13432-0-7"
-     width="18.563211"
-     height="48.968468"
-     x="96.499802"
-     y="135.8167"
-     rx="0.87732399"
-     ry="5.8523598"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><rect
-     style="opacity:0.99;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:150;stroke-opacity:1;paint-order:stroke fill markers"
-     id="rect13432-9-5"
-     width="18.563211"
-     height="48.968468"
-     x="129.78557"
-     y="136.45683"
-     rx="0.87732399"
-     ry="5.8523598"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><rect
-     style="opacity:0.99;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:150;stroke-opacity:1;paint-order:stroke fill markers"
-     id="rect13432-92-6"
-     width="18.563211"
-     height="48.968468"
-     x="163.07133"
-     y="136.77687"
-     rx="0.87732399"
-     ry="5.8523598"
-     inkscape:export-filename="C:\Users\Utilisateur\Desktop\Lubin pourfendeur de dragons\Dessins au trait\Château fort.png"
-     inkscape:export-xdpi="96"
-     inkscape:export-ydpi="96" /><g
+       y2="137.27299" />
+    <linearGradient
+       id="linearGradient4671">
+      <stop
+         style="stop-color:#ffd43b;stop-opacity:1;"
+         offset="0"
+         id="stop4673" />
+      <stop
+         style="stop-color:#ffe873;stop-opacity:1"
+         offset="1"
+         id="stop4675" />
+    </linearGradient>
+  </defs>
+  <metadata
+     id="metadata7200">
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/publicdomain/" />
+        <dc:publisher>
+          <cc:Agent
+             rdf:about="http://openclipart.org/">
+            <dc:title>Openclipart</dc:title>
+          </cc:Agent>
+        </dc:publisher>
+        <dc:date>2009-05-21T05:05:20</dc:date>
+        <dc:description>A cardboard packing box with tape holding it shut. Classic packing box / software package image. Enjoy!</dc:description>
+        <dc:source>https://openclipart.org/detail/26101/cardboard-box-/-package-by-kliponius</dc:source>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Kliponius</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>box</rdf:li>
+            <rdf:li>cardboard</rdf:li>
+            <rdf:li>icon</rdf:li>
+            <rdf:li>package</rdf:li>
+            <rdf:li>packaging</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/licenses/publicdomain/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
      inkscape:groupmode="layer"
-     id="layer1"
-     inkscape:label="logo"><g
-       id="g275-3"
-       transform="matrix(1.2975715,0,0,1.2975715,47.167041,319.73805)"><path
-         style="fill:url(#linearGradient348);fill-opacity:1"
-         d="M 54.918785,9.1927421e-4 C 50.335132,0.02221727 45.957846,0.41313697 42.106285,1.0946693 30.760069,3.0991731 28.700036,7.2947714 28.700035,15.032169 v 10.21875 h 26.8125 v 3.40625 h -26.8125 -10.0625 c -7.792459,0 -14.6157588,4.683717 -16.7499998,13.59375 -2.46181998,10.212966 -2.57101508,16.586023 0,27.25 1.9059283,7.937852 6.4575432,13.593748 14.2499998,13.59375 h 9.21875 v -12.25 c 0,-8.849902 7.657144,-16.656248 16.75,-16.65625 h 26.78125 c 7.454951,0 13.406253,-6.138164 13.40625,-13.625 v -25.53125 c 0,-7.2663386 -6.12998,-12.7247771 -13.40625,-13.9374997 C 64.281548,0.32794397 59.502438,-0.02037903 54.918785,9.1927421e-4 Z m -14.5,8.21875012579 c 2.769547,0 5.03125,2.2986456 5.03125,5.1249996 -2e-6,2.816336 -2.261703,5.09375 -5.03125,5.09375 -2.779476,-1e-6 -5.03125,-2.277415 -5.03125,-5.09375 -10e-7,-2.826353 2.251774,-5.1249996 5.03125,-5.1249996 z"
-         id="path1948-5" /><path
-         style="fill:url(#linearGradient350);fill-opacity:1"
-         d="m 85.637535,28.657169 v 11.90625 c 0,9.230755 -7.825895,16.999999 -16.75,17 h -26.78125 c -7.335833,0 -13.406249,6.278483 -13.40625,13.625 v 25.531247 c 0,7.266344 6.318588,11.540324 13.40625,13.625004 8.487331,2.49561 16.626237,2.94663 26.78125,0 6.750155,-1.95439 13.406253,-5.88761 13.40625,-13.625004 V 86.500919 h -26.78125 v -3.40625 h 26.78125 13.406254 c 7.792461,0 10.696251,-5.435408 13.406241,-13.59375 2.79933,-8.398886 2.68022,-16.475776 0,-27.25 -1.92578,-7.757441 -5.60387,-13.59375 -13.406241,-13.59375 z m -15.0625,64.65625 c 2.779478,3e-6 5.03125,2.277417 5.03125,5.093747 -2e-6,2.826354 -2.251775,5.125004 -5.03125,5.125004 -2.76955,0 -5.03125,-2.29865 -5.03125,-5.125004 2e-6,-2.81633 2.261697,-5.093747 5.03125,-5.093747 z"
-         id="path1950-6" /></g></g></svg>
+     id="layer2"
+     inkscape:label="box">
+    <path
+       id="path2894"
+       style="fill-rule:evenodd;fill:#d3bc5f"
+       d="m110.29 1.9932l76.29 32.459v112.91l-76.29-56.297v-89.07z" />
+    <path
+       id="path2896"
+       style="fill-rule:evenodd;fill:url(#linearGradient3504)"
+       d="m1.5117 18.829l55.887 43.794 129.18-28.171-76.29-32.459-108.78 16.836z" />
+    <path
+       id="path2898"
+       style="fill-rule:evenodd;fill:url(#linearGradient3501)"
+       d="m57.399 62.623v133.77l129.18-49.03v-112.91l-129.18 28.173z" />
+    <g
+       id="g7278"
+       inkscape:path-effect="#path-effect7280">
+      <path
+         style="display:inline;fill:url(#linearGradient1478);fill-opacity:1;stroke-width:0.961599"
+         d="m 126.26029,48.438826 c -5.22616,1.165415 -10.27979,2.694779 -14.77787,4.424869 -13.545796,5.206529 -16.035107,10.432922 -15.997695,19.037109 l 0.04938,11.357119 31.491604,-7.951937 0.0126,3.641079 -31.48774,8.094954 -12.468889,3.205536 c -9.916932,2.549472 -18.766307,10.228755 -21.526066,21.265775 -3.20426,12.73817 -3.309805,20.16477 0.167059,31.45095 2.558449,8.34167 8.52635,12.8818 18.49726,9.59081 l 11.499278,-3.79543 -0.06086,-13.63281 c -0.04399,-9.85542 9.242896,-21.2702 20.049346,-24.41848 l 30.24092,-8.8102 c 8.02146,-2.336924 14.2912,-10.48211 14.27091,-18.186178 l -0.0693,-26.297268 c -0.0197,-7.491496 -6.52234,-11.682889 -14.3709,-11.218066 -5.05129,0.300149 -10.36049,1.091882 -15.51904,2.242168 z m -16.73491,12.654758 c 3.25649,-0.747798 5.90605,1.141077 5.91766,4.208585 0.0115,3.056078 -2.61824,6.169259 -5.87353,6.961472 -3.29336,0.801477 -5.99136,-1.051456 -6.00413,-4.152178 -0.0129,-3.112303 2.66542,-6.261334 5.96,-7.017879 z"
+         id="path1948"
+         inkscape:original-d="m 125.94834,56.90183 c -4.46075,0.02029 -8.72064,0.39168 -12.46892,1.039242 -11.04196,1.904587 -13.04676,5.891088 -13.04676,13.242852 v 9.70945 h 26.0935 v 3.23649 h -26.0935 -9.792664 c -7.58351,0 -14.22383,4.45028 -16.30084,12.91624 -2.3958,9.703936 -2.50207,15.759366 0,25.891866 1.85481,7.54222 6.28437,12.91624 13.86787,12.91624 h 8.97155 v -11.63947 c 0,-8.40882 7.451814,-15.82611 16.300844,-15.82611 h 26.06309 c 7.25504,0 13.04675,-5.83223 13.04675,-12.945926 v -24.25878 c 0,-6.90419 -5.96561,-12.090573 -13.04675,-13.242852 -4.48248,-0.728521 -9.13343,-1.059483 -13.59417,-1.039242 z m -14.11117,7.809129 c 2.69527,0 4.89633,2.184068 4.89633,4.869575 -1e-5,2.67596 -2.20106,4.83988 -4.89633,4.83988 -2.70495,0 -4.89633,-2.16392 -4.89633,-4.83988 -2e-5,-2.685489 2.19138,-4.869575 4.89633,-4.869575 z" />
+      <path
+         style="display:inline;fill:url(#linearGradient1475);fill-opacity:1;stroke-width:0.961599"
+         d="m 159.67753,70.556082 0.031,12.203211 c 0.024,9.455205 -8.16733,19.838877 -17.74912,22.673727 l -30.23738,8.94596 c -8.69489,2.57246 -16.00167,11.70337 -15.966273,19.84407 l 0.122886,28.26216 c 0.03494,8.03529 7.675467,9.98829 16.066557,9.19931 9.82391,-0.92454 19.01577,-3.84607 30.18194,-11.06205 7.25081,-4.68132 14.26536,-11.27055 14.24445,-19.20645 l -0.0276,-10.48641 -29.0922,9.73477 -0.0125,-3.62839 29.09552,-9.60322 13.78092,-4.54851 c 7.78518,-2.56956 10.63479,-8.91859 13.26963,-17.861 2.70335,-9.146686 2.57373,-17.097769 -0.0505,-27.038735 -1.89806,-7.20584 -5.53427,-12.087533 -13.34252,-10.080167 z m -15.77665,71.648578 c 2.99208,-1.02848 5.40602,0.50209 5.41429,3.41765 0.008,2.92545 -2.39141,6.16442 -5.38247,7.23344 -3.00339,1.07342 -5.48085,-0.45586 -5.49017,-3.42205 -0.009,-2.95617 2.45392,-6.19631 5.45835,-7.22904 z"
+         id="path1950"
+         inkscape:original-d="m 155.84335,84.129864 v 11.31284 c 0,8.770696 -7.61605,16.152716 -16.30084,16.152716 h -26.06309 c -7.13913,0 -13.04676,5.96557 -13.04676,12.94594 v 24.25879 c 0,6.90417 6.14915,10.96514 13.04676,12.94593 8.25974,2.37122 16.18039,2.79977 26.06309,0 6.56914,-1.85699 13.04675,-5.59418 13.04675,-12.94593 v -9.70946 h -26.0631 v -3.23648 h 26.0631 13.04676 c 7.5835,0 10.40942,-5.16452 13.04674,-12.91624 2.72426,-7.9803 2.60835,-15.65464 0,-25.891866 -1.87415,-7.37081 -5.4536,-12.91624 -13.04674,-12.91624 z m -14.65859,61.433786 c 2.70493,0 4.89633,2.16392 4.89633,4.83988 0,2.68548 -2.1914,4.86957 -4.89633,4.86957 -2.69528,0 -4.89634,-2.18409 -4.89634,-4.86957 0,-2.67596 2.20105,-4.83988 4.89634,-4.83988 z" />
+    </g>
+    <path
+       id="path2900"
+       style="fill-rule:evenodd;fill:url(#linearGradient3498)"
+       d="m0.6238 17.941l55.887 43.794v133.78l-55.887-76.02-0.0002-101.56z" />
+    <path
+       id="path2575"
+       sodipodi:nodetypes="cc"
+       style="stroke:#784421;stroke-width:2.5111px;fill:none"
+       d="m60.085 10.357l68.255 36.476" />
+    <path
+       id="path3353"
+       style="stroke:#c7a768;stroke-width:2.5111px;fill:none"
+       d="m1.5695 18.833l55.872 43.631 129.64-27.936" />
+    <path
+       id="path2577"
+       sodipodi:nodetypes="cccccccccccc"
+       style="opacity:0.42169;fill-rule:evenodd;fill-opacity:0.36486;stroke:#ffffff;stroke-width:0.50222;fill:#34dbdb"
+       d="m140.9 44.454l0.19 10.79-3.84-6.513-3.06 7.534-2.91-6.278-3.68 6.513-1.73-3.767-3.92 6.592-1.57-5.022-4.63 7.533-0.36-11.849 25.51-5.533z" />
+    <path
+       id="path3355"
+       style="stroke:#c7a768;stroke-width:2.5111px;fill:none"
+       d="m57.128 62.15v134.34" />
+    <path
+       id="path3349"
+       sodipodi:nodetypes="ccccc"
+       style="opacity:0.5;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.50222;fill:#a9c7c9"
+       d="m115.35 49.908l-66.226-38.451 21.03-3.139 70.936 36.097-25.74 5.493z" />
+    <path
+       id="path3351"
+       sodipodi:nodetypes="cccccccc"
+       style="fill:none;stroke:#6c5434;stroke-width:2.5111px"
+       d="m 1.2556,18.833 0.3139,101.39 54.93,75.65 130.26,-48.66 -0.31,-113.31 L 109.8595,1.259 1.2844671,17.839495 Z" />
+  </g>
+</svg>

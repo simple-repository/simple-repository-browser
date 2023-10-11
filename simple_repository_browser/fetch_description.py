@@ -6,25 +6,22 @@
 # or submit itself to any jurisdiction.
 
 import asyncio
-import contextlib
 import dataclasses
-import datetime
 import email.parser
 import email.policy
 import logging
 import os.path
-import tarfile
+import pathlib
 import tempfile
 import typing
-import zipfile
 
 import aiohttp
-import bleach
-import importlib_metadata
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
-from simple_repository.simple import model
+import readme_renderer.txt
+from packaging.requirements import Requirement
+from simple_repository import SimpleRepository, model
 
 
 @dataclasses.dataclass
@@ -35,49 +32,19 @@ class FileInfo:
 
 @dataclasses.dataclass
 class PackageInfo:
+    """Represents a simplified pkg-info/dist-info metadata, suitable for easy (and safe) use in html templates"""
     summary: str
-    description: str
-    url: str
+    description: str  # This is HTML safe (rendered with readme_renderer).
     author: typing.Optional[str] = None
     maintainer: typing.Optional[str] = None
     classifiers: typing.Sequence[str] = ()
-    release_date: typing.Optional[datetime.datetime] = None
     project_urls: typing.Dict[str, str] = dataclasses.field(default_factory=dict)
-    files_info: typing.Dict[str, FileInfo] = dataclasses.field(default_factory=dict)
     requires_python: typing.Optional[str] = None
-    requires_dist: typing.Sequence[str] = ()
+    requires_dist: typing.Sequence[Requirement] = ()
 
-
-class SDist(pkginfo.SDist):
-    def read(self):
-        fqn = os.path.abspath(
-            os.path.normpath(self.filename),
-        )
-
-        archive, names, read_file = self._get_archive(fqn)
-
-        try:
-            tuples = [x.split('/') for x in names if 'PKG-INFO' in x]
-            schwarz = sorted([(-len(x), x) for x in tuples])
-
-            for path in [x[1] for x in schwarz]:
-                candidate = '/'.join(path)
-                data = read_file(candidate)
-                if b'Metadata-Version' in data:
-                    reqs = '/'.join(path[:-1] + ['requires.txt'])
-                    if reqs in names:
-                        contents = read_file(reqs).decode()
-                        # Private method to read the pkg-info metadata from the sdist.
-                        r = importlib_metadata.Distribution._convert_egg_info_reqs_to_simple_reqs(
-                            importlib_metadata.Sectioned.read(contents),
-                        )
-                        data = data.decode().split('\n')
-                        inject = [f'Requires-Dist: {req}' for req in r]
-                        data[2:2] = inject
-                        data = '\n'.join(data).encode('utf-8')
-                    return data
-        finally:
-            archive.close()
+    # A mapping of filename to FileInfo. This must only be used for sharing size information,
+    # and will be removed once this code moves to a component based repository definition.
+    files_info: dict[str, FileInfo] = dataclasses.field(default_factory=dict)
 
 
 async def fetch_file(url, dest):
@@ -96,61 +63,44 @@ async def fetch_file(url, dest):
                     fd.write(chunk)
 
 
-class _ZipfileTimeTracker(zipfile.ZipFile):
-    def read(self, name):
-        info = self.getinfo(name)
-        t = datetime.datetime(*info.date_time)
-        _ZipfileTimeTracker.captured_time = t
-        return super().read(name)
+class PkgInfoFromFile(pkginfo.Distribution):
+    def __init__(self, filename: str):
+        self._filename = filename
+        self.extractMetadata()
 
-
-class _TarfileTimeTracker(tarfile.TarFile):
-    def extractfile(self, name):
-        t = self.getmember(name).mtime
-        _TarfileTimeTracker.captured_time = datetime.datetime.fromtimestamp(t)
-        return super().extractfile(name)
-
-
-class ArchiveTimestampCapture:
-    def __init__(self):
-        self.timestamp = None
-
-    @contextlib.contextmanager
-    def patch_archive_classes(self):
-        """
-        Patch zipfile and tarfile to capture the timestamp of any opened files.
-
-        """
-        tarfile.TarFile, orig_tarfile = _TarfileTimeTracker, tarfile.TarFile
-        zipfile.ZipFile, orig_zipfile = _ZipfileTimeTracker, zipfile.ZipFile
-        _ZipfileTimeTracker.captured_time = _TarfileTimeTracker.captured_time = None
-        try:
-            yield
-            self.timestamp = _ZipfileTimeTracker.captured_time or _TarfileTimeTracker.captured_time
-        finally:
-            zipfile.ZipFile, tarfile.TarFile = orig_zipfile, orig_tarfile
-
-
-EMPTY_PKG_INFO = PackageInfo('', '', '')
+    def read(self):
+        content = pathlib.Path(self._filename).read_text()
+        return content.encode()
 
 
 async def package_info(
     release_files: tuple[model.File, ...],
-) -> typing.Optional[PackageInfo]:
-    if not release_files:
-        return None
-
+    repository: SimpleRepository,
+    project_name: str,
+) -> tuple[model.File, PackageInfo]:
     files = sorted(
         release_files,
         key=lambda file: (
-            file.filename.endswith('.whl'),
-            file.filename.endswith('.tar.gz'),
-            file.filename.endswith('.zip'),
+            not file.dist_info_metadata,  # Put those with dist info metadata first.
+            not file.filename.endswith('.whl'),
+            not file.filename.endswith('.tar.gz'),
+            not file.filename.endswith('.zip'),
+            file.upload_time,  # Distinguish conflicts by picking the earliest one.
         ),
     )
 
-    files_info = {}
+    files_info: typing.Dict[str, FileInfo] = {}
+
+    # Get the size from the repository, if possible.
+    for file in files:
+        if file.size:
+            files_info[file.filename] = FileInfo(
+                size=file.size,
+            )
+
     limited_concurrency = asyncio.Semaphore(10)
+    # Compute the size of each file.
+    # TODO: This should be done as part of the repository component interface.
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         async def semaphored_head(filename, url):
             async with limited_concurrency:
@@ -161,6 +111,7 @@ async def package_info(
         coros = [
             semaphored_head(file.filename, file.url)
             for file in files
+            if file.filename not in files_info
         ]
         for coro in asyncio.as_completed(coros):
             filename, response = await coro
@@ -169,32 +120,34 @@ async def package_info(
             )
 
     file = files[0]
-    logging.info(f'Downloading {file.filename} from {file.url}')
 
-    is_wheel = file.filename.endswith('.whl')
-    # Limiting ourselves to wheels and sdists is the 80-20 rule.
-    archive_type = pkginfo.Wheel if is_wheel else SDist
+    if file.dist_info_metadata:
+        resource_name = file.filename + '.metadata'
+    else:
+        raise ValueError(f"Metadata not available for {file}")
+
+    logging.info(f'Downloading metadata for {file.filename} from {resource_name}')
 
     with tempfile.NamedTemporaryFile(
             suffix=os.path.splitext(file.filename)[1],
     ) as tmp:
-        try:
-            await fetch_file(file.url, tmp.name)
-        except IOError as err:
-            logging.warning(f"Unable to fetch {file.url}: {str(err)}")
-            return None
+        resource = await repository.get_resource(project_name, resource_name)
+
+        if isinstance(resource, model.TextResource):
+            tmp.write(resource.text.encode())
+            if not file.upload_time:
+                # If the repository doesn't provide information about the upload time, estimate
+                # it from the headers of the resource, if they exist.
+                if ct := resource.context.get('creation-date'):
+                    file = dataclasses.replace(file, upload_time=ct)
+        elif isinstance(resource, model.HttpResource):
+            await fetch_file(resource.url, tmp.name)
+        else:
+            raise ValueError(f"Unhandled resource type ({type(resource)})")
+
         tmp.flush()
         tmp.seek(0)
-        try:
-            # Capture the timestamp of the file that pkginfo opens so that we
-            # can estimate the release date.
-            ts_capture = ArchiveTimestampCapture()
-            with ts_capture.patch_archive_classes():
-                info = archive_type(tmp.name)
-        except ValueError as err:
-            logging.warning(f'Unable to open {file.url}: { str(err) }')
-            return None
-
+        info = PkgInfoFromFile(tmp.name)
         description = generate_safe_description_html(info)
 
         # If there is email information, but not a name in the "author" or "maintainer"
@@ -215,29 +168,45 @@ async def package_info(
         if not info.maintainer and info.maintainer_email:
             info.maintainer = extract_usernames(info.maintainer_email)
 
-        # TODO: More metadata could be extracted here.
+        project_urls = {
+            url.split(',')[0].strip().title(): url.split(',')[1].strip()
+            for url in info.project_urls or []
+        }
+        # Ensure that a Homepage exists in the project urls
+        if info.home_page and 'Homepage' not in project_urls:
+            project_urls['Homepage'] = info.home_page
+
+        sorted_urls = {
+            name: url for name, url in sorted(
+                project_urls.items(),
+                key=lambda item: (item[0] != 'Homepage', item[0]),
+            )
+        }
+
         pkg = PackageInfo(
             summary=info.summary or '',
             description=description,
-            url=info.home_page,
             author=info.author,
             maintainer=info.maintainer,
             classifiers=info.classifiers,
-            release_date=ts_capture.timestamp,
-            project_urls={url.split(',')[0].strip(): url.split(',')[1].strip() for url in info.project_urls or []},
-            files_info=files_info,
+            project_urls=sorted_urls,
             requires_python=info.requires_python,
-            requires_dist=info.requires_dist,
+            requires_dist=[Requirement(s) for s in info.requires_dist],
+            # We include files info as it is the only way to influence the file.size of
+            # all files (for the files list page). In the future, this can be a standalone
+            # component.
+            files_info=files_info,
         )
 
-        # Ensure that a Homepage exists in the project urls
-        if pkg.url and 'Homepage' not in pkg.project_urls:
-            pkg.project_urls['Homepage'] = pkg.url
+        if not file.size:
+            # If the repository doesn't provide information about the size take it from
+            # the file info that we gathered.
+            file = dataclasses.replace(file, size=files_info[file.filename].size)
 
-        return pkg
+        return file, pkg
 
 
-def generate_safe_description_html(package_info: pkginfo.Distribution):
+def generate_safe_description_html(package_info: pkginfo.Distribution) -> str:
     # Handle the valid description content types.
     # https://packaging.python.org/specifications/core-metadata
     description_type = package_info.description_content_type or 'text/x-rst'
@@ -248,28 +217,7 @@ def generate_safe_description_html(package_info: pkginfo.Distribution):
 
     elif description_type == 'text/markdown' or description_type.startswith('text/markdown;'):  # Seen longer form with orjson
         return readme_renderer.markdown.render(raw_description)
+    elif description_type == 'text/plain' or description_type.startswith('text/plain;'):  # seen with nbformat
+        return readme_renderer.txt.render(raw_description)
     else:
-        # Plain, or otherwise.
-        description = raw_description
-
-    ALLOWED_TAGS = [
-        "h1", "h2", "h3", "h4", "h5", "h6", "hr",
-        "div", "object",
-        "ul", "ol", "li", "p", "br",
-        "pre", "code", "blockquote",
-        "strong", "em", "a", "img", "b", "i",
-        "table", "thead", "tbody", "tr", "th", "td", "tt",
-    ]
-    ALLOWED_ATTRIBUTES = {
-        "h1": ["id"], "h2": ["id"], "h3": ["id"], "h4": ["id"],
-        "a": ["href", "title"],
-        "img": ["src", "title", "alt"],
-    }
-
-    description = bleach.clean(
-        description,
-        tags=set(bleach.sanitizer.ALLOWED_TAGS) | set(ALLOWED_TAGS),
-        attributes=ALLOWED_ATTRIBUTES,
-    )
-    description = bleach.linkify(description, parse_email=True)
-    return description
+        raise ValueError(f"Unknown readme format {description_type}")

@@ -7,7 +7,7 @@
 
 import datetime
 
-from simple_repository.simple.repositories.core import SimpleRepository
+from simple_repository import SimpleRepository
 
 
 def create_table(connection):

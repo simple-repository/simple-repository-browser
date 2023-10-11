@@ -14,7 +14,7 @@ https://packaging.python.org/guides/distributing-packages-using-setuptools/
 """
 from pathlib import Path
 
-from setuptools import find_packages, setup
+from setuptools import setup
 
 HERE = Path(__file__).parent.absolute()
 with (HERE / 'README.md').open('rt') as fh:
@@ -23,21 +23,20 @@ with (HERE / 'README.md').open('rt') as fh:
 
 REQUIREMENTS: dict = {
     'core': [
-        'simple-repository',
         'aiohttp',
-        'bleach',
+        'aiosqlite',
         'diskcache',
         'docutils',
         'fastapi',
-        'fastapi-utils',
         'importlib_metadata>=6.0',
         'jinja2',
         'markdown',
+        'markupsafe',
         'packaging',
         'parsley',
         'pkginfo',
-        'pypi_simple>=1.0',
         'readme-renderer[md]',
+        'simple-repository',
         'uvicorn',
     ],
     'test': [
@@ -60,8 +59,8 @@ setup(
     long_description_content_type='text/markdown',
     url='',
 
-    packages=find_packages(),
-    python_requires='~=3.9',
+    packages=['simple_repository_browser'],
+    python_requires='~=3.11',
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",

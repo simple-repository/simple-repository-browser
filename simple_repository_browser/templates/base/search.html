@@ -57,6 +57,7 @@
 
             {% if results_count > 0 %}
               Found {{ results_count }} results
+                {% if n_pages > 1%}. Page {{ page }} of {{  n_pages }}:{% endif %}
               <br>
 
               {% for result in results %}
@@ -64,6 +65,43 @@
               {% endfor %}
             {% endif %}
           </div>
+          {% if n_pages > 1 %}
+            <nav aria-label="...">
+              <ul class="pagination justify-content-center">
+                {% if page > 1 %}{# Note: page starts at 1. #}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('search').include_query_params(query=search_query, page=page-1) }}">
+                            Previous
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            Previous
+                        </span>
+                    </li>
+                {% endif %}
+                <li class="page-item active">
+                  <span class="page-link">
+                    Page {{ page }} of {{ n_pages }}
+                  </span>
+                </li>
+                {% if page < n_pages %}
+                    <li class="page-item">
+                      <a class="page-link" href="{{ url_for('search').include_query_params(query=search_query, page=page+1) }}">
+                          Next
+                      </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            Next
+                        </span>
+                    </li>
+                {% endif %}
+              </ul>
+            </nav>
+          {% endif %}
         </div>
       </div>
     </div>

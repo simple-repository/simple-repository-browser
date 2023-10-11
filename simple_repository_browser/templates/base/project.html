@@ -31,7 +31,7 @@
 
   <div class="offset-md-2 col-md-4 text-end">
     <br>
-    {% if latest_release == release %}
+    {% if latest_version == version %}
     <a class="status-badge status-badge--good" href="">
       <i class="fa fa-check fa-fw"></i>&nbsp
         <span>Latest version</span>
@@ -39,13 +39,13 @@
     {% else %}
     <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_version) }}">
       <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
-        <span>Newer version available ({{ latest_release }})</span>
+        <span>Newer version available ({{ latest_version }})</span>
     </a>
     {% endif %}
     <br><br>
     <span data-source="release_date">
         Released:
-        {% set release_date=metadata['info']['creation_date'] %}
+        {% set release_date=file_info.upload_time %}
         {% if (release_date and release_date.year > 1990) %}
             <!-- TODO: Show locale date -->
             {{ release_date.strftime('%b %d, %Y') }}
@@ -68,7 +68,7 @@
         <section class="jumbotron jumbo-separator" id="banner-split">
             <div class="container">
               <div data-source="summary">
-                  {{ metadata['info']['summary'] or 'No summary available' }}
+                  {{ file_metadata.summary or 'No summary available' }}
               </div>
             </div>
         </section>
@@ -99,8 +99,12 @@
           <div id="project_urls">
             <strong>Project Links</strong>
               {% set icon_lookup={
+                "Blog": "fa-blog",
+                "Community": "fa-users",
                 'Documentation': 'fa-book',
                 "Source": "fa-code-branch",
+                "Github": "fa-code-branch",
+                "Releases": "fa-tags",
                 "Source Code": "fa-code-branch",
                 "Code": "fa-code-branch",
                 "Tracker": "fa-bug",
@@ -110,14 +114,12 @@
                 "Changelog": "fa-scroll",
                 "Homepage": "fa-home",
               } %}
-
-              {# URLS to be reversed as per https://stackoverflow.com/a/56243786/741316 #}
-              {% for name, url in metadata['info']['project_urls'].items() | reverse %}
-              {% set fa_icon=icon_lookup.get(name.title(), 'fa-link') %}
+              {% for name, url in file_metadata.project_urls.items() %}
+              {% set fa_icon=icon_lookup.get(name, 'fa-link') %}
                 <button class="btn btn-link col-md-12 rounded-0 files text-start">
                      <a href="{{ url }}">
                          <i class="fa fa-align-left {{ fa_icon }}"></i>
-                            {{name}}
+                         {{ name }}
                      </a>
                 </button>
               {% endfor %}
@@ -125,14 +127,14 @@
           <hr/>
           <div>
               <strong>Meta</strong>
-              {% if metadata['info']['author'] %}
-              <div data-source="author"><strong>Author: </strong> {{ metadata['info']['author'] }}</div>
+              {% if file_metadata.author %}
+              <div data-source="author"><strong>Author: </strong> {{ file_metadata.author }}</div>
               {% endif %}
-              {% if metadata['info']['maintainer'] %}
-              <div data-source="maintainer"><strong>Maintainer: </strong> {{ metadata['info']['maintainer'] }}</div>
+              {% if file_metadata.maintainer %}
+              <div data-source="maintainer"><strong>Maintainer: </strong> {{ file_metadata.maintainer }}</div>
               {% endif %}
-              {% if metadata['info']['requires_python'] %}
-              <div data-source="requires_python"><strong>Requires Python: </strong> {{ metadata['info']['requires_python'] }}</div>
+              {% if file_metadata.requires_python %}
+              <div data-source="requires_python"><strong>Requires Python: </strong> {{ file_metadata.requires_python }}</div>
               {% endif %}
           </div>
           <hr/>
@@ -140,7 +142,7 @@
               <strong>Classifiers</strong>
               <br>
 
-              {% for classifier_header, classifiers in metadata['info']['classifier_groups'] %}
+              {% for classifier_header, classifiers in classifiers_by_top_level.items() %}
               <br><h6>{{ classifier_header }}</h6>
               <ul>
               {% for classifier in classifiers %}
@@ -153,7 +155,7 @@
         <div class="col-md-9">
           <div class="row">
             <div id="description-page" data-purpose="page-switch" data-source="description">
-              {{ metadata['info']['description_html'] or 'Description not available' }}
+              {{ file_metadata.description|safe or 'Description not available' }}
             </div>
           </div>
           <div id="releases-page" data-purpose="page-switch" data-source="releases">
@@ -173,14 +175,14 @@
           <div id="files-page" data-purpose="page-switch" data-source="files">
             Download files for release:
             <div id="project_files">
-               {% for file in metadata['releases'][version] %}
-                <a href="${file.url}">
+               {% for file in files_for_version %}
+                <a href="{{file.url}}">
                  <div class="card" style="margin: 1em;">
                   <div class="card-body">
                     <span class="listing-icon">
                       <i class="far fa-file"></i>
                     </span>
-                    {{ file['filename'] }} ({{ fmt_size(file['size']) }})
+                    {{ file['filename'] }}{% if file_metadata.files_info[file.filename].size %} ({{ fmt_size(file_metadata.files_info[file.filename].size) }}){% endif %}
                   </div>
                  </div>
                 </a>
@@ -188,12 +190,12 @@
             </div>
           </div>
           <div id="dependencies-page" data-purpose="page-switch">
-              {% if not metadata['info']['requires_dist'] %}
+              {% if not file_metadata.requires_dist %}
                 No dependencies
               {% else %}
                 Dependencies:
                 <div>
-                   {% for requirement in metadata['info']['requires_dist'] %}
+                   {% for requirement in file_metadata.requires_dist %}
                     <a href="{{ url_for('project', project_name=requirement.name) }}">
                      <div class="card" style="margin: 1em;">
                       <div class="card-body">
@@ -203,9 +205,6 @@
                      </div>
                     </a>
                   {% endfor %}
-                  {% if not metadata['info']['requires_dist'] %}
-                    No dependencies!
-                  {% endif %}
                 </div>
               {% endif %}
           </div>
