@@ -4,6 +4,7 @@ import typing
 from pathlib import Path
 
 import aiohttp
+import aiosqlite
 import diskcache
 import fastapi
 from simple_repository.components.http import HttpRepository
@@ -32,9 +33,11 @@ class AppBuilder:
         self.browser_version = browser_version
 
         self.cache = diskcache.Cache(str(cache_dir/'diskcache'))
+        self.db_path = cache_dir / 'projects.sqlite'
         self.con = sqlite3.connect(
-            cache_dir/'projects.sqlite',
+            self.db_path,
             detect_types=sqlite3.PARSE_DECLTYPES,
+            timeout=5,
         )
         self.con.row_factory = sqlite3.Row
         fetch_projects.create_table(self.con)
@@ -43,10 +46,14 @@ class AppBuilder:
         _view = self.create_view()
 
         async def lifespan(app: fastapi.FastAPI):
-            async with aiohttp.ClientSession() as session:
+            async with (
+                aiohttp.ClientSession() as session,
+                aiosqlite.connect(self.db_path, timeout=5) as db,
+            ):
                 _controller = self.create_controller(
                     model=self.create_model(
                         session=session,
+                        database=db,
                     ),
                     view=_view,
                 )
@@ -95,13 +102,13 @@ class AppBuilder:
             cache=self.cache,
         )
 
-    def create_model(self, session: aiohttp.ClientSession) -> model.Model:
+    def create_model(self, session: aiohttp.ClientSession, database: aiosqlite.Connection) -> model.Model:
         source = MetadataInjector(
             HttpRepository(
                 url=self.index_url,
                 session=session,
             ),
-            database=self.con,
+            database=database,
             session=session,
         )
         return model.Model(
