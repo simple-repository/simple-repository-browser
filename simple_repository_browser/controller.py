@@ -77,11 +77,11 @@ class Controller:
         return self.view.about_page(response, request)
 
     @router.get("/search", name="search")
-    async def search(self, request: fastapi.Request, query: str, page: int = 0) -> str:
+    async def search(self, request: fastapi.Request, query: str, page: int = 1) -> str:
+        # Note: page is 1 based. We don't have a page 0.
         page_size = 50
-        offset = page * page_size
         try:
-            response = self.model.project_query(query=query, size=page_size, offset=offset)
+            response = self.model.project_query(query=query, page_size=page_size, page=page)
         except errors.InvalidSearchQuery as e:
             raise errors.RequestError(
                 detail=str(e),

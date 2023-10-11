@@ -1,4 +1,5 @@
 import itertools
+import math
 import sqlite3
 import typing
 
@@ -23,8 +24,10 @@ class QueryResultModel(typing.TypedDict):
     exact: tuple[str, str, str, str] | None
     search_query: str
     results: list[tuple[str, str, str, str]]
-    results_count: int
+    results_count: int  # May be more than in the results list (since paginated).
     single_name_proposal: str | None
+    page: int  # Note: starts at 1.
+    n_pages: int
 
 
 class ProjectPageModel(typing.TypedDict):
@@ -88,15 +91,15 @@ class Model:
             n_packages_w_dist_info=n_packages_w_dist_info,
         )
 
-    def project_query(self, query: str, size: int, offset: int) -> QueryResultModel:
+    def project_query(self, query: str, page_size: int, page: int) -> QueryResultModel:
         try:
             search_terms = _search.parse(query)
         except _search.ParseError:
             raise errors.InvalidSearchQuery("Invalid search pattern")
 
+        if not search_terms:
+            raise errors.InvalidSearchQuery("Please specify a search query")
         try:
-            if len(search_terms) == 0:
-                raise ValueError("Please specify a search query")
             condition_query, condition_terms = _search.build_sql(search_terms)
         except ValueError as err:
             raise errors.InvalidSearchQuery(f"Search query invalid ({str(err)})")
@@ -104,7 +107,21 @@ class Model:
         single_name_proposal = _search.simple_name_from_query(search_terms)
         exact = None
 
+        offset = (page-1) * page_size  # page is 1 based.
+
         with self.projects_db as cursor:
+            result_count = cursor.execute(
+                "SELECT COUNT(*) as count FROM projects WHERE "
+                f"{condition_query}", condition_terms,
+            ).fetchone()
+            n_results = result_count['count']
+
+            n_pages = math.ceil(n_results / page_size)
+            if n_pages > 0 and (page < 1 or page > n_pages):
+                raise errors.InvalidSearchQuery(
+                    f"Requested page (page: {page}) is beyond the number of pages ({n_pages})",
+                )
+
             if single_name_proposal:
                 exact = cursor.execute(
                     'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?',
@@ -113,11 +130,8 @@ class Model:
             results = cursor.execute(
                 "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE "
                 f"{condition_query} LIMIT ? OFFSET ?",
-                condition_terms + (size, offset),
+                condition_terms + (page_size, offset),
             ).fetchall()
-
-        # TODO: This shouldn't include the pagination.
-        n_results = len(results)
 
         # Drop the duplicate.
         if exact in results:
@@ -129,6 +143,8 @@ class Model:
             results=results,
             results_count=n_results,
             single_name_proposal=single_name_proposal,
+            page=page,
+            n_pages=n_pages,
         )
 
     async def project_page(
