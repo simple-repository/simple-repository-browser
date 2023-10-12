@@ -1,10 +1,3 @@
-"""
-setup.py for simple-repository-browser.
-
-For reference see
-https://packaging.python.org/guides/distributing-packages-using-setuptools/
-
-"""
 from pathlib import Path
 
 from setuptools import setup
@@ -45,18 +38,18 @@ REQUIREMENTS: dict = {
 setup(
     name='simple-repository-browser',
 
-    author='CERN Accelerators and Technology, BE-CSS-SET, Phil Elson',
-    author_email='philip.elson@cern.ch',
-    description='A web application for a browsing a Python PEP-503 simple repository',
+    author='CERN, BE-CSS-SET',
+    description='A web interface to browse and search packages in a simple package repository (PEP-503), inspired by PyPI / warehouse',
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    url='',
+    url='https://gitlab.cern.ch/acc-co/devops/python/package-index/simple-repository-browser',
 
     packages=['simple_repository_browser'],
     python_requires='~=3.11',
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
     ],
     package_data={
         '': [
