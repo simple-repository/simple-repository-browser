@@ -46,7 +46,7 @@ setup(
     name='simple-repository-browser',
 
     author="CERN, BE-CSS-SET",
-    description='A web interface to browse and search packages in a simple package repository (PEP-503), inspired by PyPI / warehouse',
+    description='A web interface to browse and search packages in any simple package repository (PEP-503), inspired by PyPI / warehouse',
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     url="https://github.com/simple-repository/simple-repository-browser",
