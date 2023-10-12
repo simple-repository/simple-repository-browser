@@ -75,3 +75,17 @@ The browser can be run with:
 ```bash
 python -m simple_repository_browser
 ```
+
+
+## License and Support
+
+This code has been released under the MIT license.
+It is an initial prototype which is developed in-house, and _not_ currently openly developed.
+
+It is hoped that the release of this prototype will trigger interest from other parties that have similar needs.
+With sufficient collaborative interest there is the potential for the project to be openly
+developed, and to power Python package repositories across many domains.
+
+Please get in touch at https://github.com/orgs/simple-repository/discussions to share how
+this project may be useful to you. This will help us to gauge the level of interest and
+provide valuable insight when deciding whether to commit future resources to the project.
