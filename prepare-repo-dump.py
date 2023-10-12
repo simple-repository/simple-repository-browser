@@ -20,7 +20,6 @@ for pcache in build.glob('**/__pycache__'):
 shutil.rmtree(srb / 'static' / 'js')
 shutil.rmtree(build / 'javascript' / 'node_modules')
 (srb / 'tests' / 'test_pypi_frontend.py').unlink()
-(srb / 'lazy_wheel.py').unlink()
 (srb / '_develop.py').unlink()
 
 
@@ -42,7 +41,21 @@ for file in [here / 'setup.py', here / 'pyproject.toml']:
 
 content = (build/'setup.py').read_text()
 content = content.replace('acc-py-index~=3.0', 'simple-repository')
-(build/'setup.py').write_text(content)
+lines = []
+for line in content.split('\n'):
+    indent = len(line) - len(line.lstrip())
+    if 'author=' in line:
+        lines.append(' ' * indent + 'author="CERN, BE-CSS-SET",')
+        continue
+    if 'url=' in line:
+        lines.append(' ' * indent + 'url="https://github.com/simple-repository/simple-repository-browser",')
+        continue
+    if 'author' in line:
+        continue
+    if 'maintainer' in line:
+        continue
+    lines.append(line)
+(build/'setup.py').write_text('\n'.join(lines))
 
 
 for file in build.glob('**/templates/base/*'):
