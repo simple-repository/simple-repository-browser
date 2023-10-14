@@ -10,8 +10,9 @@ from simple_repository import SimpleRepository
 from simple_repository.errors import PackageNotFoundError
 from simple_repository.model import File, ProjectDetail
 
-from . import _search, crawler, errors, fetch_projects, projects
+from . import _search, crawler, errors, fetch_projects
 from .fetch_description import PackageInfo
+from .short_release_info import ReleaseInfoModel, ShortReleaseInfo
 
 
 class RepositoryStatsModel(typing.TypedDict):
@@ -35,19 +36,16 @@ class ProjectPageModel(typing.TypedDict):
     project: ProjectDetail
 
     # The list of versions for this project.
-    releases: list[Version]
+    releases: dict[Version, ShortReleaseInfo]
 
     # This version.
-    version: str
-
-    # The files for this version.
-    files_for_version: tuple[File, ...]
+    this_release: ShortReleaseInfo
 
     # Classifiers, grouped by the first part of the classifier
     classifiers_by_top_level: dict[str, tuple[str, ...]]
 
     # The latest stable version of this project.
-    latest_version: str
+    latest_release: ShortReleaseInfo
 
     # The file, found in the project detail page, for which the metadata applies.
     file_info: File
@@ -67,11 +65,13 @@ class Model:
         projects_db: sqlite3.Connection,
         cache: diskcache.Cache,
         crawler: crawler.Crawler,
+        release_info_model: typing.Type[ReleaseInfoModel] = ReleaseInfoModel,
     ) -> None:
         self.projects_db = projects_db
         self.source = source
         self.cache = cache
         self.crawler = crawler
+        self._release_info_model = release_info_model
 
     def repository_stats(self) -> RepositoryStatsModel:
         with self.projects_db as cursor:
@@ -150,7 +150,7 @@ class Model:
     async def project_page(
         self,
         project_name: str,
-        version: Version,
+        version: Version | None,
         recache: bool,
     ) -> ProjectPageModel:
         canonical_name = canonicalize_name(project_name)
@@ -165,13 +165,14 @@ class Model:
             fetch_projects.remove_if_found(self.projects_db, canonical_name)
             raise errors.RequestError(status_code=404, detail=f"Project {project_name} not found.")
 
-        releases = projects.get_releases(prj)
-        if not releases:
+        if not prj.files:
             raise errors.RequestError(status_code=404, detail=f"No releases for {project_name}.")
 
-        latest_version = projects.get_latest_version(releases)
+        releases, latest_version = self._release_info_model.release_infos(prj)
+
         if version is None:
             version = latest_version
+
         if version not in releases:
             raise errors.RequestError(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
@@ -183,11 +184,10 @@ class Model:
         }
         return ProjectPageModel(
             project=prj,
-            releases=sorted(releases),
-            version=str(version),
+            releases=releases,
+            this_release=releases[version],
             classifiers_by_top_level=classifiers_by_top_level,
-            files_for_version=releases[version],
-            latest_version=str(latest_version),  # Note: May be the same release.
+            latest_release=releases[latest_version],  # Note: May be the same release.
             file_info=info_file,
             file_metadata=pkg_info,
         )
