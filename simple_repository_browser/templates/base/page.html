@@ -3,7 +3,7 @@
 
 {% block navbar_left %}
         <form action="{{ url_for('search') }}" type="GET">
-          <input type="text" name="query" value="{{ search_query|escape or '' }}" placeholder="Search projects" >
+          <input type="text" name="query" value="{{ search_query if search_query is defined else '' }}" placeholder="Search projects" >
         </form>
 {% endblock %}
 

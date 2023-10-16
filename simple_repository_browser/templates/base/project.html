@@ -7,30 +7,30 @@
 {% macro page_banner() %}
 <div class="row" style="padding-bottom: 3em; padding-top: 2em">
   <div class="col-md-6">
-    <h1> {{ project.name }} {{ version }}</h1>
+    <h1> {{ project.name }} {{ this_release.version }}</h1>
     <br>
-    {% if latest_version == version %}
+    {% if this_release.is_latest %}
     <span class="pip-command" id="pip-command">pip install {{ project.name }}
-      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
+      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ this_release.version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
     </span>
     {% else %}
-    <span class="pip-command" id="pip-command">pip install {{ project.name }}=={{ version }}
-      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
+    <span class="pip-command" id="pip-command">pip install {{ project.name }}=={{ this_release.version }}
+      <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ this_release.version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
     </span>
     {% endif %}
   </div>
 
   <div class="offset-md-2 col-md-4 text-end">
     <br>
-    {% if latest_version == version %}
+    {% if this_release.is_latest %}
     <a class="status-badge status-badge--good" href="">
       <i class="fa fa-check fa-fw"></i>&nbsp
         <span>Latest version</span>
     </a>
     {% else %}
-    <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_version) }}">
+    <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_release.version) }}">
       <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
-        <span>Newer version available ({{ latest_version }})</span>
+        <span>Newer version available ({{ latest_release.version }})</span>
     </a>
     {% endif %}
     <br><br>
@@ -150,14 +150,19 @@
             </div>
           </div>
           <div id="releases-page" data-purpose="page-switch" data-source="releases">
-          {% for _version in releases|reverse %}
-            <a href="{{ url_for('project_version', project_name=project.name, version=_version) }}">
+          {% for release_info in releases|reverse %}
+            <a href="{{ url_for('project_version', project_name=project.name, version=release_info.version) }}">
                 <div class="card" style="margin: 1em;">
                   <div class="card-body">
                     <span class="listing-icon">
                       <i class="far fa-folder-open"></i>
                     </span>
-                    {{ _version }}
+                    {{ release_info.version }}
+                    {% if release_info.release_date %}
+                        <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
+                            {{ release_info.release_date.strftime('%b %d, %Y') }}
+                        </span>
+                    {% endif %}
                   </div>
                 </div>
             </a>
@@ -166,7 +171,7 @@
           <div id="files-page" data-purpose="page-switch" data-source="files">
             Download files for release:
             <div id="project_files">
-               {% for file in files_for_version %}
+               {% for file in this_release.files %}
                 <a href="{{file.url}}">
                  <div class="card" style="margin: 1em;">
                   <div class="card-body">
@@ -224,28 +229,28 @@ function show_page(page_class){
 $('button.releases').click(
   function() {
     show_page('releases');
-    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=version) }}/releases' );
+    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=this_release.version) }}/releases' );
   }
 )
 
 $('button.description').click(
   function() {
     show_page('description');
-    history.replaceState( {} , 'Description', '{{ url_for('project_version', project_name=project.name, version=version) }}/description' );
+    history.replaceState( {} , 'Description', '{{ url_for('project_version', project_name=project.name, version=this_release.version) }}/description' );
   }
 )
 
 $('button.files').click(
   function() {
     show_page('files');
-    history.replaceState( {} , 'Files', '{{ url_for('project_version', project_name=project.name, version=version) }}/files' );
+    history.replaceState( {} , 'Files', '{{ url_for('project_version', project_name=project.name, version=this_release.version) }}/files' );
   }
 )
 
 $('button.dependencies').click(
   function() {
     show_page('dependencies');
-    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=version) }}/dependencies' );
+    history.replaceState( {} , 'Releases', '{{ url_for('project_version', project_name=project.name, version=this_release.version) }}/dependencies' );
   }
 )
 
