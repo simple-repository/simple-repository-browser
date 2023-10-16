@@ -93,6 +93,8 @@
                 "Blog": "fa-blog",
                 "Community": "fa-users",
                 'Documentation': 'fa-book',
+                'Donate': 'fa-donate',
+                'Forum': 'fa-comments',
                 "Source": "fa-code-branch",
                 "Github": "fa-code-branch",
                 "Releases": "fa-tags",
@@ -109,7 +111,7 @@
               {% set fa_icon=icon_lookup.get(name, 'fa-link') %}
                 <button class="btn btn-link col-md-12 rounded-0 files text-start">
                      <a href="{{ url }}">
-                         <i class="fa fa-align-left {{ fa_icon }}"></i>
+                         <i class="fa fa-align-left fa-fw {{ fa_icon }}"></i>
                          {{ name }}
                      </a>
                 </button>
@@ -213,10 +215,6 @@
 {% block extra_footer %}
 <script src="{{ url_for('static', path='/js/simple-repository-browser.project.js') }}"></script>
 <script>
-  function humanFileSize(size) {
-      var i = Math.floor( Math.log(size) / Math.log(1024) );
-      return ( size / Math.pow(1024, i) ).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
-  };
 
 function show_page(page_class){
   $('button[data-purpose="page-select"]').addClass('btn-link').removeClass('btn-primary')
@@ -256,11 +254,11 @@ $('button.dependencies').click(
 
   var url_parts = window.location.href.split('/')
   last_part = url_parts[url_parts.length - 1]
-  if (last_part == 'files') {
+  if (last_part === 'files') {
     show_page('files');
-  } else if (last_part == 'releases') {
+  } else if (last_part === 'releases') {
     show_page('releases');
-  } else if (last_part == 'dependencies') {
+  } else if (last_part === 'dependencies') {
     show_page('dependencies');
   } else {
     show_page('description');
