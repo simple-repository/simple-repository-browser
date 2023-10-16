@@ -83,6 +83,7 @@ class PackageInfo:
     project_urls: typing.Dict[str, str] = dataclasses.field(default_factory=dict)
     requires_python: typing.Optional[str] = None
     requires_dist: RequirementsSequence = RequirementsSequence()
+    yanked: bool | str = False
 
     # A mapping of filename to FileInfo. This must only be used for sharing size information,
     # and will be removed once this code moves to a component based repository definition.
