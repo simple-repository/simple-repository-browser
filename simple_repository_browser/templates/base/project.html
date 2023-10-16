@@ -93,6 +93,7 @@
                 "Blog": "fa-blog",
                 "Community": "fa-users",
                 'Documentation': 'fa-book',
+                'Download': 'fa-download',
                 'Donate': 'fa-donate',
                 'Forum': 'fa-comments',
                 "Source": "fa-code-branch",
@@ -105,6 +106,7 @@
                 "Bug Tracker": "fa-bug",
                 "Discussions": "fa-comments",
                 "Changelog": "fa-scroll",
+                "Release Notes": "fa-scroll",
                 "Homepage": "fa-home",
               } %}
               {% for name, url in file_metadata.project_urls.items() %}
@@ -191,15 +193,68 @@
               {% if not file_metadata.requires_dist %}
                 No dependencies
               {% else %}
-                Dependencies:
                 <div>
-                   {% for requirement in file_metadata.requires_dist %}
+                    <div class="float-end">
+                    Extras:
+                    {% for extra in file_metadata.requires_dist.extras() %}
+                        <button id="btn-extra-{{ extra }}" class="btn btn-info position-relative me-2 mb-1 btn-sm" onclick="toggle_extra('{{  extra }}')">
+                            {{ extra }}
+                            <span id="btn-extra-{{ extra }}-filter-on" class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="display: none;">
+                                <i class="fas fa-binoculars fa-1x" style="color: black;"></i>
+                            </span>
+                        </button>
+                    {% else %}
+                        None
+                    {% endfor %}
+                    </div>
+                    <div class="clearfix"></div>
+                    Dependencies:
+                    <script>
+                        function toggle_extra(extra) {
+                          elements = document.querySelectorAll("[data-extra='"+ extra +"']");
+                          button = document.getElementById('btn-extra-' + extra + '-filter-on');
+                          extra_currently_hidden = button.style.display === 'none';
+
+                          if (extra_currently_hidden) {
+                              button.style.display = 'block';
+                          } else {
+                              button.style.display = 'none';
+                          }
+
+                          for (let i = 0; i < elements.length; i++) {
+                            if (extra_currently_hidden) {
+                              elements[i].style.display = 'block';
+                            } else {
+                              elements[i].style.display = 'none';
+                            }
+                          }
+                        }
+                    </script>
+
+                    {% for requirement in file_metadata.requires_dist %}
                     <a href="{{ url_for('project', project_name=requirement.name) }}">
-                     <div class="card" style="margin: 1em;">
-                      <div class="card-body">
-                        <img src="{{ url_for('static', path='/images/python-logo-only.svg') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 64px;" >
-                        {{ requirement.name }} {% if requirement.__str__() != requirement.name %} ({{ requirement }}) {% endif %}
-                      </div>
+                     {% set extra=file_metadata.requires_dist.extra_for_requirement(requirement) %}
+                     <div class="card" {% if extra %}data-extra="{{ extra }}"{% endif %} style="margin: 1em; {% if extra %}display: none;{% endif %}">
+                       <div class="card-body">
+                         <span class="listing-icon">
+                           <img src="{{ url_for('static', path='/images/python-logo-only.svg') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 64px;" >
+                         </span>
+                         {{ requirement.name }}{% if requirement.extras %}[{{ ','.join(requirement.extras) }}]{% endif %}
+                         <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
+                           {{  render_markers(
+                                    requirement,
+                                    format_strings={
+                                        'combine_nested_expr': '''{lhs} {op} {rhs}''',
+                                        'expr': '''<button type="button" class="btn btn-info btn-sm me-2 mb-1">{lhs} {op} {rhs}</button>''',
+                                    }
+                                )|safe
+                           }}
+                         </span>
+                         <span>
+                           {% if requirement.specifier %} ({{ requirement.specifier }}) {% endif %}
+                           {% if requirement.url %} ({{ requirement.url }}) {% endif %}
+                         </span>
+                       </div>
                      </div>
                     </a>
                   {% endfor %}
