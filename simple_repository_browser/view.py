@@ -6,6 +6,7 @@ import jinja2
 from packaging.requirements import Requirement
 
 from . import model
+from .compatibility_matrix import compatibility_matrix
 
 
 class View:
@@ -34,6 +35,7 @@ class View:
         templates.globals['fmt_size'] = sizeof_fmt
         templates.globals['browser_version'] = self.version
         templates.globals['render_markers'] = render_markers
+        templates.globals['compatibility_matrix'] = compatibility_matrix
 
         return templates
 
