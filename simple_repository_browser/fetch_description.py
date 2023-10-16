@@ -23,6 +23,55 @@ class FileInfo:
     size: int
 
 
+class RequirementsSequence(tuple[Requirement]):
+    def extras(self) -> set[str]:
+        # Get all extras found in any of the contained requirements.
+        _extras = set()
+        for req in iter(self):
+            _extras.update(self.extras_for_requirement(req))
+        return _extras
+
+    @classmethod
+    def extra_for_requirement(cls, requirement: Requirement) -> str | None:
+        extras = list(cls.extras_for_requirement(requirement))
+        if len(extras) > 1:
+            raise ValueError("Not possible from setuptools")
+        elif extras:
+            return extras[0]
+        else:
+            return None
+
+    @classmethod
+    def discover_extra_markers(cls, ast) -> typing.Generator[str, None, None]:
+        # Find all extra parts of the markers.
+        if len(ast) == 1:
+            # https://github.com/pypa/packaging/blob/09f131b326453f18a217fe34f4f7a77603b545db/src/packaging/markers.py#L75
+            ast = ast[0]
+        if isinstance(ast, list):
+            if isinstance(ast[0], (list, tuple)):
+                yield from cls.discover_extra_markers(ast[0])
+            if isinstance(ast[2], (list, tuple)):
+                yield from cls.discover_extra_markers(ast[2])
+        elif isinstance(ast, tuple):
+            lhs_v = getattr(ast[0], 'value', None)
+            if lhs_v == 'extra':
+                yield ast[2].value
+            # Note: Technically, it is possible to build a '"foo" == extra' style
+            #       marker. We don't bother with it though, since it isn't something
+            #       that comes out of setuptools.
+        else:
+            raise ValueError(f"Unexpected ast component {ast}")
+
+    @classmethod
+    def extras_for_requirement(cls, requirement: Requirement) -> set[str]:
+        req_marker = requirement.marker
+        if req_marker:
+            # Access the AST. Not yet a public API, see https://github.com/pypa/packaging/issues/448.
+            markers_ast = req_marker._markers
+            return set(list(cls.discover_extra_markers(markers_ast)))
+        return set()
+
+
 @dataclasses.dataclass
 class PackageInfo:
     """Represents a simplified pkg-info/dist-info metadata, suitable for easy (and safe) use in html templates"""
@@ -33,7 +82,7 @@ class PackageInfo:
     classifiers: typing.Sequence[str] = ()
     project_urls: typing.Dict[str, str] = dataclasses.field(default_factory=dict)
     requires_python: typing.Optional[str] = None
-    requires_dist: typing.Sequence[Requirement] = ()
+    requires_dist: RequirementsSequence = RequirementsSequence()
 
     # A mapping of filename to FileInfo. This must only be used for sharing size information,
     # and will be removed once this code moves to a component based repository definition.
@@ -184,7 +233,7 @@ async def package_info(
             classifiers=info.classifiers,
             project_urls=sorted_urls,
             requires_python=info.requires_python,
-            requires_dist=[Requirement(s) for s in info.requires_dist],
+            requires_dist=RequirementsSequence([Requirement(s) for s in info.requires_dist]),
             # We include files info as it is the only way to influence the file.size of
             # all files (for the files list page). In the future, this can be a standalone
             # component.
