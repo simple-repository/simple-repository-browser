@@ -22,7 +22,12 @@
 
   <div class="offset-md-2 col-md-4 text-end">
     <br>
-    {% if this_release.is_latest %}
+    {% if this_release.yank_status is not false %}
+    <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_release.version) }}">
+      <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
+        <span>This release has been {% if this_release.yank_status == 'partial' %}partially {% endif %}yanked</span>
+    </a>
+    {% elif this_release.is_latest %}
     <a class="status-badge status-badge--good" href="">
       <i class="fa fa-check fa-fw"></i>&nbsp
         <span>Latest version</span>
@@ -98,6 +103,7 @@
                 'Forum': 'fa-comments',
                 "Source": "fa-code-branch",
                 "Github": "fa-code-branch",
+                "Repository": "fa-code-branch",
                 "Releases": "fa-tags",
                 "Source Code": "fa-code-branch",
                 "Code": "fa-code-branch",
@@ -167,6 +173,17 @@
                             {{ release_info.release_date.strftime('%b %d, %Y') }}
                         </span>
                     {% endif %}
+                    {% if release_info.yank_status is not false %}
+                        <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
+                            <button class="btn btn-danger position-relative me-2 mb-1 btn-sm">
+                                {% if release_info.yank_status == 'partial' %}
+                                    Partially yanked
+                                {% else %}
+                                    Yanked
+                                {% endif %}
+                            </button>
+                        </span>
+                    {% endif %}
                   </div>
                 </div>
             </a>
@@ -183,6 +200,13 @@
                       <i class="far fa-file"></i>
                     </span>
                     {{ file['filename'] }}{% if file_metadata.files_info[file.filename].size %} ({{ fmt_size(file_metadata.files_info[file.filename].size) }}){% endif %}
+                    {% if file.yanked is not none and file.yanked is not false %}
+                        <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
+                            <button class="btn btn-danger position-relative me-2 mb-1 btn-sm" {% if file.yanked is not true %}title="{{ file.yanked }}" {% endif %}>
+                                Yanked
+                            </button>
+                        </span>
+                    {% endif %}
                   </div>
                  </div>
                 </a>
