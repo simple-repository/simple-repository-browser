@@ -32,7 +32,6 @@ class View:
         templates.globals['url_for'] = url_for
         templates.globals['fmt_size'] = sizeof_fmt
         templates.globals['browser_version'] = self.version
-        templates.globals['str'] = str
 
         return templates
 

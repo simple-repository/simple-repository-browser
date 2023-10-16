@@ -205,9 +205,11 @@ def generate_safe_description_html(package_info: pkginfo.Distribution) -> str:
     description_type = package_info.description_content_type or 'text/x-rst'
     raw_description = package_info.description or ''
 
+    # Seen in the wild (internal only: sps-deep-hysteresis-compensation).
+    description_type = description_type.replace('\"', '')
+
     if description_type == 'text/x-rst' or description_type.startswith('text/x-rst;'):
         return readme_renderer.rst.render(raw_description)
-
     elif description_type == 'text/markdown' or description_type.startswith('text/markdown;'):  # Seen longer form with orjson
         return readme_renderer.markdown.render(raw_description)
     elif description_type == 'text/plain' or description_type.startswith('text/plain;'):  # seen with nbformat

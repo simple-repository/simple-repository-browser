@@ -150,7 +150,7 @@
             </div>
           </div>
           <div id="releases-page" data-purpose="page-switch" data-source="releases">
-          {% for release_info in releases.values()|reverse %}
+          {% for release_info in releases|reverse %}
             <a href="{{ url_for('project_version', project_name=project.name, version=release_info.version) }}">
                 <div class="card" style="margin: 1em;">
                   <div class="card-body">
@@ -160,7 +160,7 @@
                     {{ release_info.version }}
                     {% if release_info.release_date %}
                         <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
-                            {{ release_info.release_date.strftime('%b %d, %Y') if release_info.release_date else '' }}
+                            {{ release_info.release_date.strftime('%b %d, %Y') }}
                         </span>
                     {% endif %}
                   </div>

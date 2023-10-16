@@ -35,8 +35,8 @@ class ProjectPageModel(typing.TypedDict):
     # The project detail contents for this project.
     project: ProjectDetail
 
-    # The list of versions for this project.
-    releases: dict[Version, ShortReleaseInfo]
+    # The list of versions for this project. Sorted by version.
+    releases: tuple[ShortReleaseInfo, ...]
 
     # This version.
     this_release: ShortReleaseInfo
@@ -184,7 +184,7 @@ class Model:
         }
         return ProjectPageModel(
             project=prj,
-            releases=releases,
+            releases=tuple(releases.values()),
             this_release=releases[version],
             classifiers_by_top_level=classifiers_by_top_level,
             latest_release=releases[latest_version],  # Note: May be the same release.

@@ -74,6 +74,6 @@ class ReleaseInfoModel:
         # and if nothing, fall back to the greatest dev version. If no release is available return None.
         sorted_versions = sorted(versions)
         for version in sorted_versions[::-1]:
-            if not (version.is_devrelease or version.is_prerelease):
+            if not version.is_devrelease and not version.is_prerelease:
                 return version
         return sorted_versions[-1]
