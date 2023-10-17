@@ -1,6 +1,7 @@
 ### generated_by: acc-py app lock
 ### base_python: 2023.06
 ### reqs: eJyNjTGSwjAMRXudwl2qMDtb0DDZizBbCFsJIrbllRQgtyehptju/feKjyxX9wbIYn+ZnSCxzRHjdSOJi3M2GNEcGwOXJuqZL30hx4SO4Wc4Hr7gxvWG31BQ5ySP+oalGY4EDeOME9dpI7VMK7R5m6OAEqZCvVJNpKTnkn7Btou8uybGLrrCcucoWuGycE7hFOjpimEYQpfo3kFT6qOUwv6hrU72P7+L7gU2ql5J
+### reqdist_hash: de25c7551ea76cdc0f17032bd515f36b3821048e25418b1bba694418dbb49e3a
 aiohttp==3.8.6
 aiosignal==1.3.1
 aiosqlite==0.19.0
