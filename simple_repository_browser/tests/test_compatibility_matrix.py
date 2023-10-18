@@ -108,3 +108,18 @@ def test_compat_mtx__none_abi():
     )
     assert py_abi_names == ('CPython 3.8',)
     assert plat_names == ('manylinux2014_x86_64', 'win32', 'win_amd64')
+
+
+def test_compat_mtx__abi3_many_python():
+    # A completely wild but real name. Specifying multiple Python targets makes no sense when
+    # using abi3.
+    py_abi_names, plat_names, compat_mtx = compatibility_matrix(
+        (
+            model.File(
+                "PyQt6-6.0.2-cp36.cp37.cp38.cp39-abi3-manylinux_2_28_x86_64.whl", "", {},
+            ),
+        ),
+    )
+    # In practice, this should be 1 ('py36_abi3', ), but no attempt has been made
+    # to honour this (given how unnecessary it is).
+    assert len(py_abi_names) == 4
