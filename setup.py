@@ -31,6 +31,7 @@ REQUIREMENTS: dict = {
     'dev': [
         'build',
         'pre-commit',
+        'types-setuptools',
     ],
 }
 
