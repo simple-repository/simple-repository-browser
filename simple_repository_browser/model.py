@@ -10,7 +10,7 @@ from simple_repository import SimpleRepository
 from simple_repository.errors import PackageNotFoundError
 from simple_repository.model import File, ProjectDetail
 
-from . import _search, crawler, errors, fetch_projects
+from . import _search, compatibility_matrix, crawler, errors, fetch_projects
 from .fetch_description import PackageInfo
 from .short_release_info import ReleaseInfoModel, ShortReleaseInfo
 
@@ -53,6 +53,9 @@ class ProjectPageModel(typing.TypedDict):
     # The pkg-info metadata, in dictionary form.
     file_metadata: PackageInfo
 
+    # Information about the wheel compatibility
+    compatibility_matrix: compatibility_matrix.CompatibilityMatrixModel
+
 
 class ErrorModel(typing.TypedDict):
     detail: str
@@ -90,6 +93,10 @@ class Model:
             n_dist_info=n_dist_info,
             n_packages_w_dist_info=n_packages_w_dist_info,
         )
+
+    def _compatibility_matrix(self, files: tuple[File, ...]) -> compatibility_matrix.CompatibilityMatrixModel:
+        # Compute the compatibility matrix for the given files.
+        return compatibility_matrix.compatibility_matrix(files)
 
     def project_query(self, query: str, page_size: int, page: int) -> QueryResultModel:
         try:
@@ -182,6 +189,9 @@ class Model:
                 pkg_info.classifiers, key=lambda s: s.split('::')[0],
             )
         }
+
+        compat_mtx = self._compatibility_matrix(releases[version].files)
+
         return ProjectPageModel(
             project=prj,
             releases=tuple(releases.values()),
@@ -190,4 +200,5 @@ class Model:
             latest_release=releases[latest_version],  # Note: May be the same release.
             file_info=info_file,
             file_metadata=pkg_info,
+            compatibility_matrix=compat_mtx,
         )

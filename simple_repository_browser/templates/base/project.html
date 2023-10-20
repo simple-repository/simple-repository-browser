@@ -84,7 +84,7 @@
             </button>
             <button class="btn btn-link col-md-12 rounded-0 files text-start" type="button" data-purpose="page-select">
               <i class="fa fa-download fa-fw"></i>
-              Download files
+              Files
             </button>
             <button class="btn btn-link col-md-12 rounded-0 dependencies text-start" type="button" data-purpose="page-select">
               <i class="fa fa-sitemap fa-fw"></i>
@@ -190,7 +190,47 @@
           {% endfor %}
           </div>
           <div id="files-page" data-purpose="page-switch" data-source="files">
-            Download files for release:
+           {% if compatibility_matrix.matrix %}
+            <h3>
+                Wheel compatibility matrix
+            </h3>
+            <div class="table-responsive">
+                <table class="table table-hover text-center table-sm">
+                    <thead class="table-info">
+                      <tr>
+                        <th scope="col" class="base-color">
+                            Platform
+                        </th>
+                        {% for py_abi_name in compatibility_matrix.py_and_abi_names %}
+                        <th scope="col" class="secondary-color">
+                            {{ py_abi_name }}
+                        </th>
+                        {% endfor %}
+                      </tr>
+                    </thead>
+                    {% for platform_tag in compatibility_matrix.platform_names %}
+                    <tr>
+                      <td class="table-light">
+                        {{ platform_tag }}
+                      </td>
+                      {% for py_and_abi in compatibility_matrix.py_and_abi_names %}
+                        <td>
+                            {% if (py_and_abi, platform_tag) in compatibility_matrix.matrix %}
+                            <a href="{{ compatibility_matrix.matrix[(py_and_abi, platform_tag)].url }}" class="link-unstyled">
+                                <i class="fas fa-check"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                      {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <br>
+           {% endif %}
+            <h3>
+                Files in release
+            </h3>
             <div id="project_files">
                {% for file in this_release.files %}
                 <a href="{{file.url}}">
