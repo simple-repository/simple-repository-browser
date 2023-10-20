@@ -1,57 +1,25 @@
 import dataclasses
-from dataclasses import dataclass
 
+from packaging.utils import parse_wheel_filename
 from packaging.version import Version
 from simple_repository import model
 
 
-@dataclass(frozen=True)
-class WheelMeta:
-    project_name: str
-    version: str
-    build_tag: str
-    python_tag: str
-    abi_tag: str
-    platform_tag: str
-
-
-def parse_wheel_filename_format(filename):
-    """
-    Return the (pkg_name, version, build_tag or 0, python tag, abi tag, platform_tag) tuple for the
-    given wheel filename  PEP427 states that a wheel's filename convention is:
-    {distribution}-{version}(-{build tag})?-{python tag}-{abi tag}-{platform tag}.whl
-    Ref: https://www.python.org/dev/peps/pep-0427/#file-name-convention
-    """
-    if filename.endswith('.whl'):
-        filename = filename[:-4]
-    parts = filename.split('-')
-    names = ['project_name', 'version', 'build_tag', 'python_tag', 'abi_tag', 'platform_tag']
-    kwargs = {}
-    if len(parts) == len(names)-1:
-        # Build tag is optional.
-        names.remove('build_tag')
-        kwargs['build_tag'] = ''
-    if len(parts) != len(names):
-        raise ValueError(f'Unexpected number of parts to the wheel filename: {parts} {names}')
-    kwargs.update(zip(names, parts))
-    return WheelMeta(**kwargs)
+@dataclasses.dataclass(frozen=True)
+class CompatibilityMatrixModel:
+    matrix: dict[tuple[str, str], model.File]
+    py_and_abi_names: tuple[str, ...]
+    platform_names: tuple[str, ...]
 
 
 def compatibility_matrix(
-        files: tuple[model.File],
-) -> tuple[
-    tuple[str, ...],
-    tuple[str, ...],
-    dict[tuple[str, str], model.File],
-]:
+        files: tuple[model.File, ...],
+) -> CompatibilityMatrixModel:
     """
     Look at the given files, and compute a compatibility matrix.
 
-    The return is a tuple of:
-        py_abi_names, platform_names, {(py_abi_name, platform_name): file}
-
     """
-    r_compat_matrix: dict[tuple[str, str], model.File] = {}
+    compat_matrix: dict[tuple[str, str], model.File] = {}
     # Track the py_abi_names seen, and store a sort key for those names.
     py_abi_names = {}
     # Track the platform_names (we sort by name).
@@ -62,30 +30,32 @@ def compatibility_matrix(
     for file in files:
         if not file.filename.lower().endswith('.whl'):
             continue
-        whl_meta = parse_wheel_filename_format(file.filename)
-        for platform_tag in whl_meta.platform_tag.split('.'):
-            for python_tag in whl_meta.python_tag.split('.'):
-                for abi_tag in whl_meta.abi_tag.split('.'):
-                    k = (python_tag, abi_tag)
-                    if k not in interpreted_py_abi_tags:
-                        interpreted_py_abi_tags[k] = interpret_py_and_abi_tag(python_tag, abi_tag)
+        _, _, _, tags = parse_wheel_filename(file.filename)
 
-                    tag_interp = interpreted_py_abi_tags[k]
-                    py_abi = tag_interp.nice_name
-                    r_compat_matrix[(py_abi, platform_tag)] = file
+        # Ensure that the tags have a consistent sort order. From
+        # packaging they come as a frozenset, so no such upstream guarantee is provided.
+        sorted_tags = sorted(tags, key=lambda tag: (tag.platform, tag.abi, tag.interpreter))
 
-                    # Track the seen tags, and define a sort order.
-                    py_abi_names[py_abi] = (
-                        tag_interp.python_implementation,
-                        tag_interp.python_version,
-                        tag_interp.nice_name,
-                    )
-                    platform_names.add(platform_tag)
+        for tag in sorted_tags:
+            inter_abi_key = (tag.interpreter, tag.abi)
+            if inter_abi_key not in interpreted_py_abi_tags:
+                interpreted_py_abi_tags[inter_abi_key] = interpret_py_and_abi_tag(tag.interpreter, tag.abi)
+
+            tag_interp = interpreted_py_abi_tags[inter_abi_key]
+            compat_matrix[(tag_interp.nice_name, tag.platform)] = file
+
+            # Track the seen tags, and define a sort order.
+            py_abi_names[tag_interp.nice_name] = (
+                tag_interp.python_implementation,
+                tag_interp.python_version,
+                tag_interp.nice_name,
+            )
+            platform_names.add(tag.platform)
 
     r_plat_names = tuple(sorted(platform_names))
     r_py_abi_names = tuple(sorted(py_abi_names, key=py_abi_names.__getitem__))
 
-    return r_py_abi_names, r_plat_names, r_compat_matrix
+    return CompatibilityMatrixModel(compat_matrix, r_py_abi_names, r_plat_names)
 
 
 # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#python-tag

@@ -134,3 +134,14 @@ img {
   color: inherit;
   text-decoration: inherit;
 }
+
+
+.base-color {
+   background: $base-color !important;
+   color: white !important;
+}
+
+.secondary-color {
+   background: $base-color2 !important;
+   color: white !important;
+}
