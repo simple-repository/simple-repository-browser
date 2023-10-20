@@ -22,7 +22,8 @@
 
   <div class="offset-md-2 col-md-4 text-end">
     <br>
-    {% if this_release.yank_status is not false %}
+    {% if this_release.yank_status is true %}
+        {# Note: We don't include partial yank in this condition intentionally. #}
     <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_release.version) }}">
       <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
         <span>This release has been {% if this_release.yank_status == 'partial' %}partially {% endif %}yanked</span>
@@ -173,16 +174,27 @@
                             {{ release_info.release_date.strftime('%b %d, %Y') }}
                         </span>
                     {% endif %}
-                    {% if release_info.yank_status is not false %}
+                    {% if release_info.yank_status is true %}
+                        {# Note: We don't include partial yank in this condition intentionally. #}
                         <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
                             <button class="btn btn-danger position-relative me-2 mb-1 btn-sm">
-                                {% if release_info.yank_status == 'partial' %}
-                                    Partially yanked
-                                {% else %}
-                                    Yanked
-                                {% endif %}
+                                Yanked
                             </button>
                         </span>
+                    {% endif %}
+                    {% if release_info.version == this_release.version %}
+                    <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
+                       <button class="btn base-color position-relative me-2 mb-1 btn-sm">
+                           This release
+                       </button>
+                    </span>
+                    {% endif %}
+                    {% if release_info.version.is_prerelease %}
+                    <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
+                       <button class="btn btn-warning position-relative me-2 mb-1 btn-sm">
+                           Pre-release
+                       </button>
+                    </span>
                     {% endif %}
                   </div>
                 </div>
