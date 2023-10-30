@@ -22,7 +22,7 @@ REQUIREMENTS: dict = {
         'parsley',
         'pkginfo',
         'readme-renderer[md]',
-        'simple-repository',
+        'simple-repository<=0.3',
         'uvicorn',
     ],
     'test': [

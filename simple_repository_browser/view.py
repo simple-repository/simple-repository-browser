@@ -4,6 +4,7 @@ from pathlib import Path
 import fastapi
 import jinja2
 from packaging.requirements import Requirement
+from starlette.datastructures import URL
 
 from . import model
 
@@ -19,7 +20,7 @@ class View:
         templates = jinja2.Environment(loader=loader, autoescape=True, undefined=jinja2.StrictUndefined)
 
         @jinja2.pass_context
-        def url_for(context: typing.Mapping[str, typing.Any], name: str, **path_params: typing.Any) -> str:
+        def url_for(context: typing.Mapping[str, typing.Any], name: str, **path_params: typing.Any) -> URL:
             request: fastapi.Request = context["request"]
             return request.url_for(name, **path_params)
 

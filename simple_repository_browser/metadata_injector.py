@@ -106,8 +106,8 @@ class MetadataInjector(MetadataInjectorRepository):
                 )
 
             # Cache the result for a faster response in the future.
-            encoded_metadata = pickle.dumps({'headers': headers, 'body': metadata})
-            await self._cache.set(cache_key, base64.b64encode(encoded_metadata).decode('ascii'))
+            encoded_metadata_bytes = pickle.dumps({'headers': headers, 'body': metadata})
+            await self._cache.set(cache_key, base64.b64encode(encoded_metadata_bytes).decode('ascii'))
 
         result = model.TextResource(text=metadata)
         result.context.update(headers)

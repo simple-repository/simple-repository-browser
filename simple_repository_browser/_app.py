@@ -7,6 +7,7 @@ import aiohttp
 import aiosqlite
 import diskcache
 import fastapi
+from simple_repository import SimpleRepository
 from simple_repository.components.http import HttpRepository
 
 from . import controller, crawler, errors, fetch_projects, model, view
@@ -93,7 +94,7 @@ class AppBuilder:
     def create_view(self) -> view.View:
         return view.View(self.template_paths, self.browser_version)
 
-    def create_crawler(self, session: aiohttp.ClientSession, source: HttpRepository) -> crawler.Crawler:
+    def create_crawler(self, session: aiohttp.ClientSession, source: SimpleRepository) -> crawler.Crawler:
         return crawler.Crawler(
             session=session,
             crawl_popular_projects=self.crawl_popular_projects,

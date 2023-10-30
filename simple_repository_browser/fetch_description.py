@@ -1,5 +1,6 @@
 import asyncio
 import dataclasses
+import datetime
 import email.parser
 import email.policy
 import logging
@@ -76,7 +77,7 @@ class RequirementsSequence(tuple[Requirement]):
 class PackageInfo:
     """Represents a simplified pkg-info/dist-info metadata, suitable for easy (and safe) use in html templates"""
     summary: str
-    description: str  # This is HTML safe (rendered with readme_renderer).
+    description: str | None  # This is HTML safe (rendered with readme_renderer).
     author: typing.Optional[str] = None
     maintainer: typing.Optional[str] = None
     classifiers: typing.Sequence[str] = ()
@@ -182,7 +183,8 @@ async def package_info(
                 # If the repository doesn't provide information about the upload time, estimate
                 # it from the headers of the resource, if they exist.
                 if ct := resource.context.get('creation-date'):
-                    file = dataclasses.replace(file, upload_time=ct)
+                    if isinstance(ct, str):
+                        file = dataclasses.replace(file, upload_time=datetime.datetime.fromisoformat(ct))
         elif isinstance(resource, model.HttpResource):
             await fetch_file(resource.url, tmp.name)
         else:
@@ -259,11 +261,11 @@ def generate_safe_description_html(package_info: pkginfo.Distribution) -> str:
     description_type = description_type.replace('\"', '')
 
     if description_type == 'text/x-rst' or description_type.startswith('text/x-rst;'):
-        return readme_renderer.rst.render(raw_description)
+        return readme_renderer.rst.render(raw_description) or ""
     elif description_type == 'text/markdown' or description_type.startswith('text/markdown;'):  # Seen longer form with orjson
-        return readme_renderer.markdown.render(raw_description)
+        return readme_renderer.markdown.render(raw_description) or ""
     elif description_type == 'text/plain' or description_type.startswith('text/plain;'):  # seen with nbformat
-        return readme_renderer.txt.render(raw_description)
+        return readme_renderer.txt.render(raw_description) or ""
     else:
         raise ValueError(f"Unknown readme format {description_type}")
 
