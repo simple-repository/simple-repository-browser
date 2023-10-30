@@ -2,8 +2,8 @@ import sqlite3
 import typing
 from datetime import timedelta
 
-import aiohttp
 import diskcache
+import httpx
 from simple_repository import SimpleRepository, errors, model
 from simple_repository.components.http import HttpRepository
 
@@ -17,13 +17,13 @@ class Crawler(base.Crawler):
         full_index: SimpleRepository,
         internal_index: SimpleRepository,
         external_index: SimpleRepository,
-        session: aiohttp.ClientSession,
+        http_client: httpx.AsyncClient,
         crawl_popular_projects: bool,
         projects_db: sqlite3.Connection,
         cache: diskcache.Cache,
         reindex_frequency: timedelta = timedelta(days=1),
     ) -> None:
-        super().__init__(session, crawl_popular_projects, full_index, projects_db, cache, reindex_frequency)
+        super().__init__(http_client, crawl_popular_projects, full_index, projects_db, cache, reindex_frequency)
         self.internal_index = internal_index
         self.external_index = external_index
         self.source_context = SourceContext(internal_index, external_index)
@@ -92,12 +92,12 @@ class SourceContext:
 
 
 async def _to_be_turned_into_a_test():
-    async with aiohttp.ClientSession() as session:
+    async with httpx.AsyncClient() as http_client:
         index = HttpRepository(
             url='https://acc-py-repo.cern.ch/repository/vr-py-releases/simple/',
-            session=session,
+            http_client=http_client,
         )
-        sc = SourceContext(session)
+        sc = SourceContext(http_client)
         prj = await index.get_project_page('pylogbook')
         sources = await sc.determine_source(prj)
         print('SOURCES:', sources)

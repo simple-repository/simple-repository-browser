@@ -5,8 +5,8 @@ import sqlite3
 import typing
 from datetime import timedelta
 
-import aiohttp
 import diskcache
+import httpx
 from packaging.requirements import InvalidRequirement
 from packaging.utils import canonicalize_name
 from packaging.version import Version
@@ -25,7 +25,7 @@ class Crawler:
     """
     def __init__(
         self,
-        session: aiohttp.ClientSession,
+        http_client: httpx.AsyncClient,
         crawl_popular_projects: bool,
         source: SimpleRepository,
         projects_db: sqlite3.Connection,
@@ -34,7 +34,7 @@ class Crawler:
         release_info_model: typing.Type[ReleaseInfoModel] = ReleaseInfoModel,
     ) -> None:
         self.frequency_seconds = reindex_frequency.total_seconds()
-        self._session = session
+        self._http_client = http_client
         self._source = source
         self._projects_db = projects_db
         self._cache = cache
@@ -114,10 +114,10 @@ class Crawler:
             # Add the top 100 packages (and their dependencies) to the index
             URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
             try:
-                async with self._session.get(URL, raise_for_status=False) as resp:
-                    s = await resp.json()
-                    for _, row in zip(range(100), s['rows']):
-                        popular_projects.append(row['project'])
+                resp = await self._http_client.get(URL)
+                s = resp.json()
+                for _, row in zip(range(100), s['rows']):
+                    popular_projects.append(row['project'])
             except Exception as err:
                 print(f'Problem fetching popular projects ({err})')
                 pass
