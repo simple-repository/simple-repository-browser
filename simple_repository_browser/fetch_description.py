@@ -77,7 +77,7 @@ class RequirementsSequence(tuple[Requirement]):
 class PackageInfo:
     """Represents a simplified pkg-info/dist-info metadata, suitable for easy (and safe) use in html templates"""
     summary: str
-    description: str | None  # This is HTML safe (rendered with readme_renderer).
+    description: str  # This is HTML safe (rendered with readme_renderer).
     author: typing.Optional[str] = None
     maintainer: typing.Optional[str] = None
     classifiers: typing.Sequence[str] = ()
