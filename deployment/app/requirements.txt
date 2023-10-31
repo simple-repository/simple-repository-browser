@@ -1,7 +1,7 @@
 ### generated_by: acc-py app lock
 ### base_python: 2023.06
-### reqs: eJxtjbFuwzAMRHd+hTZPLooOXQr3R4oOjEQnjCWTJak0/vs4Xevt3TscDlkuEQrI4j+Vg6CwLxnzZSfJPbg6zOiBysBNxaLyaWwUWDAwfU7vL69w5fWKb9DQliK/6x90dZwJFPOCZ17PO5lX2kCXPc4CRlgajUZrISP7auUbfL+oT6fiHGIb9BtnsRVOnWtJH4nuYZimKQ2FbgOo0ZilNY7/XWxKPjpF1xCpfrDegvxgeeCfYngAvZxp/Q==
-### reqdist_hash: 4c4aef430f7494ac690d93ae4a056ba7dfdb2913990bb314370c95e1f9f30a14
+### reqs: eJxtjbFuwzAMRHd+hTZPDoIWyNK6P1J0YCQ6YSyJKkml9d/H6Vpv797hcMhydW+ALPad2QkS2xIxXjeS2J2zwYzm2Bi4NFHPfB4LOSZ0DB/T6XCEG9cbvkBBXZL81D/ozXAmaBgXvHC9bKSWaYW2bHEWUMJUaFSqiZT0s6QvsO0iP10TYxddw/t0PLxCv3MUrXDunFN4C/TrimGawpDoPkBTGqOUwv6/87WRjUbem4tk21mvTraz3PFPMTwAzJtrJw==
+### reqdist_hash: 997aab186aaceef2afee72272043a0023c65cc2cfebea41d6b2947c9d07d7758
 aiohttp==3.8.6
 aiosignal==1.3.1
 aiosqlite==0.19.0
@@ -14,7 +14,7 @@ click==8.1.7
 cmarkgfm==2022.10.27
 diskcache==5.6.3
 docutils==0.20.1
-fastapi==0.104.0
+fastapi==0.104.1
 frozenlist==1.4.0
 h11==0.14.0
 importlib-metadata==6.8.0

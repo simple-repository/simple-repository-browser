@@ -68,7 +68,7 @@ class Controller:
         return router
 
     @router.get("/", name="index")
-    async def index(self, request: fastapi.Request = None) -> str:
+    async def index(self, request: fastapi.Request) -> str:
         return self.view.index_page(request)
 
     @router.get("/about", name="about")
@@ -89,9 +89,9 @@ class Controller:
             )
         return self.view.search_page(response, request)
 
-    @router.get("/project/{project_name}", name="project")
-    @router.get("/project/{project_name}/{version}", name='project_version')
-    @router.get("/project/{project_name}/{version}/{page_section}", name='project_version_section')
+    @router.get("/project/{project_name}", name="project", response_model=None)
+    @router.get("/project/{project_name}/{version}", name='project_version', response_model=None)
+    @router.get("/project/{project_name}/{version}/{page_section}", name='project_version_section', response_model=None)
     async def project(
         self,
         request: fastapi.Request,
@@ -99,7 +99,7 @@ class Controller:
         version: str | None = None,
         page_section: ProjectPageSection | None = ProjectPageSection.description,
         recache: bool = False,
-    ) -> str:
+    ) -> str | StreamingResponse:
         _ = page_section  # Handled in javascript.
         _version = None
         if version:

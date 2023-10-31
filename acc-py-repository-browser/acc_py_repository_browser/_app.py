@@ -2,6 +2,7 @@ import typing
 from pathlib import Path
 
 from aiohttp import ClientSession
+from simple_repository import SimpleRepository
 from simple_repository.components.http import HttpRepository
 
 from simple_repository_browser._app import AppBuilder
@@ -34,7 +35,7 @@ class AccAppBuilder(AppBuilder):
         self.internal_index_url = internal_index_url
         self.external_index_url = external_index_url
 
-    def create_crawler(self, session: ClientSession, source: HttpRepository) -> Crawler:
+    def create_crawler(self, session: ClientSession, source: SimpleRepository) -> Crawler:
         intenal_index = HttpRepository(
             url=self.internal_index_url,
             session=session,
