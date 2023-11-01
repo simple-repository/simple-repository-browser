@@ -1,0 +1,8 @@
+{% extends "base/base.html" %}
+
+{% block body %}
+    <div class="container-fluid text-center" style="background-color: red; color: white; padding: 0.25em;">
+      <b>Warning</b>: This is a tech preview of <a href="https://github.com/simple-repository" class="nav-link" style="display: inline;">github.com/simple-repository</a>. The service is unsupported and may be removed at any time.
+    </div>
+{{ super() }}
+{% endblock body %}
