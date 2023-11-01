@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import typing
 from enum import Enum
 from functools import partial
@@ -13,10 +14,18 @@ from packaging.version import InvalidVersion, Version
 from . import errors, model, view
 
 
+@dataclasses.dataclass(frozen=True)
+class Route:
+    fn: typing.Callable
+    methods: set[str]
+    response_class: typing.Type
+    kwargs: dict[str, typing.Any]
+
+
 class Router:
     # A class-level router definition, capable of generating an instance specific router with its "build_fastapi_router".
     def __init__(self):
-        self._routes_register = {}
+        self._routes_register: dict[str, Route] = {}
 
     def route(
         self,
@@ -26,7 +35,7 @@ class Router:
         **kwargs: typing.Any,
     ):
         def dec(fn):
-            self._routes_register[path] = (fn, methods, response_class, kwargs)
+            self._routes_register[path] = Route(fn, methods, response_class, kwargs)
             return fn
         return dec
 
@@ -42,9 +51,14 @@ class Router:
     def build_fastapi_router(self, controller: "Controller") -> fastapi.APIRouter:
         router = fastapi.APIRouter()
         for path, route in self._routes_register.items():
-            endpoint, methods, response_class, kwargs = route
-            bound_endpoint = partial(endpoint, controller)
-            router.add_api_route(path=path, endpoint=bound_endpoint, response_class=response_class, methods=methods, **kwargs)
+            bound_endpoint = partial(route.fn, controller)
+            router.add_api_route(
+                path=path,
+                endpoint=bound_endpoint,
+                response_class=route.response_class,
+                methods=list(route.methods),
+                **route.kwargs,
+            )
         return router
 
 
