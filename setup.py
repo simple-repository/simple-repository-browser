@@ -9,7 +9,7 @@ with (HERE / 'README.md').open('rt') as fh:
 
 REQUIREMENTS: dict = {
     'core': [
-        'aiohttp',
+        'httpx',
         'aiosqlite',
         'diskcache',
         'docutils',
@@ -22,7 +22,7 @@ REQUIREMENTS: dict = {
         'parsley',
         'pkginfo',
         'readme-renderer[md]',
-        'simple-repository<=0.3',
+        'simple-repository>=0.4',
         'uvicorn',
     ],
     'test': [

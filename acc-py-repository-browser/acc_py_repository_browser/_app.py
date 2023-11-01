@@ -1,7 +1,7 @@
 import typing
 from pathlib import Path
 
-from aiohttp import ClientSession
+import httpx
 from simple_repository import SimpleRepository
 from simple_repository.components.http import HttpRepository
 
@@ -35,21 +35,21 @@ class AccAppBuilder(AppBuilder):
         self.internal_index_url = internal_index_url
         self.external_index_url = external_index_url
 
-    def create_crawler(self, session: ClientSession, source: SimpleRepository) -> Crawler:
+    def create_crawler(self, http_client: httpx.AsyncClient, source: SimpleRepository) -> Crawler:
         intenal_index = HttpRepository(
             url=self.internal_index_url,
-            session=session,
+            http_client=http_client,
         )
         external_index = HttpRepository(
             url=self.external_index_url,
-            session=session,
+            http_client=http_client,
         )
 
         return Crawler(
             internal_index=intenal_index,
             external_index=external_index,
             full_index=source,
-            session=session,
+            http_client=http_client,
             crawl_popular_projects=self.crawl_popular_projects,
             projects_db=self.con,
             cache=self.cache,

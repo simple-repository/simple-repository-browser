@@ -3,10 +3,10 @@ import sqlite3
 import typing
 from pathlib import Path
 
-import aiohttp
 import aiosqlite
 import diskcache
 import fastapi
+import httpx
 from simple_repository import SimpleRepository
 from simple_repository.components.http import HttpRepository
 
@@ -48,12 +48,12 @@ class AppBuilder:
 
         async def lifespan(app: fastapi.FastAPI):
             async with (
-                aiohttp.ClientSession() as session,
+                httpx.AsyncClient() as http_client,
                 aiosqlite.connect(self.db_path, timeout=5) as db,
             ):
                 _controller = self.create_controller(
                     model=self.create_model(
-                        session=session,
+                        http_client=http_client,
                         database=db,
                     ),
                     view=_view,
@@ -94,29 +94,29 @@ class AppBuilder:
     def create_view(self) -> view.View:
         return view.View(self.template_paths, self.browser_version)
 
-    def create_crawler(self, session: aiohttp.ClientSession, source: SimpleRepository) -> crawler.Crawler:
+    def create_crawler(self, http_client: httpx.AsyncClient, source: SimpleRepository) -> crawler.Crawler:
         return crawler.Crawler(
-            session=session,
+            http_client=http_client,
             crawl_popular_projects=self.crawl_popular_projects,
             source=source,
             projects_db=self.con,
             cache=self.cache,
         )
 
-    def create_model(self, session: aiohttp.ClientSession, database: aiosqlite.Connection) -> model.Model:
+    def create_model(self, http_client: httpx.AsyncClient, database: aiosqlite.Connection) -> model.Model:
         source = MetadataInjector(
             HttpRepository(
                 url=self.index_url,
-                session=session,
+                http_client=http_client,
             ),
             database=database,
-            session=session,
+            http_client=http_client,
         )
         return model.Model(
             source=source,
             projects_db=self.con,
             cache=self.cache,
-            crawler=self.create_crawler(session, source),
+            crawler=self.create_crawler(http_client, source),
         )
 
     def create_controller(self, view: view.View, model: model.Model) -> controller.Controller:

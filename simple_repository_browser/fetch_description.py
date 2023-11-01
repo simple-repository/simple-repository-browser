@@ -9,7 +9,7 @@ import pathlib
 import tempfile
 import typing
 
-import aiohttp
+import httpx
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
@@ -92,18 +92,15 @@ class PackageInfo:
 
 
 async def fetch_file(url, dest):
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.get(url) as r:
+    async with httpx.AsyncClient(verify=False) as http_client:
+        async with http_client.stream("GET", url) as r:
             try:
                 r.raise_for_status()
-            except aiohttp.client.ClientResponseError as err:
+            except httpx.HTTPError as err:
                 raise IOError(f'Unable to fetch file (reason: { str(err) })')
             chunk_size = 1024 * 100
             with open(dest, 'wb') as fd:
-                while True:
-                    chunk = await r.content.read(chunk_size)
-                    if not chunk:
-                        break
+                async for chunk in r.aiter_bytes(chunk_size):
                     fd.write(chunk)
 
 
@@ -145,12 +142,13 @@ async def package_info(
     limited_concurrency = asyncio.Semaphore(10)
     # Compute the size of each file.
     # TODO: This should be done as part of the repository component interface.
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async def semaphored_head(filename, url):
+    async with httpx.AsyncClient(verify=False) as http_client:
+        async def semaphored_head(filename: str, url: str):
             async with limited_concurrency:
+                headers: dict[str, str] = {}
                 return (
                     filename,
-                    await session.head(url, allow_redirects=True, ssl=False, headers={}),
+                    await http_client.head(url, follow_redirects=True, headers=headers),
                 )
         coros = [
             semaphored_head(file.filename, file.url)
