@@ -3,3 +3,28 @@
 {% block logo %}
 {{ super() }} Acc-PyPI
 {% endblock logo %}
+
+
+{% block navbar_right %}
+
+<div class="container text-center">
+    <div class="row">
+
+        {% if request.state.username is defined and request.state.username%}
+        <div class="col">
+            <a class="nav-link" href="{{ url_for('user') }}"">{{ request.state.username }}</a>
+        </div>
+        <div class="col">
+            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+        {% else %}
+        <div class="col">
+            <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+        </div>
+        {% endif %}
+        <div class="col">
+            {{ super() }}
+        </div>
+    </div>
+</div>
+{% endblock %}

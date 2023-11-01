@@ -1,13 +1,20 @@
+import os
 import typing
+import uuid
 from pathlib import Path
 
+import fastapi
 import httpx
 from simple_repository import SimpleRepository
 from simple_repository.components.http import HttpRepository
+from starlette.middleware.sessions import SessionMiddleware
 
+from simple_repository_browser import model, view
 from simple_repository_browser._app import AppBuilder
 
+from .controller import Controller
 from .crawler import Crawler
+from .view import View
 
 
 class AccAppBuilder(AppBuilder):
@@ -34,6 +41,18 @@ class AccAppBuilder(AppBuilder):
         )
         self.internal_index_url = internal_index_url
         self.external_index_url = external_index_url
+
+    def create_app(self) -> fastapi.FastAPI:
+        app = super().create_app()
+        secret_key = os.getenv("SERVER_SECRET") or uuid.uuid4().hex
+        app.add_middleware(SessionMiddleware, secret_key=secret_key)
+        return app
+
+    def create_view(self) -> View:
+        return View(self.template_paths, self.browser_version)
+
+    def create_controller(self, view: view.View, model: model.Model) -> Controller:
+        return Controller(model=model, view=view)
 
     def create_crawler(self, http_client: httpx.AsyncClient, source: SimpleRepository) -> Crawler:
         intenal_index = HttpRepository(

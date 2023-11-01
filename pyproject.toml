@@ -8,5 +8,7 @@ write_to = "simple_repository_browser/_version.py"
 module = [
     "diskcache",
     "parsley",
+    # Only needed for acc-py-repository-browser
+    "authlib.integrations.starlette_client",
 ]
 ignore_missing_imports = true
