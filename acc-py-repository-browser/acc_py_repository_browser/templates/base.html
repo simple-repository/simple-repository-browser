@@ -12,7 +12,7 @@
 
         {% if request.state.username is defined and request.state.username%}
         <div class="col">
-            <a class="nav-link" href="{{ url_for('user') }}"">{{ request.state.username }}</a>
+            <a class="nav-link" href="{{ url_for('user') }}">{{ request.state.username }}</a>
         </div>
         <div class="col">
             <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>

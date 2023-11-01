@@ -1,13 +1,15 @@
 ### generated_by: acc-py app lock
 ### base_python: 2023.06
-### reqs: eJxtjbFuwzAMRHd+hTZPDoKiyFK4P1J0YCQ6YSyZKkml8d9H6Vpv797hcFf3+gBksZ/MTpDYlojx2klic84GM5pjZeBSRT3zeSzkmNAxfE6nwxFuvN7wDQrqkuR3/YNWDWeCinHBC6+XTmqZNqhLj7OAEqZCo9KaSEm/SvoG6xf55aoYu+jWD46Hd2h3jqIrnBvnFD4CPVwxTFMYEt0HqEpjlFLY/3e+VbLRyFt1kWw7683JdpY7/iWGJ+ZCamk=
-### reqdist_hash: 308fa6a7f54b69a688bff54f236f7a39bcad85b8a97f23f9faf12ce10e2c87fa
+### reqs: eJxtjjFuwzAMRXeewpsnB0FRdCmciwQZGImOGUumSlJpfPsqXePt8318PM7u5QnIYj+JnSCyLQHD3JKE6pwMJjTHwsC5iHri65DJMaJjdxq/Dke483rHD8ioS5Tf9T/UYjgRFAwL3ni9taSWaIOytHMSUMKYaVBaIynpOccLWFOkFyti7KJbExwPn1AfHERXwOpz80P7RxO503mqKV3gWjnF7rujpyt249j1kR49FKUhSM7s751vhWww8lpcJNnOenOyneUOf4H+Dxcjc6k=
+### reqdist_hash: b1e8bde61ab3422d7573bd7328817a54066f7a1c420d6f0332010fedb8e150a3
 aiosqlite==0.19.0
 annotated-types==0.6.0
 anyio==3.7.1
+Authlib==1.2.1
 cffi==1.16.0
 click==8.1.7
 cmarkgfm==2022.10.27
+cryptography==41.0.5
 diskcache==5.6.3
 docutils==0.20.1
 fastapi==0.104.1
@@ -15,6 +17,7 @@ h11==0.14.0
 httpcore==0.18.0
 httpx==0.25.0
 importlib-metadata==6.8.0
+itsdangerous==2.1.2
 Jinja2==3.1.2
 Markdown==3.5.1
 MarkupSafe==2.1.3
@@ -25,6 +28,8 @@ pycparser==2.21
 pydantic==2.4.2
 pydantic_core==2.10.1
 Pygments==2.16.1
+python-multipart==0.0.6
+PyYAML==6.0.1
 readme-renderer==42.0
 simple-repository==0.5.0
 simple-repository-browser

@@ -1,5 +1,4 @@
 import datetime
-import os
 import typing
 from copy import deepcopy
 from dataclasses import replace
@@ -12,6 +11,8 @@ from fastapi.responses import RedirectResponse
 
 import simple_repository_browser.controller as base
 from simple_repository_browser.errors import RequestError
+from simple_repository_browser.model import Model as BaseModel
+from simple_repository_browser.view import View as BaseView
 
 from .view import UserInfo, View
 
@@ -19,29 +20,6 @@ from .view import UserInfo, View
 class Token(TypedDict):
     username: str
     expires: float
-
-
-CERN_SSO = 'https://auth.cern.ch/auth/realms/cern/.well-known/openid-configuration'
-
-oauth = OAuth()
-client_id = os.getenv("CLIENT_ID")
-client_secret = os.getenv("CLIENT_SECRET")
-
-if not client_id or not client_secret:
-    raise RuntimeError(
-        "SSO authentication requires both OIDC client_id and client_secret "
-        "to be set as environment variables. Please ensure CLIENT_ID and "
-        "CLIENT_SECRET are correctly configured.",
-    )
-oauth.register(
-    name='cern',
-    server_metadata_url=CERN_SSO,
-    client_id=client_id,
-    client_secret=client_secret,
-    client_kwargs={
-        'scope': 'openid',
-    },
-)
 
 
 def add_login(fn: typing.Callable) -> typing.Callable:
@@ -85,12 +63,27 @@ def authenticated(fn: typing.Callable) -> typing.Callable:
 
 class Controller(base.Controller):
     view: View
-    cern_sso_client = oauth.create_client("cern")
 
     # Decorate all routes with add_login.
     router = deepcopy(base.Controller.router)
-    for path, route in router._routes_register.items():
-        router._routes_register[path] = replace(route, fn=add_login(route.fn))
+    for path, route in router:
+        decorated_route = replace(route, fn=add_login(route.fn))
+        router.update({path: decorated_route})
+
+    def __init__(self, oidc_client_id: str, oidc_secret: str, model: BaseModel, view: BaseView) -> None:
+        super().__init__(model=model, view=view)
+
+        self.oauth = OAuth()
+        self.oauth.register(
+            name='cern',
+            server_metadata_url='https://auth.cern.ch/auth/realms/cern/.well-known/openid-configuration',
+            client_id=oidc_client_id,
+            client_secret=oidc_secret,
+            client_kwargs={
+                'scope': 'openid',
+            },
+        )
+        self.cern_sso_client = self.oauth.create_client("cern")
 
     @router.get("/login", name="login", response_model=None)
     async def login(self, request: fastapi.Request, redirect: str = "/"):

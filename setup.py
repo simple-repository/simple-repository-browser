@@ -24,6 +24,11 @@ REQUIREMENTS: dict = {
         'readme-renderer[md]',
         'simple-repository>=0.4',
         'uvicorn',
+        # This dep is only needed for the acc-py-browser
+        "authlib",
+        # This dep is only needed for the acc-py-browser
+        # since starlette SessionMiddleware requires itsdangerous.
+        "starlette[full]",
     ],
     'test': [
         'pytest',

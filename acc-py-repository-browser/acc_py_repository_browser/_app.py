@@ -52,7 +52,22 @@ class AccAppBuilder(AppBuilder):
         return View(self.template_paths, self.browser_version)
 
     def create_controller(self, view: view.View, model: model.Model) -> Controller:
-        return Controller(model=model, view=view)
+        client_id = os.getenv("CLIENT_ID")
+        client_secret = os.getenv("CLIENT_SECRET")
+
+        if not client_id or not client_secret:
+            raise RuntimeError(
+                "SSO authentication requires both OIDC client_id and client_secret "
+                "to be set as environment variables. Please ensure CLIENT_ID and "
+                "CLIENT_SECRET are correctly configured.",
+            )
+
+        return Controller(
+            oidc_client_id=client_id,
+            oidc_secret=client_secret,
+            model=model,
+            view=view,
+        )
 
     def create_crawler(self, http_client: httpx.AsyncClient, source: SimpleRepository) -> Crawler:
         intenal_index = HttpRepository(

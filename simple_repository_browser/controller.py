@@ -61,6 +61,12 @@ class Router:
             )
         return router
 
+    def __iter__(self) -> typing.Iterator[tuple[str, Route]]:
+        return self._routes_register.items().__iter__()
+
+    def update(self, new_values: dict[str, Route]) -> None:
+        self._routes_register.update(new_values)
+
 
 class ProjectPageSection(str, Enum):
     description = "description"
