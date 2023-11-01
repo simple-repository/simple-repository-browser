@@ -25,13 +25,22 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--cache-dir", type=str, default=Path(os.environ.get('XDG_CACHE_DIR', Path.home() / '.cache')) / 'simple-repository-browser')
     parser.add_argument("--url-prefix", type=str, default="")
     parser.add_argument('--no-popular-project-crawl', dest='crawl_popular_projects', action='store_false', default=True)
+    parser.add_argument('--templates-dir', default=here / "templates", type=Path)
 
 
 def handler(args: typing.Any) -> None:
     app = AppBuilder(
         index_url=args.index_url,
         cache_dir=Path(args.cache_dir),
-        template_paths=[here / "templates", here / "templates" / "base"],
+        template_paths=[
+            args.templates_dir,
+            # Include the base templates so that the given templates directory doesn't have to
+            # implement *all* of the templates. This must be at a lower precedence than the given
+            # templates path, so that they can be overriden.
+            here/"templates"/"base",
+            # Include the "base" folder, such that upstream templates can inherit from "base/...".
+            here/"templates",
+        ],
         static_files_path=here / "static",
         crawl_popular_projects=args.crawl_popular_projects,
         url_prefix=args.url_prefix,
