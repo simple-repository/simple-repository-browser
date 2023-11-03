@@ -86,24 +86,28 @@ class Controller(base.Controller):
         self.cern_sso_client = self.oauth.create_client("cern")
 
     @router.get("/login", name="login", response_model=None)
-    async def login(self, request: fastapi.Request, redirect: str = "/"):
+    async def login(self, request: fastapi.Request):
         url = request.url_for("auth")
+        redirect_url = request.headers.get("referer", str(request.url_for("index")))
+        request.session["redirect_url"] = redirect_url
         return await self.cern_sso_client.authorize_redirect(request, url)
 
     @router.get("/auth", name="auth", response_model=None)
     async def auth(self, request: fastapi.Request) -> RedirectResponse:
+        redirect_url = request.session.pop("redirect_url", "/")
         token = await self.cern_sso_client.authorize_access_token(request)
         expires = (datetime.datetime.now() + datetime.timedelta(hours=1)).timestamp()
         request.session["token"] = Token(
             username=token["userinfo"]["cern_upn"],
             expires=expires,
         )
-        return RedirectResponse("/")
+        return RedirectResponse(redirect_url)
 
     @router.get("/logout", name="logout", response_model=None)
     async def logout(self, request: fastapi.Request) -> RedirectResponse:
         request.session.pop("token", None)
-        return RedirectResponse("/")
+        redirect_url = request.headers.get("referer", str(request.url_for("index")))
+        return RedirectResponse(redirect_url)
 
     @router.get("/user", name="user", response_model=None)
     @authenticated
