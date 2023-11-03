@@ -1,0 +1,16 @@
+{% extends "page.html" %}
+
+{% block page_banner %}
+{% endblock page_banner %}
+
+
+{% block banner_split %}
+{% endblock banner_split %}
+
+
+{% block page_content %}
+{{ super() }}
+<div class="container">
+    You are logged in as: {{ username }}
+</div>
+{% endblock page_content %}
