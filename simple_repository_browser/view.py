@@ -4,6 +4,7 @@ from pathlib import Path
 import fastapi
 import jinja2
 from packaging.requirements import Requirement
+from starlette.datastructures import URL
 
 from . import model
 
@@ -19,14 +20,14 @@ class View:
         templates = jinja2.Environment(loader=loader, autoescape=True, undefined=jinja2.StrictUndefined)
 
         @jinja2.pass_context
-        def url_for(context: typing.Mapping[str, typing.Any], name: str, **path_params: typing.Any) -> str:
+        def url_for(context: typing.Mapping[str, typing.Any], name: str, **path_params: typing.Any) -> URL:
             request: fastapi.Request = context["request"]
             # We don't use request.url_for, as it always returns an absolute URL.
             # This prohibits running behind a proxy which doesn't correctly set
             # X-Forwarded-Proto / X-Forwarded-Prefix, such as the OpenShift ingress.
             # See https://github.com/encode/starlette/issues/538#issuecomment-1135096753 for the
             # proposed solution.
-            return str(request.app.url_path_for(name, **path_params))
+            return URL(str(request.app.url_path_for(name, **path_params)))
 
         def sizeof_fmt(num: float, suffix: str = "B"):
             for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
