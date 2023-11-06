@@ -168,7 +168,7 @@ async def package_info(
     else:
         raise ValueError(f"Metadata not available for {file}")
 
-    logging.info(f'Downloading metadata for {file.filename} from {resource_name}')
+    logging.debug(f'Downloading metadata for {file.filename} from {resource_name}')
 
     with tempfile.NamedTemporaryFile(
             suffix=os.path.splitext(file.filename)[1],
@@ -269,15 +269,15 @@ def generate_safe_description_html(package_info: pkginfo.Distribution) -> str:
 
 
 # async def _devel_to_be_turned_into_test():
-    # index = (source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
+    # repository = (source_url='http://acc-py-repo.cern.ch/repository/vr-py-releases/simple')
 
-    # prj = index.project('pylogbook')  # An internal only project
-    # prj = index.project('pyreadline')  # exe files.
-    # prj = index.project('vme-boards')  # Unusual/unparsable filename
-    # prj = index.project('crcmod')  # No useful format (msi only)
-    # prj = index.project('testcontainers') # Latest is an rc release
-    # prj = index.project('cernsso')  # Has no files (but a release)
-    # prj = index.project('orjson')  # Has a different content type header for the readme
+    # prj = repository.project('pylogbook')  # An internal only project
+    # prj = repository.project('pyreadline')  # exe files.
+    # prj = repository.project('vme-boards')  # Unusual/unparsable filename
+    # prj = repository.project('crcmod')  # No useful format (msi only)
+    # prj = repository.project('testcontainers') # Latest is an rc release
+    # prj = repository.project('cernsso')  # Has no files (but a release)
+    # prj = repository.project('orjson')  # Has a different content type header for the readme
 
     # releases = prj.releases()
     # for release in releases:

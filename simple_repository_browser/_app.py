@@ -2,6 +2,7 @@ import logging
 import sqlite3
 import typing
 from pathlib import Path
+from urllib.parse import urlparse
 
 import aiosqlite
 import diskcache
@@ -9,6 +10,7 @@ import fastapi
 import httpx
 from simple_repository import SimpleRepository
 from simple_repository.components.http import HttpRepository
+from simple_repository.components.local import LocalRepository
 
 from . import controller, crawler, errors, fetch_projects, model, view
 from .metadata_injector import MetadataInjector
@@ -18,7 +20,7 @@ class AppBuilder:
     def __init__(
         self,
         url_prefix: str,
-        index_url: str,
+        repository_url: str,
         cache_dir: Path,
         template_paths: typing.Sequence[Path],
         static_files_path: Path,
@@ -26,7 +28,7 @@ class AppBuilder:
         browser_version: str,
     ) -> None:
         self.url_prefix = url_prefix
-        self.index_url = index_url
+        self.repository_url = repository_url
         self.cache_dir = cache_dir
         self.template_paths = template_paths
         self.static_files_path = static_files_path
@@ -48,7 +50,7 @@ class AppBuilder:
 
         async def lifespan(app: fastapi.FastAPI):
             async with (
-                httpx.AsyncClient() as http_client,
+                httpx.AsyncClient(timeout=30) as http_client,
                 aiosqlite.connect(self.db_path, timeout=5) as db,
             ):
                 _controller = self.create_controller(
@@ -103,12 +105,18 @@ class AppBuilder:
             cache=self.cache,
         )
 
+    def _repo_from_url(self, url: str, http_client: httpx.AsyncClient) -> SimpleRepository:
+        if urlparse(url).scheme in ("http", "https"):
+            return HttpRepository(
+                url=url,
+                http_client=http_client,
+            )
+        else:
+            return LocalRepository(Path(url))
+
     def create_model(self, http_client: httpx.AsyncClient, database: aiosqlite.Connection) -> model.Model:
         source = MetadataInjector(
-            HttpRepository(
-                url=self.index_url,
-                http_client=http_client,
-            ),
+            self._repo_from_url(self.repository_url, http_client=http_client),
             database=database,
             http_client=http_client,
         )

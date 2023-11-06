@@ -54,6 +54,10 @@ for line in content.split('\n'):
         continue
     if 'maintainer' in line:
         continue
+    if 'authlib' in line:
+        continue
+    if 'starlette' in line:
+        continue
     lines.append(line)
 (build/'setup.py').write_text('\n'.join(lines))
 

@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 import typing
 from datetime import timedelta
@@ -14,19 +15,19 @@ from simple_repository_browser.fetch_description import PackageInfo
 class Crawler(base.Crawler):
     def __init__(
         self,
-        full_index: SimpleRepository,
-        internal_index: SimpleRepository,
-        external_index: SimpleRepository,
+        full_repository: SimpleRepository,
+        internal_repository: SimpleRepository,
+        external_repository: SimpleRepository,
         http_client: httpx.AsyncClient,
         crawl_popular_projects: bool,
         projects_db: sqlite3.Connection,
         cache: diskcache.Cache,
         reindex_frequency: timedelta = timedelta(days=1),
     ) -> None:
-        super().__init__(http_client, crawl_popular_projects, full_index, projects_db, cache, reindex_frequency)
-        self.internal_index = internal_index
-        self.external_index = external_index
-        self.source_context = SourceContext(internal_index, external_index)
+        super().__init__(http_client, crawl_popular_projects, full_repository, projects_db, cache, reindex_frequency)
+        self.internal_repository = internal_repository
+        self.external_repository = external_repository
+        self.source_context = SourceContext(internal_repository, external_repository)
 
     async def release_info_retrieved(self, project: model.ProjectDetail, package_info: PackageInfo) -> None:
         """Extend the metadata with the source repository classifier"""
@@ -40,19 +41,20 @@ class Crawler(base.Crawler):
         normalized_project_names_to_crawl: typing.Set[str],
     ) -> None:
         # Add all the release-local packages to the set of names that need to be crawled.
-        project_list = (await self.internal_index.get_project_list()).projects
+        project_list = (await self.internal_repository.get_project_list()).projects
         packages_for_reindexing = set(
             project.normalized_name for project in project_list
         )
+        logging.info(f'Acc-Py index crawler grew the crawl list to {len(normalized_project_names_to_crawl | packages_for_reindexing)}')
         await super().crawl_recursively(normalized_project_names_to_crawl | packages_for_reindexing)
 
 
 class SourceContext:
     # A class to identify the source of a package. This should be a configuration item, and not included in the core repository.
 
-    def __init__(self, internal_index: SimpleRepository, external_index: SimpleRepository):
-        self._internal = internal_index
-        self._external = external_index
+    def __init__(self, internal_repository: SimpleRepository, external_repository: SimpleRepository):
+        self._internal = internal_repository
+        self._external = external_repository
 
     def pkg_same(self, pkg_a: model.ProjectDetail, pkg_b: model.ProjectDetail):
         # We don't use equality, as a difference in source results in a difference in URL prefix
