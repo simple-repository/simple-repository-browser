@@ -64,7 +64,7 @@ class Crawler:
         while packages_for_reindexing - seen:
             remaining_packages = packages_for_reindexing - seen
             pkg_name = remaining_packages.pop()
-            print(
+            logging.info(
                 f"Index iteration loop. Looking at {pkg_name}, with {len(remaining_packages)} remaining ({len(seen)} having been completed)",
             )
             seen.add(pkg_name)
@@ -93,7 +93,7 @@ class Crawler:
                 )
             except InvalidRequirement as err:
                 # See https://discuss.python.org/t/pip-supporting-non-pep508-dependency-specifiers/23107.
-                print(f"Problem handling package {pkg_name}: {err}")
+                logging.warning(f"Problem handling package {pkg_name}: {err}")
                 continue
 
             for dist in pkg_info.requires_dist:
@@ -126,13 +126,13 @@ class Crawler:
                 for _, row in zip(range(100), s['rows']):
                     popular_projects.append(row['project'])
             except Exception as err:
-                print(f'Problem fetching popular projects ({err})')
+                logging.warning(f'Problem fetching popular projects ({err})')
                 pass
 
         await self.crawl_recursively(packages_w_dist_info | set(popular_projects))
 
     async def run_reindex_periodically(self) -> None:
-        print("Starting the reindexing loop")
+        logging.info("Starting the reindexing loop")
         while True:
             try:
                 await self.refetch_hook()
@@ -163,7 +163,7 @@ class Crawler:
                 return info_file, pkg_info
 
         if force_recache:
-            print('Recaching')
+            logging.info('Recaching')
 
         fetch_projects.insert_if_missing(
             self._projects_db,
