@@ -15,4 +15,4 @@ To deploy the change:
 docker push registry.paas.cern.ch/simple-repository/simple-repository-browser:latest
 ```
 
-(you will need to have authenticated)
+(you will need to have authenticated, see https://paas.docs.cern.ch/faq/#how-can-i-access-the-paas-image-registry-from-outside-the-cluster)

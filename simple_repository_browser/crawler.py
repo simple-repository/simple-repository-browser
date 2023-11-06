@@ -48,8 +48,7 @@ class Crawler:
         normalized_project_names_to_crawl: typing.Set[str],
     ) -> None:
         """
-        Crawl the matadata of the packages in
-        normalized_project_names_to_crawl and
+        Crawl the metadata of the packages in normalized_project_names_to_crawl and
         of their dependencies.
         """
         seen: set = set()
@@ -57,10 +56,14 @@ class Crawler:
         while packages_for_reindexing - seen:
             remaining_packages = packages_for_reindexing - seen
             pkg_name = remaining_packages.pop()
-            logging.info(
+            logging.debug(
                 f"Index iteration loop. Looking at {pkg_name}, with {len(remaining_packages)} remaining ({len(seen)} having been completed)",
             )
             seen.add(pkg_name)
+            if len(seen) % 100 == 0:
+                logging.info(
+                    f"Index iteration batch of 100 complete. {len(seen)} completed, {len(remaining_packages)} remaining",
+                )
             try:
                 prj = await self._source.get_project_page(pkg_name)
             except PackageNotFoundError:
@@ -102,7 +105,7 @@ class Crawler:
         # We periodically want to refresh the project database to make sure we are up-to-date.
         await fetch_projects.fully_populate_db(
             connection=self._projects_db,
-            index=self._source,
+            repository=self._source,
         )
         packages_w_dist_info = set()
         for cache_type, name, version in self._cache:
@@ -111,7 +114,7 @@ class Crawler:
 
         popular_projects = []
         if self._crawl_popular_projects:
-            # Add the top 100 packages (and their dependencies) to the index
+            # Add the top 100 packages (and their dependencies) to the repository
             URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
             try:
                 resp = await self._http_client.get(URL)
@@ -122,10 +125,12 @@ class Crawler:
                 logging.warning(f'Problem fetching popular projects ({err})')
                 pass
 
-        await self.crawl_recursively(packages_w_dist_info | set(popular_projects))
+        projects_to_crawl = packages_w_dist_info | set(popular_projects)
+        logging.info(f'About to start crawling {len(projects_to_crawl)} projects (and their transient dependencies)')
+        await self.crawl_recursively(projects_to_crawl)
 
     async def run_reindex_periodically(self) -> None:
-        logging.info("Starting the reindexing loop")
+        logging.debug("Starting the reindexing loop")
         while True:
             try:
                 await self.refetch_hook()

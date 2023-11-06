@@ -26,7 +26,7 @@
 
 FROM python:3.11.0-alpine
 
-RUN pip install simple-repository-browser \
+RUN pip install simple-repository-browser==0.4.2 \
 ;
 
 # ENDIF
@@ -42,7 +42,6 @@ RUN mkdir -p $XDG_CACHE_DIR \
  && chmod a+wr $XDG_CACHE_DIR \
 ;
 CMD simple-repository-browser \
-    --no-popular-project-crawl \
     --port 5000 \
     --templates-dir /opt/simple-repository-browser/templates \
 ;

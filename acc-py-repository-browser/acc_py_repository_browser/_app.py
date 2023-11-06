@@ -21,26 +21,26 @@ class AccAppBuilder(AppBuilder):
     def __init__(
         self,
         url_prefix: str,
-        index_url: str,
+        repository_url: str,
         cache_dir: Path,
         template_paths: typing.Sequence[Path],
         static_files_path: Path,
         crawl_popular_projects: bool,
         browser_version: str,
-        internal_index_url: str,
-        external_index_url: str,
+        internal_repository_url: str,
+        external_repository_url: str,
     ) -> None:
         super().__init__(
             url_prefix,
-            index_url,
+            repository_url,
             cache_dir,
             template_paths,
             static_files_path,
             crawl_popular_projects,
             browser_version,
         )
-        self.internal_index_url = internal_index_url
-        self.external_index_url = external_index_url
+        self.internal_repository_url = internal_repository_url
+        self.external_repository_url = external_repository_url
 
     def create_app(self) -> fastapi.FastAPI:
         app = super().create_app()
@@ -71,18 +71,18 @@ class AccAppBuilder(AppBuilder):
 
     def create_crawler(self, http_client: httpx.AsyncClient, source: SimpleRepository) -> Crawler:
         intenal_index = HttpRepository(
-            url=self.internal_index_url,
+            url=self.internal_repository_url,
             http_client=http_client,
         )
-        external_index = HttpRepository(
-            url=self.external_index_url,
+        external_repository = HttpRepository(
+            url=self.external_repository_url,
             http_client=http_client,
         )
 
         return Crawler(
-            internal_index=intenal_index,
-            external_index=external_index,
-            full_index=source,
+            internal_repository=intenal_index,
+            external_repository=external_repository,
+            full_repository=source,
             http_client=http_client,
             crawl_popular_projects=self.crawl_popular_projects,
             projects_db=self.con,
