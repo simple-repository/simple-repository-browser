@@ -16,7 +16,7 @@ with (HERE / 'README.md').open('rt') as fh:
 
 REQUIREMENTS: dict = {
     'core': [
-        'aiohttp',
+        'httpx',
         'aiosqlite',
         'diskcache',
         'docutils',
@@ -29,7 +29,7 @@ REQUIREMENTS: dict = {
         'parsley',
         'pkginfo',
         'readme-renderer[md]',
-        'simple-repository',
+        'simple-repository>=0.4',
         'uvicorn',
     ],
     'test': [
@@ -38,6 +38,7 @@ REQUIREMENTS: dict = {
     'dev': [
         'build',
         'pre-commit',
+        'types-setuptools',
     ],
 }
 
@@ -46,7 +47,10 @@ setup(
     name='simple-repository-browser',
 
     author="CERN, BE-CSS-SET",
-    description='A web interface to browse and search packages in any simple package repository (PEP-503), inspired by PyPI / warehouse',
+    description=(
+        'A web interface to browse and search packages in any simple package '
+        'repository (PEP-503), inspired by PyPI / warehouse'
+    ),
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     url="https://github.com/simple-repository/simple-repository-browser",

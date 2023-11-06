@@ -7,6 +7,7 @@
 
 import asyncio
 import dataclasses
+import datetime
 import email.parser
 import email.policy
 import logging
@@ -15,7 +16,7 @@ import pathlib
 import tempfile
 import typing
 
-import aiohttp
+import httpx
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
@@ -30,6 +31,55 @@ class FileInfo:
     size: int
 
 
+class RequirementsSequence(tuple[Requirement]):
+    def extras(self) -> set[str]:
+        # Get all extras found in any of the contained requirements.
+        _extras = set()
+        for req in iter(self):
+            _extras.update(self.extras_for_requirement(req))
+        return _extras
+
+    @classmethod
+    def extra_for_requirement(cls, requirement: Requirement) -> str | None:
+        extras = list(cls.extras_for_requirement(requirement))
+        if len(extras) > 1:
+            raise ValueError("Not possible from setuptools")
+        elif extras:
+            return extras[0]
+        else:
+            return None
+
+    @classmethod
+    def discover_extra_markers(cls, ast) -> typing.Generator[str, None, None]:
+        # Find all extra parts of the markers.
+        if len(ast) == 1:
+            # https://github.com/pypa/packaging/blob/09f131b326453f18a217fe34f4f7a77603b545db/src/packaging/markers.py#L75
+            ast = ast[0]
+        if isinstance(ast, list):
+            if isinstance(ast[0], (list, tuple)):
+                yield from cls.discover_extra_markers(ast[0])
+            if isinstance(ast[2], (list, tuple)):
+                yield from cls.discover_extra_markers(ast[2])
+        elif isinstance(ast, tuple):
+            lhs_v = getattr(ast[0], 'value', None)
+            if lhs_v == 'extra':
+                yield ast[2].value
+            # Note: Technically, it is possible to build a '"foo" == extra' style
+            #       marker. We don't bother with it though, since it isn't something
+            #       that comes out of setuptools.
+        else:
+            raise ValueError(f"Unexpected ast component {ast}")
+
+    @classmethod
+    def extras_for_requirement(cls, requirement: Requirement) -> set[str]:
+        req_marker = requirement.marker
+        if req_marker:
+            # Access the AST. Not yet a public API, see https://github.com/pypa/packaging/issues/448.
+            markers_ast = req_marker._markers
+            return set(list(cls.discover_extra_markers(markers_ast)))
+        return set()
+
+
 @dataclasses.dataclass
 class PackageInfo:
     """Represents a simplified pkg-info/dist-info metadata, suitable for easy (and safe) use in html templates"""
@@ -40,7 +90,8 @@ class PackageInfo:
     classifiers: typing.Sequence[str] = ()
     project_urls: typing.Dict[str, str] = dataclasses.field(default_factory=dict)
     requires_python: typing.Optional[str] = None
-    requires_dist: typing.Sequence[Requirement] = ()
+    requires_dist: RequirementsSequence = RequirementsSequence()
+    yanked: bool | str = False
 
     # A mapping of filename to FileInfo. This must only be used for sharing size information,
     # and will be removed once this code moves to a component based repository definition.
@@ -48,18 +99,15 @@ class PackageInfo:
 
 
 async def fetch_file(url, dest):
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.get(url) as r:
+    async with httpx.AsyncClient(verify=False) as http_client:
+        async with http_client.stream("GET", url) as r:
             try:
                 r.raise_for_status()
-            except aiohttp.client.ClientResponseError as err:
+            except httpx.HTTPError as err:
                 raise IOError(f'Unable to fetch file (reason: { str(err) })')
             chunk_size = 1024 * 100
             with open(dest, 'wb') as fd:
-                while True:
-                    chunk = await r.content.read(chunk_size)
-                    if not chunk:
-                        break
+                async for chunk in r.aiter_bytes(chunk_size):
                     fd.write(chunk)
 
 
@@ -101,12 +149,13 @@ async def package_info(
     limited_concurrency = asyncio.Semaphore(10)
     # Compute the size of each file.
     # TODO: This should be done as part of the repository component interface.
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async def semaphored_head(filename, url):
+    async with httpx.AsyncClient(verify=False) as http_client:
+        async def semaphored_head(filename: str, url: str):
             async with limited_concurrency:
+                headers: dict[str, str] = {}
                 return (
                     filename,
-                    await session.head(url, allow_redirects=True, ssl=False, headers={}),
+                    await http_client.head(url, follow_redirects=True, headers=headers),
                 )
         coros = [
             semaphored_head(file.filename, file.url)
@@ -139,7 +188,8 @@ async def package_info(
                 # If the repository doesn't provide information about the upload time, estimate
                 # it from the headers of the resource, if they exist.
                 if ct := resource.context.get('creation-date'):
-                    file = dataclasses.replace(file, upload_time=ct)
+                    if isinstance(ct, str):
+                        file = dataclasses.replace(file, upload_time=datetime.datetime.fromisoformat(ct))
         elif isinstance(resource, model.HttpResource):
             await fetch_file(resource.url, tmp.name)
         else:
@@ -191,7 +241,7 @@ async def package_info(
             classifiers=info.classifiers,
             project_urls=sorted_urls,
             requires_python=info.requires_python,
-            requires_dist=[Requirement(s) for s in info.requires_dist],
+            requires_dist=RequirementsSequence([Requirement(s) for s in info.requires_dist]),
             # We include files info as it is the only way to influence the file.size of
             # all files (for the files list page). In the future, this can be a standalone
             # component.
@@ -212,12 +262,14 @@ def generate_safe_description_html(package_info: pkginfo.Distribution) -> str:
     description_type = package_info.description_content_type or 'text/x-rst'
     raw_description = package_info.description or ''
 
-    if description_type == 'text/x-rst' or description_type.startswith('text/x-rst;'):
-        return readme_renderer.rst.render(raw_description)
+    # Seen in the wild (internal only: sps-deep-hysteresis-compensation).
+    description_type = description_type.replace('\"', '')
 
+    if description_type == 'text/x-rst' or description_type.startswith('text/x-rst;'):
+        return readme_renderer.rst.render(raw_description) or ""
     elif description_type == 'text/markdown' or description_type.startswith('text/markdown;'):  # Seen longer form with orjson
-        return readme_renderer.markdown.render(raw_description)
+        return readme_renderer.markdown.render(raw_description) or ""
     elif description_type == 'text/plain' or description_type.startswith('text/plain;'):  # seen with nbformat
-        return readme_renderer.txt.render(raw_description)
+        return readme_renderer.txt.render(raw_description) or ""
     else:
         raise ValueError(f"Unknown readme format {description_type}")

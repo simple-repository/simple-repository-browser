@@ -16,7 +16,7 @@ import zipfile
 from dataclasses import replace
 from pathlib import Path
 
-import aiohttp
+import httpx
 from simple_repository import errors, model, utils
 from simple_repository.components.metadata_injector import \
     MetadataInjectorRepository
@@ -95,7 +95,7 @@ class MetadataInjector(MetadataInjectorRepository):
                     metadata, headers = await self.download_metadata(
                         package_name=resource_name.removesuffix(".metadata"),
                         download_url=resource.url,
-                        session=self._session,
+                        http_client=self._http_client,
                     )
                 except ValueError as e:
                     # If we can't get hold of the metadata from the file then raise
@@ -113,8 +113,8 @@ class MetadataInjector(MetadataInjectorRepository):
                 )
 
             # Cache the result for a faster response in the future.
-            encoded_metadata = pickle.dumps({'headers': headers, 'body': metadata})
-            await self._cache.set(cache_key, base64.b64encode(encoded_metadata).decode('ascii'))
+            encoded_metadata_bytes = pickle.dumps({'headers': headers, 'body': metadata})
+            await self._cache.set(cache_key, base64.b64encode(encoded_metadata_bytes).decode('ascii'))
 
         result = model.TextResource(text=metadata)
         result.context.update(headers)
@@ -124,11 +124,11 @@ class MetadataInjector(MetadataInjectorRepository):
             self,
             package_name: str,
             download_url: str,
-            session: aiohttp.ClientSession,
+            http_client: httpx.AsyncClient,
     ) -> tuple[str, ResourceHeaders]:
         with tempfile.TemporaryDirectory() as tmpdir:
             pkg_path = pathlib.Path(tmpdir) / package_name
-            await utils.download_file(download_url, pkg_path, session)
+            await utils.download_file(download_url, pkg_path, http_client)
             return self.metadata_from_package(pkg_path)
 
     def metadata_from_package(self, path: Path) -> tuple[str, ResourceHeaders]:

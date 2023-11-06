@@ -12,16 +12,17 @@ import sqlite3
 import typing
 from datetime import timedelta
 
-import aiohttp
 import diskcache
+import httpx
 from packaging.requirements import InvalidRequirement
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 from simple_repository import SimpleRepository, model
 from simple_repository.errors import PackageNotFoundError
 
-from . import fetch_projects, projects
+from . import fetch_projects
 from .fetch_description import PackageInfo, package_info
+from .short_release_info import ReleaseInfoModel, ShortReleaseInfo
 
 
 class Crawler:
@@ -31,21 +32,23 @@ class Crawler:
     """
     def __init__(
         self,
-        session: aiohttp.ClientSession,
+        http_client: httpx.AsyncClient,
         crawl_popular_projects: bool,
         source: SimpleRepository,
         projects_db: sqlite3.Connection,
         cache: diskcache.Cache,
         reindex_frequency: timedelta = timedelta(days=1),
+        release_info_model: typing.Type[ReleaseInfoModel] = ReleaseInfoModel,
     ) -> None:
         self.frequency_seconds = reindex_frequency.total_seconds()
-        self._session = session
+        self._http_client = http_client
         self._source = source
         self._projects_db = projects_db
         self._cache = cache
         self._crawl_popular_projects = crawl_popular_projects
         if os.environ.get("DISABLE_REPOSITORY_INDEXING") != "1":
             self._task = asyncio.create_task(self.run_reindex_periodically())
+        self._release_info_model = release_info_model
 
     async def crawl_recursively(
         self,
@@ -71,14 +74,18 @@ class Crawler:
                 # faulthandler
                 continue
 
-            releases = projects.get_releases(prj)
-            latest_version = projects.get_latest_version(releases.keys())
-            if not latest_version or latest_version.is_devrelease or latest_version.is_prerelease:
+            if not prj.files:
+                # The project doesn't have any files.
+                continue
+
+            releases, latest_version = self._release_info_model.release_infos(prj)
+
+            if latest_version.is_devrelease or latest_version.is_prerelease:
                 # Don't bother fetching pre-release only projects.
                 continue
 
             try:
-                file, release_info = await self.fetch_pkg_info(
+                file, pkg_info = await self.fetch_pkg_info(
                     prj=prj,
                     version=latest_version,
                     releases=releases,
@@ -89,7 +96,7 @@ class Crawler:
                 print(f"Problem handling package {pkg_name}: {err}")
                 continue
 
-            for dist in release_info.requires_dist:
+            for dist in pkg_info.requires_dist:
                 dep_name = dist.name
                 packages_for_reindexing.add(canonicalize_name(dep_name))
 
@@ -114,10 +121,10 @@ class Crawler:
             # Add the top 100 packages (and their dependencies) to the index
             URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
             try:
-                async with self._session.get(URL, raise_for_status=False) as resp:
-                    s = await resp.json()
-                    for _, row in zip(range(100), s['rows']):
-                        popular_projects.append(row['project'])
+                resp = await self._http_client.get(URL)
+                s = resp.json()
+                for _, row in zip(range(100), s['rows']):
+                    popular_projects.append(row['project'])
             except Exception as err:
                 print(f'Problem fetching popular projects ({err})')
                 pass
@@ -138,22 +145,22 @@ class Crawler:
         self,
         prj: model.ProjectDetail,
         version: Version,
-        releases: dict[Version, tuple[model.File, ...]],
+        releases: dict[Version, ShortReleaseInfo],
         force_recache: bool,
     ) -> tuple[model.File, PackageInfo]:
 
         key = ('pkg-info', prj.name, str(version))
         if key in self._cache and not force_recache:
-            info_file, files_used_for_cache, release_info = self._cache[key]
+            info_file, files_used_for_cache, pkg_info = self._cache[key]
             # Validate that the cached result covers all of the files, and that no new
             # files have been added since the cache was made. In that case, we re-cache.
             if all(
                 [
                     file.filename in files_used_for_cache
-                    for file in releases[version]
+                    for file in releases[version].files
                 ],
             ):
-                return info_file, release_info
+                return info_file, pkg_info
 
         if force_recache:
             print('Recaching')
@@ -164,22 +171,22 @@ class Crawler:
             prj.name,
         )
 
-        info_file, release_info = await package_info(releases[version], self._source, prj.name)
-        if release_info is not None:
-            await self.release_info_retrieved(prj, release_info)
+        info_file, pkg_info = await package_info(releases[version].files, self._source, prj.name)
+        if pkg_info is not None:
+            await self.release_info_retrieved(prj, pkg_info)
 
-        self._cache[key] = info_file, releases[version], release_info
-        is_latest = version == projects.get_latest_version(releases.keys())
-        if is_latest and release_info is not None:
+        self._cache[key] = info_file, releases[version].files, pkg_info
+        release_info = releases[version]
+        if release_info.is_latest:
             fetch_projects.update_summary(
                 self._projects_db,
                 name=canonicalize_name(prj.name),
-                summary=release_info.summary,
+                summary=pkg_info.summary,
                 release_date=info_file.upload_time,
                 release_version=str(version),
             )
 
-        return info_file, release_info
+        return info_file, pkg_info
 
     # TODO: Document this function, or remove it.
     async def release_info_retrieved(self, project: model.ProjectDetail, package_info: PackageInfo) -> None:

@@ -21,7 +21,7 @@
     {% endblock head %}
 </head>
   <body class="d-flex flex-column min-vh-100">
-
+  {% block body %}
   <div class="top-nav">
     <div class="container" id="site-header">
       <nav class="navbar navbar-expand-lg navbar-light container" >
@@ -69,5 +69,6 @@
       {% block extra_footer %}
       {% endblock extra_footer %}
     </footer>
+  {% endblock body %}
   </body>
 </html>

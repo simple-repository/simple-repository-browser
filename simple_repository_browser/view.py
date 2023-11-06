@@ -10,6 +10,7 @@ from pathlib import Path
 
 import fastapi
 import jinja2
+from packaging.requirements import Requirement
 
 from . import model
 
@@ -22,12 +23,17 @@ class View:
 
     def create_templates_environment(self) -> jinja2.Environment:
         loader = jinja2.FileSystemLoader(self.templates_paths)
-        templates = jinja2.Environment(loader=loader, autoescape=True)
+        templates = jinja2.Environment(loader=loader, autoescape=True, undefined=jinja2.StrictUndefined)
 
         @jinja2.pass_context
         def url_for(context: typing.Mapping[str, typing.Any], name: str, **path_params: typing.Any) -> str:
             request: fastapi.Request = context["request"]
-            return request.url_for(name, **path_params)
+            # We don't use request.url_for, as it always returns an absolute URL.
+            # This prohibits running behind a proxy which doesn't correctly set
+            # X-Forwarded-Proto / X-Forwarded-Prefix, such as the OpenShift ingress.
+            # See https://github.com/encode/starlette/issues/538#issuecomment-1135096753 for the
+            # proposed solution.
+            return str(request.app.url_path_for(name, **path_params))
 
         def sizeof_fmt(num: float, suffix: str = "B"):
             for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
@@ -39,6 +45,7 @@ class View:
         templates.globals['url_for'] = url_for
         templates.globals['fmt_size'] = sizeof_fmt
         templates.globals['browser_version'] = self.version
+        templates.globals['render_markers'] = render_markers
 
         return templates
 
@@ -65,3 +72,54 @@ class View:
 
     def error_page(self, context: model.ErrorModel, request: fastapi.Request) -> str:
         return self.render_template(context, request, "error.html")
+
+
+def render_markers(requirement: Requirement, *, format_strings: dict[str, str]) -> str:
+    req_marker = requirement.marker
+    result = ''
+    if req_marker:
+        # Access the AST. Not yet a public API, see https://github.com/pypa/packaging/issues/448.
+        markers_ast = req_marker._markers
+        result, _ = render_marker_ast(markers_ast, format_strings=format_strings)
+    return result
+
+
+def render_marker_ast(ast: list | tuple, *, format_strings: dict[str, str]) -> tuple[str, int]:
+    # Render the given ast, and return the maximum depth of the ast that was found when rendering.
+
+    # Comment in https://github.com/pypa/packaging/blob/09f131b326453f18a217fe34f4f7a77603b545db/src/packaging/markers.py#L203C13-L215C16.
+    # For example, the following expression:
+    # python_version > "3.6" or (python_version == "3.6" and os_name == "unix")
+    #
+    # is parsed into:
+    # [
+    #     (<Variable('python_version')>, <Op('>')>, <Value('3.6')>),
+    #     'and',
+    #     [
+    #         (<Variable('python_version')>, <Op('==')>, <Value('3.6')>),
+    #         'or',
+    #         (<Variable('os_name')>, <Op('==')>, <Value('unix')>)
+    #     ]
+    # ]
+
+    if len(ast) == 1:
+        # https://github.com/pypa/packaging/blob/09f131b326453f18a217fe34f4f7a77603b545db/src/packaging/markers.py#L75
+        ast = ast[0]
+
+    if isinstance(ast, list):
+        lhs_str, lhs_maxdepth = render_marker_ast(ast[0], format_strings=format_strings)
+        rhs_str, rhs_maxdepth = render_marker_ast(ast[2], format_strings=format_strings)
+        group_formatter = format_strings.get('group_expr', '({expr})')
+        if lhs_maxdepth >= 1:
+            lhs_str = group_formatter.format(expr=lhs_str)
+        if rhs_maxdepth >= 1:
+            rhs_str = group_formatter.format(expr=rhs_str)
+        format_str = format_strings['combine_nested_expr']
+        result = format_str.format(lhs=lhs_str, op=ast[1], rhs=rhs_str)
+        return result, max([lhs_maxdepth, rhs_maxdepth]) + 1
+    elif isinstance(ast, tuple):
+        format_str = format_strings['expr']
+        result = format_str.format(lhs=ast[0].serialize(), op=ast[1].serialize(), rhs=ast[2].serialize())
+        return result, 0
+    else:
+        raise TypeError(f'Unhandled marker {ast!r}')

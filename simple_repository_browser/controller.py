@@ -6,6 +6,7 @@
 # or submit itself to any jurisdiction.
 
 import asyncio
+import dataclasses
 import typing
 from enum import Enum
 from functools import partial
@@ -20,10 +21,18 @@ from packaging.version import InvalidVersion, Version
 from . import errors, model, view
 
 
+@dataclasses.dataclass(frozen=True)
+class Route:
+    fn: typing.Callable
+    methods: set[str]
+    response_class: typing.Type
+    kwargs: dict[str, typing.Any]
+
+
 class Router:
     # A class-level router definition, capable of generating an instance specific router with its "build_fastapi_router".
     def __init__(self):
-        self._routes_register = {}
+        self._routes_register: dict[str, Route] = {}
 
     def route(
         self,
@@ -33,7 +42,7 @@ class Router:
         **kwargs: typing.Any,
     ):
         def dec(fn):
-            self._routes_register[path] = (fn, methods, response_class, kwargs)
+            self._routes_register[path] = Route(fn, methods, response_class, kwargs)
             return fn
         return dec
 
@@ -49,10 +58,21 @@ class Router:
     def build_fastapi_router(self, controller: "Controller") -> fastapi.APIRouter:
         router = fastapi.APIRouter()
         for path, route in self._routes_register.items():
-            endpoint, methods, response_class, kwargs = route
-            bound_endpoint = partial(endpoint, controller)
-            router.add_api_route(path=path, endpoint=bound_endpoint, response_class=response_class, methods=methods, **kwargs)
+            bound_endpoint = partial(route.fn, controller)
+            router.add_api_route(
+                path=path,
+                endpoint=bound_endpoint,
+                response_class=route.response_class,
+                methods=list(route.methods),
+                **route.kwargs,
+            )
         return router
+
+    def __iter__(self) -> typing.Iterator[tuple[str, Route]]:
+        return self._routes_register.items().__iter__()
+
+    def update(self, new_values: dict[str, Route]) -> None:
+        self._routes_register.update(new_values)
 
 
 class ProjectPageSection(str, Enum):
@@ -75,7 +95,7 @@ class Controller:
         return router
 
     @router.get("/", name="index")
-    async def index(self, request: fastapi.Request = None) -> str:
+    async def index(self, request: fastapi.Request) -> str:
         return self.view.index_page(request)
 
     @router.get("/about", name="about")
@@ -96,9 +116,9 @@ class Controller:
             )
         return self.view.search_page(response, request)
 
-    @router.get("/project/{project_name}", name="project")
-    @router.get("/project/{project_name}/{version}", name='project_version')
-    @router.get("/project/{project_name}/{version}/{page_section}", name='project_version_section')
+    @router.get("/project/{project_name}", name="project", response_model=None)
+    @router.get("/project/{project_name}/{version}", name='project_version', response_model=None)
+    @router.get("/project/{project_name}/{version}/{page_section}", name='project_version_section', response_model=None)
     async def project(
         self,
         request: fastapi.Request,
@@ -106,7 +126,7 @@ class Controller:
         version: str | None = None,
         page_section: ProjectPageSection | None = ProjectPageSection.description,
         recache: bool = False,
-    ) -> str:
+    ) -> str | StreamingResponse:
         _ = page_section  # Handled in javascript.
         _version = None
         if version:
