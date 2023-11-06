@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 from simple_repository import SimpleRepository
 
@@ -39,13 +40,13 @@ def update_summary(conn, name: str, summary: str, release_date: datetime.datetim
 
 async def fully_populate_db(connection, index: SimpleRepository):
     con = connection
-    print('Fetching names from index')
+    logging.info('Fetching names from index')
 
     project_list = await index.get_project_list()
     project_names = [
         (project.normalized_name, project.name) for project in project_list.projects
     ]
-    print('Inserting all new names (if any)')
+    logging.info('Inserting all new names (if any)')
     with con as cursor:
         for canonical_name, name in project_names:
             cursor.execute(
@@ -59,12 +60,12 @@ async def fully_populate_db(connection, index: SimpleRepository):
     index_canonical_names = {normed_name for normed_name, _ in project_names}
 
     if not index_canonical_names:
-        print("No names found on the index. Not removing from the database, as this is likely a problem with the index.")
+        logging.warning("No names found on the index. Not removing from the database, as this is likely a problem with the index.")
         return
 
     names_in_db_no_longer_in_index = db_canonical_names - index_canonical_names
     if names_in_db_no_longer_in_index:
-        print(
+        logging.warning(
             f'Removing the following { len(names_in_db_no_longer_in_index) } names from the database:\n   '
             "\n   ".join(list(names_in_db_no_longer_in_index)[:2000]),
         )
@@ -77,7 +78,7 @@ async def fully_populate_db(connection, index: SimpleRepository):
                 ''',
                 (name,),
             )
-    print('DB synchronised with index')
+    logging.info('DB synchronised with index')
 
 
 async def _devel_to_be_turned_into_test():
