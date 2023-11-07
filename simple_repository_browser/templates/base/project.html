@@ -139,6 +139,11 @@
               <div data-source="requires_python"><strong>Requires Python: </strong> {{ file_metadata.requires_python }}</div>
               {% endif %}
           </div>
+          {% block sidebar_additional_content
+ %}
+
+          {% endblock sidebar_additional_content
+%}
           <hr/>
           <div id="classifiers">
               <strong>Classifiers</strong>

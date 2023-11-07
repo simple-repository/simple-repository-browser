@@ -3,6 +3,7 @@ import typing
 import uuid
 from pathlib import Path
 
+import aiosqlite
 import fastapi
 import httpx
 from simple_repository import SimpleRepository
@@ -11,9 +12,11 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from simple_repository_browser import model, view
 from simple_repository_browser._app import AppBuilder
+from simple_repository_browser.metadata_injector import MetadataInjector
 
 from .controller import Controller
 from .crawler import Crawler
+from .model import AccPyModel, SourceContext
 from .view import View
 
 
@@ -69,8 +72,13 @@ class AccAppBuilder(AppBuilder):
             view=view,
         )
 
-    def create_crawler(self, http_client: httpx.AsyncClient, source: SimpleRepository) -> Crawler:
-        intenal_index = HttpRepository(
+    def create_model(self, http_client: httpx.AsyncClient, database: aiosqlite.Connection) -> AccPyModel:
+        full_repository = MetadataInjector(
+            self._repo_from_url(self.repository_url, http_client=http_client),
+            database=database,
+            http_client=http_client,
+        )
+        internal_repository = HttpRepository(
             url=self.internal_repository_url,
             http_client=http_client,
         )
@@ -79,10 +87,28 @@ class AccAppBuilder(AppBuilder):
             http_client=http_client,
         )
 
+        return AccPyModel(
+            source_context=SourceContext(
+                internal_repository=internal_repository,
+                external_repository=external_repository,
+                internal_repository_name="Acc-PyPI",
+                external_repository_name="PyPI.org",
+            ),
+            source=full_repository,
+            projects_db=self.con,
+            cache=self.cache,
+            crawler=self.create_custom_crawler(http_client, full_repository, internal_repository),
+        )
+
+    def create_custom_crawler(
+        self,
+        http_client: httpx.AsyncClient,
+        full_repository: SimpleRepository,
+        internal_repository: SimpleRepository,
+    ) -> Crawler:
         return Crawler(
-            internal_repository=intenal_index,
-            external_repository=external_repository,
-            full_repository=source,
+            internal_repository=internal_repository,
+            full_repository=full_repository,
             http_client=http_client,
             crawl_popular_projects=self.crawl_popular_projects,
             projects_db=self.con,
