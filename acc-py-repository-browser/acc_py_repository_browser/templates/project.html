@@ -1,11 +1,31 @@
 {% extends "base/project.html" %}
 
-{% block sidebar_additional_content
- %}
+{% block sidebar_additional_content %}
 <hr/>
 <div>
     <strong>Source: </strong>
     {{source_package_index}}
 </div>
-{% endblock sidebar_additional_content
- %}
+{% if user_owners or group_owners %}
+<hr/>
+<div>
+    <strong>Owners</strong>
+    {% if user_owners %}
+    <br><h6>Users</h6>
+    <ul>
+        {% for user in user_owners %}
+        <li>{{ user }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% if group_owners %}
+    <h6>Groups</h6>
+    <ul>
+        {% for group in group_owners %}
+        <li>{{ group }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock sidebar_additional_content %}

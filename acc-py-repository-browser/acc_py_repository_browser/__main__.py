@@ -22,6 +22,7 @@ def configure_parser(parser: argparse.ArgumentParser):
 
     parser.add_argument("--internal-repository-url", type=str, default='https://acc-py-repo.cern.ch/repository/py-release-local/simple/')
     parser.add_argument("--external-repository-url", type=str, default='https://acc-py-repo.cern.ch/repository/py-thirdparty-remote/simple/')
+    parser.add_argument("--ownership-service-url", type=str, default='http://acc-py-repo.cern.ch:8192/')
 
 
 def handler(args: typing.Any) -> None:
@@ -30,6 +31,7 @@ def handler(args: typing.Any) -> None:
         repository_url=args.repository_url,
         internal_repository_url=args.internal_repository_url,
         external_repository_url=args.external_repository_url,
+        ownership_service_url=args.ownership_service_url,
         cache_dir=pathlib.Path(args.cache_dir),
         template_paths=[
             here / "templates",

@@ -16,7 +16,7 @@ from simple_repository_browser.metadata_injector import MetadataInjector
 
 from .controller import Controller
 from .crawler import Crawler
-from .model import AccPyModel, SourceContext
+from .model import AccPyModel, OwnershipService, SourceContext
 from .view import View
 
 
@@ -32,6 +32,7 @@ class AccAppBuilder(AppBuilder):
         browser_version: str,
         internal_repository_url: str,
         external_repository_url: str,
+        ownership_service_url: str,
     ) -> None:
         super().__init__(
             url_prefix,
@@ -44,6 +45,7 @@ class AccAppBuilder(AppBuilder):
         )
         self.internal_repository_url = internal_repository_url
         self.external_repository_url = external_repository_url
+        self.ownership_service_url = ownership_service_url
 
     def create_app(self) -> fastapi.FastAPI:
         app = super().create_app()
@@ -93,6 +95,10 @@ class AccAppBuilder(AppBuilder):
                 external_repository=external_repository,
                 internal_repository_name="Acc-PyPI",
                 external_repository_name="PyPI.org",
+            ),
+            ownership_service=OwnershipService(
+                base_url=self.ownership_service_url,
+                http_client=http_client,
             ),
             source=full_repository,
             projects_db=self.con,
