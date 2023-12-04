@@ -1,4 +1,5 @@
 import typing
+from urllib.parse import urljoin
 
 import httpx
 from packaging.version import Version
@@ -10,6 +11,8 @@ import simple_repository_browser.model as base
 
 class ProjectPageModel(base.ProjectPageModel):
     source_package_index: str
+    user_owners: list[str]
+    group_owners: list[str]
 
 
 class SourceContext:
@@ -64,17 +67,39 @@ class SourceContext:
         return [self._external_name, self._internal_name]
 
 
+class OwnershipService:
+    def __init__(self, base_url: str, http_client: httpx.AsyncClient) -> None:
+        self._base_url = base_url
+        self._http_client = http_client
+
+    async def get_package_owners(self, package_name: str) -> tuple[list[str], list[str]]:
+        url = urljoin(self._base_url, f"/owners/acc-py-package/{package_name}")
+        res = await self._http_client.get(url)
+        if res.status_code != 200:
+            return [], []
+        res_dict = res.json()["owners"]
+        return res_dict["users"], res_dict["groups"]
+
+
 class AccPyModel(base.Model):
-    def __init__(self, source_context: SourceContext, *args, **kwargs) -> None:
+    def __init__(self, source_context: SourceContext, ownership_service: OwnershipService, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.source_context = source_context
+        self.ownership_service = ownership_service
 
     async def project_page(self, project_name: str, version: Version | None, recache: bool) -> ProjectPageModel:
         base_res = await super().project_page(project_name, version, recache)
         prj = await self.source.get_project_page(project_name)
         source_package_index = await self.source_context.determine_source(prj)
         source_package_index_str = ",".join(source_package_index)
-        return ProjectPageModel(source_package_index=source_package_index_str, **base_res)
+
+        user_owners, group_owners = await self.ownership_service.get_package_owners(project_name)
+        return ProjectPageModel(
+            source_package_index=source_package_index_str,
+            user_owners=user_owners,
+            group_owners=group_owners,
+            **base_res,
+        )
 
 
 async def _to_be_turned_into_a_test():
