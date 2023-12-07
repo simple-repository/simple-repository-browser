@@ -13,4 +13,15 @@
 <div class="container">
     You are logged in as: {{ username }}
 </div>
+
+<div>
+    <br>
+    <h6>Packages</h6>
+    <ul>
+        {% for project in owned_projects %}
+        <li>{{ project }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
 {% endblock page_content %}

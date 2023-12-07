@@ -14,7 +14,8 @@ from simple_repository_browser.errors import RequestError
 from simple_repository_browser.model import Model as BaseModel
 from simple_repository_browser.view import View as BaseView
 
-from .view import UserInfo, View
+from .model import AccPyModel
+from .view import View
 
 
 class Token(TypedDict):
@@ -63,6 +64,7 @@ def authenticated(fn: typing.Callable) -> typing.Callable:
 
 class Controller(base.Controller):
     view: View
+    model: AccPyModel
 
     # Decorate all routes with add_login.
     router = deepcopy(base.Controller.router)
@@ -112,4 +114,5 @@ class Controller(base.Controller):
     @router.get("/user", name="user", response_model=None)
     @authenticated
     async def user(self, request: fastapi.Request) -> str | fastapi.responses.HTMLResponse:
-        return self.view.user_page(UserInfo(username=request.state.username), request)
+        user_info = await self.model.get_user_info(request.state.username)
+        return self.view.user_page(user_info, request)
