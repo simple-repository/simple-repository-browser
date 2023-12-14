@@ -2,6 +2,7 @@ import typing
 from urllib.parse import urljoin
 
 import httpx
+from packaging.utils import canonicalize_name
 from packaging.version import Version
 from simple_repository import SimpleRepository, errors, model
 from simple_repository.components.http import HttpRepository
@@ -13,6 +14,11 @@ class ProjectPageModel(base.ProjectPageModel):
     source_package_index: str
     user_owners: list[str]
     group_owners: list[str]
+
+
+class UserInfoModel(typing.TypedDict):
+    username: str
+    owned_resources: list[str]
 
 
 class SourceContext:
@@ -80,6 +86,16 @@ class OwnershipService:
         res_dict = res.json()["owners"]
         return res_dict["users"], res_dict["groups"]
 
+    async def get_package_owned_by(self, user_id: str) -> list[str]:
+        url = urljoin(self._base_url, f"/resources_owned/acc-py-package/{user_id}")
+        res = await self._http_client.get(url)
+        if res.status_code != 200:
+            return []
+        res_dict = res.json()
+        if not isinstance(res_dict, dict):
+            raise ValueError("Ownership service returned a malformed response.")
+        return [canonicalize_name(project) for project in res_dict.get("owned_resources", [])]
+
 
 class AccPyModel(base.Model):
     def __init__(self, source_context: SourceContext, ownership_service: OwnershipService, *args, **kwargs) -> None:
@@ -99,6 +115,12 @@ class AccPyModel(base.Model):
             user_owners=user_owners,
             group_owners=group_owners,
             **base_res,
+        )
+
+    async def get_user_info(self, user_id: str) -> UserInfoModel:
+        return UserInfoModel(
+            username=user_id,
+            owned_resources=await self.ownership_service.get_package_owned_by(user_id),
         )
 
 
