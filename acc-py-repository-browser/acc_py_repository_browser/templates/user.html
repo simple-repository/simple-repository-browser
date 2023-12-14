@@ -23,7 +23,7 @@
                 Your projects
             </h3>
             <div id="projects">
-                {% for project in owned_projects %}
+                {% for project in owned_resources %}
                 <a href="{{ url_for('project', project_name=project) }}">
                  <div class="card m-3">
                   <div class="card-body">

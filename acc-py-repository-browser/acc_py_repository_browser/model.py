@@ -18,7 +18,7 @@ class ProjectPageModel(base.ProjectPageModel):
 
 class UserInfoModel(typing.TypedDict):
     username: str
-    owned_projects: list[str]
+    owned_resources: list[str]
 
 
 class SourceContext:
@@ -94,7 +94,7 @@ class OwnershipService:
         res_dict = res.json()
         if not isinstance(res_dict, dict):
             raise ValueError("Ownership service returned a malformed response.")
-        return [canonicalize_name(project) for project in res_dict.get("owned_projects", [])]
+        return [canonicalize_name(project) for project in res_dict.get("owned_resources", [])]
 
 
 class AccPyModel(base.Model):
@@ -120,7 +120,7 @@ class AccPyModel(base.Model):
     async def get_user_info(self, user_id: str) -> UserInfoModel:
         return UserInfoModel(
             username=user_id,
-            owned_projects=await self.ownership_service.get_package_owned_by(user_id),
+            owned_resources=await self.ownership_service.get_package_owned_by(user_id),
         )
 
 
