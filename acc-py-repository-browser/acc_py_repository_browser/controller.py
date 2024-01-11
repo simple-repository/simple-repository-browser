@@ -7,7 +7,7 @@ from typing import TypedDict
 
 import fastapi
 from authlib.integrations.starlette_client import OAuth
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 
 import simple_repository_browser.controller as base
 from simple_repository_browser.errors import RequestError
@@ -16,6 +16,7 @@ from simple_repository_browser.view import View as BaseView
 
 from .model import AccPyModel
 from .view import View
+from .yank_manager import YankManager
 
 
 class Token(TypedDict):
@@ -62,6 +63,12 @@ def authenticated(fn: typing.Callable) -> typing.Callable:
     return new_fn
 
 
+unauthorized_error = RequestError(
+    status_code=401,
+    detail="Unauthorized.",
+)
+
+
 class Controller(base.Controller):
     view: View
     model: AccPyModel
@@ -72,9 +79,17 @@ class Controller(base.Controller):
         decorated_route = replace(route, fn=add_login(route.fn))
         router.update({path: decorated_route})
 
-    def __init__(self, oidc_client_id: str, oidc_secret: str, model: BaseModel, view: BaseView) -> None:
+    def __init__(
+        self,
+        oidc_client_id: str,
+        oidc_secret: str,
+        model: BaseModel,
+        view: BaseView,
+        yank_manager: YankManager,
+    ) -> None:
         super().__init__(model=model, view=view)
 
+        self.yank_manager = yank_manager
         self.oauth = OAuth()
         self.oauth.register(
             name='cern',
@@ -122,3 +137,29 @@ class Controller(base.Controller):
     async def user(self, request: fastapi.Request) -> str | fastapi.responses.HTMLResponse:
         user_info = await self.model.get_user_info(request.state.username)
         return self.view.user_page(user_info, request)
+
+    @router.get("/api/_PRIVATE/{project_name}/{version}/yank", name="yank")
+    @authenticated
+    async def yank(self, request: fastapi.Request, project_name: str, version: str, reason: str | None = None) -> Response:
+        user_info = await self.model.get_user_info(request.state.username)
+
+        allowed = project_name in user_info["owned_resources"]
+        if not allowed:
+            raise unauthorized_error
+        self.yank_manager.yank(project_name, version, reason or f"Yanked by {request.state.username}")
+
+        redirect_url = request.headers.get("referer", str(request.url_for("index")))
+        return RedirectResponse(redirect_url, status_code=302)
+
+    @router.get("/api/_PRIVATE/{project_name}/{version}/un-yank", name="un-yank")
+    @authenticated
+    async def un_yank(self, request: fastapi.Request, project_name: str, version: str) -> Response:
+        user_info = await self.model.get_user_info(request.state.username)
+
+        allowed = project_name in user_info["owned_resources"]
+        if not allowed:
+            raise unauthorized_error
+        self.yank_manager.unyank(project_name, version)
+
+        redirect_url = request.headers.get("referer", str(request.url_for("index")))
+        return RedirectResponse(redirect_url, status_code=302)

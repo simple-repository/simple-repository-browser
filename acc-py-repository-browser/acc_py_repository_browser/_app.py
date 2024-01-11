@@ -18,6 +18,7 @@ from .controller import Controller
 from .crawler import Crawler
 from .model import AccPyModel, OwnershipService, SourceContext
 from .view import View
+from .yank_manager import YankManager
 
 
 class AccAppBuilder(AppBuilder):
@@ -33,6 +34,7 @@ class AccAppBuilder(AppBuilder):
         internal_repository_url: str,
         external_repository_url: str,
         ownership_service_url: str,
+        yank_db_path: Path,
     ) -> None:
         super().__init__(
             url_prefix,
@@ -46,6 +48,7 @@ class AccAppBuilder(AppBuilder):
         self.internal_repository_url = internal_repository_url
         self.external_repository_url = external_repository_url
         self.ownership_service_url = ownership_service_url
+        self.yank_db_path = yank_db_path
 
     def create_app(self) -> fastapi.FastAPI:
         app = super().create_app()
@@ -59,6 +62,7 @@ class AccAppBuilder(AppBuilder):
     def create_controller(self, view: view.View, model: model.Model) -> Controller:
         client_id = os.getenv("CLIENT_ID")
         client_secret = os.getenv("CLIENT_SECRET")
+        yank_manager = YankManager(self.yank_db_path)
 
         if not client_id or not client_secret:
             raise RuntimeError(
@@ -72,6 +76,7 @@ class AccAppBuilder(AppBuilder):
             oidc_secret=client_secret,
             model=model,
             view=view,
+            yank_manager=yank_manager,
         )
 
     def create_model(self, http_client: httpx.AsyncClient, database: aiosqlite.Connection) -> AccPyModel:
