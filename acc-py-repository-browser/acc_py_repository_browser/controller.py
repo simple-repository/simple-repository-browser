@@ -111,6 +111,19 @@ class Controller(base.Controller):
         redirect_url = request.headers.get("referer", str(request.url_for("index")))
         return RedirectResponse(redirect_url)
 
+    @router.get("/manage/{project_name}", name="manage", response_model=None)
+    @authenticated
+    async def manage(self, request: fastapi.Request, project_name: str) -> str:
+        user_info = await self.model.get_user_info(request.state.username)
+        allowed = project_name in user_info["owned_resources"]
+        if not allowed:
+            raise RequestError(
+                status_code=401,
+                detail="You can't access this page.",
+            )
+        project_info = await self.model.project_page(project_name, None, False)
+        return self.view.manage_page(project_info, request)
+
     @router.get("/user", name="user", response_model=None)
     @authenticated
     async def user(self, request: fastapi.Request) -> str | fastapi.responses.HTMLResponse:
