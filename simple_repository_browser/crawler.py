@@ -7,7 +7,7 @@ from datetime import timedelta
 
 import diskcache
 import httpx
-from packaging.requirements import InvalidRequirement
+from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 from simple_repository import SimpleRepository, model
@@ -93,8 +93,9 @@ class Crawler:
                 continue
 
             for dist in pkg_info.requires_dist:
-                dep_name = dist.name
-                packages_for_reindexing.add(canonicalize_name(dep_name))
+                if isinstance(dist, Requirement):
+                    dep_name = dist.name
+                    packages_for_reindexing.add(canonicalize_name(dep_name))
 
             # Don't DOS the service, we aren't in a rush here.
             await asyncio.sleep(0.01)
