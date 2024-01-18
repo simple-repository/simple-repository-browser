@@ -19,7 +19,7 @@ $container-max-widths: (
    color: white;
 }
 
-.nav-link:hover {
+.nav-link:hover, .nav-link:focus {
    color: white;
 }
 
