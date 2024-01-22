@@ -14,7 +14,8 @@ import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
 import readme_renderer.txt
-from packaging.requirements import InvalidRequirement, Requirement
+from packaging.requirements import InvalidRequirement
+from packaging.requirements import Requirement as _PkgRequirement
 from simple_repository import SimpleRepository, model
 
 
@@ -24,9 +25,14 @@ class FileInfo:
     size: int
 
 
+class Requirement(_PkgRequirement):
+    is_valid: bool = True
+
+
 @dataclasses.dataclass(frozen=True)
 class InvalidRequirementSpecification:
     spec: str
+    is_valid: bool = dataclasses.field(init=False, default=False)
 
 
 class RequirementsSequence(tuple[Requirement | InvalidRequirementSpecification]):

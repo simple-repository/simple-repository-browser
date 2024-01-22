@@ -79,7 +79,7 @@ class AppBuilder:
                 status_code = 500
                 detail = f"Internal server error ({err})"
                 # raise
-                logging.error(err, exc_info=True)
+                logging.exception(err)
             content = _view.error_page(
                 request=request,
                 context=model.ErrorModel(detail=detail),

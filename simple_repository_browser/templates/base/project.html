@@ -313,7 +313,7 @@
                     </script>
 
                     {% for requirement in file_metadata.requires_dist %}
-                       {% if requirement.__class__.__name__ == 'InvalidRequirementSpecification' %}
+                       {% if not requirement.is_valid %}
                          <div class="card m-1em">
                            <div class="card-body">
                             Invalid requirement ("<code>{{ requirement.spec }}</code>")
