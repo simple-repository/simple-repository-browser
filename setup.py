@@ -22,7 +22,7 @@ REQUIREMENTS: dict = {
         'parsley',
         'pkginfo',
         'readme-renderer[md]',
-        'simple-repository>=0.4',
+        'simple-repository>=0.6',
         'uvicorn',
         # authlib is only needed for the acc-py-browser
         "authlib",
