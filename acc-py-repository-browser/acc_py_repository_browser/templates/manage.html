@@ -42,17 +42,38 @@
                                     </span>
                                 {% endif %}
                             </div>
-
                             <div class="col-md-4 d-flex align-items-center justify-content-end">
                                 {% if release_info.yank_status is true %}
-                                    <button class="btn btn-danger btn-sm not-implemented">
-                                        Unyank
+                                {# Note: We don't include partial yank in this condition intentionally. #}
+                                <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
+                                    <button class="btn btn-danger position-relative me-2 mb-1 btn-sm">
+                                        Yanked
                                     </button>
-                                {% else %}
-                                    <button class="btn btn-secondary btn-sm not-implemented" href="#">
-                                        Yank
-                                    </button>
+                                </span>
                                 {% endif %}
+                                <div class="dropdown">
+                                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle='dropdown' aria-haspopup="true" aria-expanded="false">
+                                        Options
+                                    </button>
+                                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                        <a class="dropdown-item" href="{{ url_for('project_version', project_name=project.name, version=release_info.version) }}">View</a>
+                                        {% if release_info.yank_status is false%}
+                                        <form
+                                            action="{{ url_for('yank', project_name=project.name, version=release_info.version) }}"
+                                            onsubmit="return confirm('Do you really want to yank {{ project.name }} version {{ release_info.version }}?');"
+                                        >
+                                            <button class="dropdown-item">Yank</button>
+                                        </form>
+                                        {% else %}
+                                        <form
+                                            action="{{ url_for('un-yank', project_name=project.name, version=release_info.version) }}"
+                                            onsubmit="return confirm('Do you really want to un-yank {{ project.name }} version {{ release_info.version }}?');"
+                                        >
+                                            <button class="dropdown-item">Un-yank</button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
