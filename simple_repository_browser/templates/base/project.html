@@ -5,7 +5,7 @@
 {% endblock title %}
 
 {% macro page_banner() %}
-<div class="row" style="padding-bottom: 3em; padding-top: 2em">
+<div class="row pt-4 pb-5">
   <div class="col-md-6">
     <h1> {{ project.name }} {{ this_release.version }}</h1>
     <br>
@@ -168,7 +168,7 @@
           <div id="releases-page" data-purpose="page-switch" data-source="releases">
           {% for release_info in releases|reverse %}
             <a href="{{ url_for('project_version', project_name=project.name, version=release_info.version) }}">
-                <div class="card" style="margin: 1em;">
+                <div class="card m-1em">
                   <div class="card-body">
                     <span class="listing-icon">
                       <i class="far fa-folder-open"></i>
@@ -251,7 +251,7 @@
             <div id="project_files">
                {% for file in this_release.files %}
                 <a href="{{file.url}}">
-                 <div class="card" style="margin: 1em;">
+                 <div class="card m-1em">
                   <div class="card-body">
                     <span class="listing-icon">
                       <i class="far fa-file"></i>
@@ -313,32 +313,40 @@
                     </script>
 
                     {% for requirement in file_metadata.requires_dist %}
-                    <a href="{{ url_for('project', project_name=requirement.name) }}">
-                     {% set extra=file_metadata.requires_dist.extra_for_requirement(requirement) %}
-                     <div class="card" {% if extra %}data-extra="{{ extra }}"{% endif %} style="margin: 1em; {% if extra %}display: none;{% endif %}">
-                       <div class="card-body">
-                         <span class="listing-icon">
-                           <img src="{{ url_for('static', path='/images/python-logo-only.svg') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 64px;" >
-                         </span>
-                         {{ requirement.name }}{% if requirement.extras %}[{{ ','.join(requirement.extras) }}]{% endif %}
-                         <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
-                           {{  render_markers(
-                                    requirement,
-                                    format_strings={
-                                        'combine_nested_expr': '''{lhs} {op} {rhs}''',
-                                        'expr': '''<button type="button" class="btn btn-info btn-sm me-2 mb-1">{lhs} {op} {rhs}</button>''',
-                                    }
-                                )|safe
-                           }}
-                         </span>
-                         <span>
-                           {% if requirement.specifier %} ({{ requirement.specifier }}) {% endif %}
-                           {% if requirement.url %} ({{ requirement.url }}) {% endif %}
-                         </span>
-                       </div>
-                     </div>
-                    </a>
-                  {% endfor %}
+                       {% if not requirement.is_valid %}
+                         <div class="card m-1em">
+                           <div class="card-body">
+                            Invalid requirement ("<code>{{ requirement.spec }}</code>")
+                           </div>
+                         </div>
+                       {% else %}
+                        <a href="{{ url_for('project', project_name=requirement.name) }}">
+                         {% set extra=file_metadata.requires_dist.extra_for_requirement(requirement) %}
+                         <div class="card m-1em" {% if extra %}data-extra="{{ extra }}"{% endif %} style="{% if extra %}display: none;{% endif %}">
+                           <div class="card-body">
+                             <span class="listing-icon">
+                               <img class="pe-2 pb-1" src="{{ url_for('static', path='/images/python-logo-only.svg') }}" style="width: 3em;" >
+                             </span>
+                             {{ requirement.name }}{% if requirement.extras %}[{{ ','.join(requirement.extras) }}]{% endif %}
+                             <span class="text-decoration-none fs-6" style="float: right; color: gray;">
+                               {{  render_markers(
+                                        requirement,
+                                        format_strings={
+                                            'combine_nested_expr': '''{lhs} {op} {rhs}''',
+                                            'expr': '''<button type="button" class="btn btn-info btn-sm me-2 mb-1">{lhs} {op} {rhs}</button>''',
+                                        }
+                                    )|safe
+                               }}
+                             </span>
+                             <span>
+                               {% if requirement.specifier %} ({{ requirement.specifier }}) {% endif %}
+                               {% if requirement.url %} ({{ requirement.url }}) {% endif %}
+                             </span>
+                           </div>
+                         </div>
+                        </a>
+                      {% endif %}
+                    {% endfor %}
                 </div>
               {% endif %}
           </div>
