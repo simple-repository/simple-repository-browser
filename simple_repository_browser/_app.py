@@ -117,7 +117,6 @@ class AppBuilder:
     def create_model(self, http_client: httpx.AsyncClient, database: aiosqlite.Connection) -> model.Model:
         source = MetadataInjector(
             self._repo_from_url(self.repository_url, http_client=http_client),
-            database=database,
             http_client=http_client,
         )
         return model.Model(
