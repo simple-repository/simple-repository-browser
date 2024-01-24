@@ -163,3 +163,23 @@ class Controller(base.Controller):
 
         redirect_url = request.headers.get("referer", str(request.url_for("index")))
         return RedirectResponse(redirect_url, status_code=302)
+
+    @router.post("/add_owner/{project_name}", name="add-owner")
+    @authenticated
+    async def add_owner(self, request: fastapi.Request, project_name: str, owner_id: typing.Annotated[str, fastapi.Form()]) -> Response:
+        user_info = await self.model.get_user_info(request.state.username)
+
+        allowed = project_name in user_info["owned_resources"]
+        if not allowed:
+            raise unauthorized_error
+
+        try:
+            await self.model.ownership_service.add_package_owner(project_name, owner_id)
+        except ValueError as exc:
+            raise RequestError(
+                status_code=400,
+                detail=str(exc),
+            )
+
+        redirect_url = request.headers.get("referer", str(request.url_for("index"))) + "#collaborators"
+        return RedirectResponse(redirect_url, status_code=302)
