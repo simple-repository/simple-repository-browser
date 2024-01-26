@@ -80,6 +80,15 @@ class AccAppBuilder(AppBuilder):
         )
 
     def create_model(self, http_client: httpx.AsyncClient, database: aiosqlite.Connection) -> AccPyModel:
+        ownership_api_key = os.getenv("OWNERSHIP_API_KEY")
+        ownership_namespace = os.getenv("OWNERSHIP_NAMESPACE", "acc-py-package")
+
+        if not ownership_api_key:
+            raise RuntimeError(
+                "In order to interact with the ownership service "
+                "OWNERSHIP_API_KEY must to be set as environment variable.",
+            )
+
         full_repository = MetadataInjector(
             self._repo_from_url(self.repository_url, http_client=http_client),
             http_client=http_client,
@@ -103,6 +112,8 @@ class AccAppBuilder(AppBuilder):
             ownership_service=OwnershipService(
                 base_url=self.ownership_service_url,
                 http_client=http_client,
+                namespace=ownership_namespace,
+                api_key=ownership_api_key,
             ),
             source=full_repository,
             projects_db=self.con,

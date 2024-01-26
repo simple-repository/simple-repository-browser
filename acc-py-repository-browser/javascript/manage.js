@@ -14,7 +14,22 @@ $('a.releases').click(() => {
   }
 )
 
+$('a.collaborators').click(() => {
+    show_page('collaborators');
+    const currentUrlWithoutFragment = window.location.href.split('#')[0];
+
+    history.replaceState({}, 'collaborators', currentUrlWithoutFragment + "#collaborators");
+  }
+)
+
 $('a.not-implemented').click(() => {alert("This feature is not implemented yet!")})
 $('button.not-implemented').click(() => {alert("This feature is not implemented yet!")})
 
 show_page("releases");
+var url_parts = window.location.href.split('#')
+last_part = url_parts[url_parts.length - 1]
+if (last_part === 'collaborators') {
+    show_page('collaborators');
+} else {
+    show_page("releases");
+}

@@ -74,12 +74,19 @@ class SourceContext:
 
 
 class OwnershipService:
-    def __init__(self, base_url: str, http_client: httpx.AsyncClient) -> None:
+    def __init__(
+        self, base_url: str,
+        namespace: str,
+        api_key: str,
+        http_client: httpx.AsyncClient,
+    ) -> None:
         self._base_url = base_url
         self._http_client = http_client
+        self._namespace = namespace
+        self._api_key = api_key
 
     async def get_package_owners(self, package_name: str) -> tuple[list[str], list[str]]:
-        url = urljoin(self._base_url, f"/owners/acc-py-package/{package_name}")
+        url = urljoin(self._base_url, f"/owners/{self._namespace}/{package_name}")
         res = await self._http_client.get(url)
         if res.status_code != 200:
             return [], []
@@ -87,7 +94,7 @@ class OwnershipService:
         return res_dict["users"], res_dict["groups"]
 
     async def get_package_owned_by(self, user_id: str) -> list[str]:
-        url = urljoin(self._base_url, f"/resources_owned/acc-py-package/{user_id}")
+        url = urljoin(self._base_url, f"/resources_owned/{self._namespace}/{user_id}")
         res = await self._http_client.get(url)
         if res.status_code != 200:
             return []
@@ -95,6 +102,20 @@ class OwnershipService:
         if not isinstance(res_dict, dict):
             raise ValueError("Ownership service returned a malformed response.")
         return [canonicalize_name(project) for project in res_dict.get("owned_resources", [])]
+
+    async def add_package_owner(self, package_name: str, owner: str) -> None:
+        url = urljoin(self._base_url, f"/admin/owners/{self._namespace}/{package_name}/{owner}")
+        try:
+            resp = await self._http_client.post(
+                url=url,
+                headers={"X-Api-Access-Key": self._api_key},
+            )
+        except httpx.HTTPError:
+            raise ValueError("Ownership service unreachable.")
+
+        if resp.status_code >= 400:
+            message = resp.json().get("detail")
+            raise ValueError(message)
 
 
 class AccPyModel(base.Model):

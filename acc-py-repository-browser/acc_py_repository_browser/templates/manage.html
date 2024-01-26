@@ -14,7 +14,7 @@
               <span class="fa fa-history fa-fw"></span>
               Releases
             </a>
-            <a class="btn btn-link col-md-12 rounded-0 collaborators text-start not-implemented" data-purpose="page-select">
+            <a class="btn btn-link col-md-12 rounded-0 collaborators text-start" data-purpose="page-select">
               <span class="fa fa-download fa-fw"></span>
               Collaborators
             </a>
@@ -82,7 +82,44 @@
           {% endfor %}
           </div>
           <div id="collaborators-page" data-purpose="page-switch" data-source="collaborators">
-            TODO...
+            <div> Users and groups registered as owners of <strong>{{ project.name }}</strong>:</div>
+            <div class="border rounded my-3 p-2">
+                <div class="row">
+                    <div class="col border-right">Owner</div>
+                    <div class="col border-right">Type</div>
+                </div>
+                <hr />
+
+                {% for user_owner in user_owners %}
+
+                <div class="row mt-3">
+                    <div class="col border-right">{{ user_owner }}</div>
+                    <div class="col border-right">User</div>
+                </div>
+
+                {% endfor %}
+
+                {% for group_owner in group_owners%}
+
+                <div class="row mt-3">
+                    <div class="col border-right">{{ group_owner }}</div>
+                    <div class="col border-right">Group</div>
+                </div>
+
+                {% endfor %}
+            </div>
+            <form
+                action="{{ url_for('add-owner', project_name=project.name) }}"
+                method="post"
+            >
+                <div class="my-3">
+                    <label for="ownerInputField" class="form-label">Add a new owner to this project:</label>
+                    <input name="owner_id" type="text" class="form-control" id="ownerInputField"
+                        placeholder="Insert the new owner's login (for users) or group name."
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
           </div>
         </div>
       </div>
