@@ -126,7 +126,7 @@ class AccPyModel(base.Model):
 
     async def project_page(self, project_name: str, version: Version | None, recache: bool) -> ProjectPageModel:
         base_res = await super().project_page(project_name, version, recache)
-        prj = await self.source.get_project_page(project_name)
+        prj = base_res['project']
         source_package_index = await self.source_context.determine_source(prj)
         source_package_index_str = ",".join(source_package_index)
 
