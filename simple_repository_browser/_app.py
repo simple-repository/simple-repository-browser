@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import aiosqlite
 import diskcache
 import fastapi
+import fastapi.responses
 import httpx
 from simple_repository import SimpleRepository
 from simple_repository.components.http import HttpRepository
@@ -62,6 +63,15 @@ class AppBuilder:
                 )
                 router = _controller.create_router(self.static_files_path)
                 app.mount(self.url_prefix or "/", router)
+
+                if self.url_prefix:
+                    # If somebody visits the root URL, and that isn't index (because we are
+                    # using a prefix) just redirect them to the index page. This is super
+                    # convenient for development purposes.
+                    @app.get("/")
+                    async def redirect_to_index():
+                        return fastapi.responses.RedirectResponse(url=app.url_path_for('index'))
+
                 yield
 
         app = fastapi.FastAPI(
