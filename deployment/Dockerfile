@@ -1,4 +1,4 @@
-FROM registry.cern.ch/acc/acc-py_cc7_ci:2023.06 as builder
+FROM registry.cern.ch/acc/acc-py_el9_ci:2023.06 as builder
 
 # The build context of this Dockerfile MUST have a directory called ``.wheel-to-deploy/`` containing the single wheel
 # that should be deployed with ``acc-py deploy``, and MAY contain a directory called ``./extra-wheels`` which can be a
@@ -8,7 +8,7 @@ ENV PIP_FIND_LINKS=file:///tmp/context/extra-wheels/
 RUN acc-py -vv app deploy --deploy-base=/opt/apps/ /tmp/context/.wheel-to-deploy/*.whl
 
 
-FROM registry.cern.ch/acc/acc-py_cc7:2023.06
+FROM registry.cern.ch/acc/acc-py_el9:2023.06
 
 COPY --from=builder /opt/apps/ /opt/apps/
 

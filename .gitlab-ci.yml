@@ -62,7 +62,7 @@ freeze_wheel:
   extends: .acc_py_run_on_acc_py
   # NOTE: use a "_ci" image with the same tag as your Dockerfile
   variables:
-      ACC_PY_BASE_IMAGE_NAME: acc-py_cc7_ci
+      ACC_PY_BASE_IMAGE_NAME: acc-py_el9_ci
   script:
     # Figure out the wheel to install, compatible with this python version.
     - cd ${project_root}  # Important - means we are in the right directory to find the distribution directory.
