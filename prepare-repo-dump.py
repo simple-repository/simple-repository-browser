@@ -1,6 +1,8 @@
 import shutil
 from pathlib import Path
 
+import tomlkit
+
 here = Path(__file__).parent
 
 build = here / 'built-repo'
@@ -16,9 +18,12 @@ shutil.copytree(here / 'simple_repository_browser', srb)
 for pcache in build.glob('**/__pycache__'):
     shutil.rmtree(pcache)
 
+
 (srb / '_version.py').unlink()
-shutil.rmtree(srb / 'static' / 'js')
-shutil.rmtree(build / 'javascript' / 'node_modules')
+if (srb/'static'/'js').exists():
+    shutil.rmtree(srb / 'static' / 'js')
+if (build / 'javascript' / 'node_modules').exists():
+    shutil.rmtree(build / 'javascript' / 'node_modules')
 (srb / 'tests' / 'test_pypi_frontend.py').unlink()
 (srb / '_develop.py').unlink()
 
@@ -36,30 +41,24 @@ for file in build.glob('**/*.py'):
     file.write_text(content)
 
 
-for file in [here / 'setup.py', here / 'pyproject.toml']:
+for file in [here / 'pyproject.toml']:
     shutil.copy(file, build)
 
-content = (build/'setup.py').read_text()
-content = content.replace('acc-py-index~=3.0', 'simple-repository')
+pyproject_path = build / 'pyproject.toml'
+pyproject_contents = tomlkit.parse(pyproject_path.read_text())
+pyproject_contents['project']['urls']['Homepage'] = "https://github.com/simple-repository/simple-repository-browser"
+pyproject_txt = tomlkit.dumps(pyproject_contents)
+
 lines = []
-for line in content.split('\n'):
-    indent = len(line) - len(line.lstrip())
-    if 'author=' in line:
-        lines.append(' ' * indent + 'author="CERN, BE-CSS-SET",')
-        continue
-    if 'url=' in line:
-        lines.append(' ' * indent + 'url="https://github.com/simple-repository/simple-repository-browser",')
-        continue
-    if 'author' in line:
-        continue
-    if 'maintainer' in line:
+for line in pyproject_txt.splitlines():
+    if 'acc-py-repo' in line:
         continue
     if 'authlib' in line:
         continue
     if 'starlette' in line:
         continue
     lines.append(line)
-(build/'setup.py').write_text('\n'.join(lines))
+pyproject_path.write_text('\n'.join(lines) + '\n')
 
 
 for file in build.glob('**/templates/base/*'):

@@ -14,7 +14,8 @@ classifiers = [
 ]
 authors = [
     {name = "Phil Elson"},
-    {name = "Francesco Iannacone"},
+    {name = "Francesco Iannaccone"},
+    {name = "Ivan Sinkarenko"},
 ]
 dependencies = [
   "httpx",
@@ -45,7 +46,7 @@ test = [
   "pytest",
 ]
 dev = [
-  "simple-repository-browser[dev, test]",
+  "simple-repository-browser[test]",
 ]
 
 [project.scripts]
