@@ -21,7 +21,8 @@ import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
 import readme_renderer.txt
-from packaging.requirements import Requirement
+from packaging.requirements import InvalidRequirement
+from packaging.requirements import Requirement as _PkgRequirement
 from simple_repository import SimpleRepository, model
 
 
@@ -31,12 +32,23 @@ class FileInfo:
     size: int
 
 
-class RequirementsSequence(tuple[Requirement]):
+class Requirement(_PkgRequirement):
+    is_valid: bool = True
+
+
+@dataclasses.dataclass(frozen=True)
+class InvalidRequirementSpecification:
+    spec: str
+    is_valid: bool = dataclasses.field(init=False, default=False)
+
+
+class RequirementsSequence(tuple[Requirement | InvalidRequirementSpecification]):
     def extras(self) -> set[str]:
         # Get all extras found in any of the contained requirements.
         _extras = set()
         for req in iter(self):
-            _extras.update(self.extras_for_requirement(req))
+            if isinstance(req, Requirement):
+                _extras.update(self.extras_for_requirement(req))
         return _extras
 
     @classmethod
@@ -175,7 +187,7 @@ async def package_info(
     else:
         raise ValueError(f"Metadata not available for {file}")
 
-    logging.info(f'Downloading metadata for {file.filename} from {resource_name}')
+    logging.debug(f'Downloading metadata for {file.filename} from {resource_name}')
 
     with tempfile.NamedTemporaryFile(
             suffix=os.path.splitext(file.filename)[1],
@@ -233,6 +245,13 @@ async def package_info(
             )
         }
 
+        reqs: list[Requirement | InvalidRequirementSpecification] = []
+        for req in info.requires_dist:
+            try:
+                reqs.append(Requirement(req))
+            except InvalidRequirement:
+                reqs.append(InvalidRequirementSpecification(req))
+
         pkg = PackageInfo(
             summary=info.summary or '',
             description=description,
@@ -241,7 +260,7 @@ async def package_info(
             classifiers=info.classifiers,
             project_urls=sorted_urls,
             requires_python=info.requires_python,
-            requires_dist=RequirementsSequence([Requirement(s) for s in info.requires_dist]),
+            requires_dist=RequirementsSequence(reqs),
             # We include files info as it is the only way to influence the file.size of
             # all files (for the files list page). In the future, this can be a standalone
             # component.

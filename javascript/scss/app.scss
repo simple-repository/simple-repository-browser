@@ -19,7 +19,7 @@ $container-max-widths: (
    color: white;
 }
 
-.nav-link:hover {
+.nav-link:hover, .nav-link:focus {
    color: white;
 }
 
@@ -144,4 +144,9 @@ img {
 .secondary-color {
    background: $base-color2 !important;
    color: white !important;
+}
+
+
+.m-1em {
+   margin: 1em;
 }

@@ -45,11 +45,10 @@ def update_summary(conn, name: str, summary: str, release_date: datetime.datetim
         )
 
 
-async def fully_populate_db(connection, index: SimpleRepository):
+async def fully_populate_db(connection, repository: SimpleRepository):
     con = connection
-    logging.info('Fetching names from index')
-
-    project_list = await index.get_project_list()
+    logging.info('Fetching names from repository')
+    project_list = await repository.get_project_list()
     project_names = [
         (project.normalized_name, project.name) for project in project_list.projects
     ]
@@ -67,7 +66,7 @@ async def fully_populate_db(connection, index: SimpleRepository):
     index_canonical_names = {normed_name for normed_name, _ in project_names}
 
     if not index_canonical_names:
-        logging.warning("No names found on the index. Not removing from the database, as this is likely a problem with the index.")
+        logging.warning("No names found in the repository. Not removing from the database, as this is likely a problem with the repository.")
         return
 
     names_in_db_no_longer_in_index = db_canonical_names - index_canonical_names
@@ -85,4 +84,4 @@ async def fully_populate_db(connection, index: SimpleRepository):
                 ''',
                 (name,),
             )
-    logging.info('DB synchronised with index')
+    logging.info('DB synchronised with repository')

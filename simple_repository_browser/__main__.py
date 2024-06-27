@@ -26,7 +26,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     # parsed arguments.
     parser.set_defaults(handler=handler)
 
-    parser.add_argument("index_url", type=str, nargs='?', default='https://pypi.org/simple/')
+    parser.add_argument("repository_url", type=str, nargs='?', default='https://pypi.org/simple/')
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--cache-dir", type=str, default=Path(os.environ.get('XDG_CACHE_DIR', Path.home() / '.cache')) / 'simple-repository-browser')
@@ -37,7 +37,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
 
 def handler(args: typing.Any) -> None:
     app = AppBuilder(
-        index_url=args.index_url,
+        repository_url=args.repository_url,
         cache_dir=Path(args.cache_dir),
         template_paths=[
             args.templates_dir,
@@ -69,5 +69,7 @@ def main():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.WARNING)
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger('httpcore').setLevel(logging.WARNING)
+    logging.getLogger('httpx').setLevel(logging.WARNING)
     main()
