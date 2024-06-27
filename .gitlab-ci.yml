@@ -14,9 +14,10 @@ pre-commit:
 
 
 fetch_external_deps:
-  image: registry.cern.ch/docker.io/library/node:15
+  image: registry.cern.ch/acc/acc-py_el9:pro
   stage: build
   script:
+    - yum install -y nodejs npm
     - pushd javascript
     - npm install --include=dev
     - npm run build
