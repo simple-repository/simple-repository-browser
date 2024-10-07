@@ -1,4 +1,5 @@
 import shutil
+import textwrap
 from pathlib import Path
 
 import tomlkit
@@ -69,4 +70,35 @@ for file in build.glob('**/templates/base/*'):
         'https://gitlab.cern.ch/acc-co/devops/python/prototypes/simple-pypi-frontend',
         'https://github.com/simple-repository/simple-repository-browser',
     )
+
+    content = textwrap.dedent('''\
+    {#
+     Copyright (C) 2023, CERN
+     This software is distributed under the terms of the MIT
+     licence, copied verbatim in the file "LICENSE".
+     In applying this license, CERN does not waive the privileges and immunities
+     granted to it by virtue of its status as Intergovernmental Organization
+     or submit itself to any jurisdiction.
+    #}\n
+    ''') + content
+
     file.write_text(content)
+
+hash_comment_files = (
+    list(build.glob('**/*.py')) + list(build.glob('**/*.toml'))
+)
+for path in hash_comment_files:
+    if not path.is_file():
+        continue
+    content = path.read_text()
+    content = '\n'.join([
+        '# Copyright (C) 2023, CERN',
+        '# This software is distributed under the terms of the MIT',
+        '# licence, copied verbatim in the file "LICENSE".',
+        '# In applying this license, CERN does not waive the privileges and immunities',
+        '# granted to it by virtue of its status as Intergovernmental Organization',
+        '# or submit itself to any jurisdiction.',
+        '',
+    ]) + '\n' + content.lstrip()
+    content = content.rstrip() + '\n'
+    path.write_text(content, 'utf-8')
