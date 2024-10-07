@@ -68,3 +68,7 @@ ignore_missing_imports = true
 [tool.setuptools.packages.find]
 include = ["simple_repository_browser", "simple_repository_browser.*"]
 namespaces = false
+
+[tool.setuptools.package-data]
+# Static untracked files
+"*" = ["static/js/*"]
