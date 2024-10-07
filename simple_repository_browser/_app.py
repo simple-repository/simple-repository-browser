@@ -96,7 +96,10 @@ class AppBuilder:
                 status_code = 500
                 detail = f"Internal server error ({err})"
                 # raise
-                logging.exception(err)
+                logging.getLogger("simple_repository_browser.error").error(
+                    'Unhandled exception',
+                    exc_info=err,
+                )
             content = _view.error_page(
                 request=request,
                 context=model.ErrorModel(detail=detail),
