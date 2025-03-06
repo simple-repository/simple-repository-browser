@@ -4,6 +4,10 @@ A web interface to browse and search packages in **any** simple package reposito
 
 Built using FastAPI and the [simple-repository](https://github.com/simple-repository/simple-repository) core library.
 
+## Demo
+
+A tech-preview demo is available at https://simple-repository.app.cern.ch/.
+
 ## Usage
 
 Install from PyPI:
