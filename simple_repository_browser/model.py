@@ -183,6 +183,12 @@ class Model:
         if version not in releases:
             raise errors.RequestError(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
+        if not releases[version].files:
+            quarantine_context = ""
+            if getattr(prj, '_quarantined_files', None) or []:
+                quarantine_context = " Files have been identified as quarantined for this project."
+            raise errors.RequestError(status_code=404, detail=f'Release "{version}" has no files.' + quarantine_context, project_page=prj)
+
         info_file, pkg_info = await self.crawler.fetch_pkg_info(prj, version, releases, force_recache=recache)
         classifiers_by_top_level = {
             top_level: tuple(classifier) for top_level, classifier in itertools.groupby(

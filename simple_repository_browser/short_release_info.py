@@ -22,7 +22,7 @@ class ShortReleaseInfo:
 class ReleaseInfoModel:
     @classmethod
     def release_infos(cls, project_detail: model.ProjectDetail) -> tuple[dict[Version, ShortReleaseInfo], Version]:
-        files_groued_by_version: dict[Version, list[model.File]] = {}
+        files_grouped_by_version: dict[Version, list[model.File]] = {}
 
         if not project_detail.files:
             raise ValueError("No files for the release")
@@ -38,13 +38,17 @@ class ReleaseInfoModel:
                 )
             except (ValueError, InvalidVersion):
                 release = Version('0.0rc0')
-            files_groued_by_version.setdefault(release, []).append(file)
+            files_grouped_by_version.setdefault(release, []).append(file)
+
+        for version_str in (project_detail.versions or []):
+            if Version(version_str) not in files_grouped_by_version:
+                files_grouped_by_version[Version(version_str)] = []
 
         result: dict[Version, ShortReleaseInfo] = {}
 
-        latest_version = cls.compute_latest_version(tuple(files_groued_by_version.keys()))
+        latest_version = cls.compute_latest_version(files_grouped_by_version)
 
-        for version, files in sorted(files_groued_by_version.items()):
+        for version, files in sorted(files_grouped_by_version.items()):
             upload_times = [file.upload_time for file in files if file.upload_time]
             if upload_times:
                 earliest_release_date = min(upload_times)
@@ -69,11 +73,14 @@ class ReleaseInfoModel:
         return result, latest_version
 
     @classmethod
-    def compute_latest_version(cls, versions: tuple[Version, ...]) -> Version:
+    def compute_latest_version(cls, versions: dict[Version, list[typing.Any]]) -> Version:
         # Use the pip logic to determine the latest release. First, pick the greatest non-dev version,
         # and if nothing, fall back to the greatest dev version. If no release is available return None.
         sorted_versions = sorted(versions)
         for version in sorted_versions[::-1]:
+            if not versions[version]:
+                # If there are no files for this version, skip it (just like pip would).
+                continue
             if not version.is_devrelease and not version.is_prerelease:
                 return version
         return sorted_versions[-1]
