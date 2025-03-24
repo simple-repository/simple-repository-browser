@@ -45,12 +45,10 @@ class RequirementsSequence(tuple[Requirement | InvalidRequirementSpecification])
         return _extras
 
     @classmethod
-    def extra_for_requirement(cls, requirement: Requirement) -> str | None:
+    def extra_for_requirement(cls, requirement: Requirement) -> list[str] | None:
         extras = list(cls.extras_for_requirement(requirement))
-        if len(extras) > 1:
-            raise ValueError("Not possible from setuptools")
-        elif extras:
-            return extras[0]
+        if extras:
+            return extras
         else:
             return None
 
