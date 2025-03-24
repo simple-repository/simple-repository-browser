@@ -321,8 +321,9 @@
                          </div>
                        {% else %}
                         <a href="{{ url_for('project', project_name=requirement.name) }}">
+                         {# For now, take just the first extra. #}
                          {% set extra=file_metadata.requires_dist.extra_for_requirement(requirement) %}
-                         <div class="card m-1em" {% if extra %}data-extra="{{ extra }}"{% endif %} style="{% if extra %}display: none;{% endif %}">
+                         <div class="card m-1em" {% if extra %}data-extra="{{ extra[0] }}"{% endif %} style="{% if extra %}display: none;{% endif %}">
                            <div class="card-body">
                              <span class="listing-icon">
                                <img class="pe-2 pb-1" src="{{ url_for('static', path='/images/python-logo-only.svg') }}" style="width: 3em;" >
