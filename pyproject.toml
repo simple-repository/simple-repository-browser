@@ -71,4 +71,4 @@ namespaces = false
 
 [tool.setuptools.package-data]
 # Static untracked files
-"*" = ["static/js/*"]
+"*" = ["static/js/*", "templates/**"]
