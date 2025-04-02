@@ -1,14 +1,13 @@
 set -ex
 
-# Copy the simple-repository-browser's setup.py directory, and then
+# Copy the simple-repository-browser's pyproject.toml directory, and then
 # inject any substitutions.
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 acc_py_root=${SCRIPT_DIR}
 repo_browser_root=$(dirname ${acc_py_root})
-rm -rf ${acc_py_root}/setup.py ${acc_py_root}/deployment ${acc_py_root}/simple_repository_browser
+rm -rf ${acc_py_root}/simple_repository_browser
 cp -rf ${repo_browser_root}/pyproject.toml ${acc_py_root}
-cp -rf ${repo_browser_root}/deployment ${acc_py_root}
 # Ship the code for the simple_repository_browser, which we extend in Acc-Py Repository browser
 mkdir -p ${acc_py_root}/simple_repository_browser
 cp -rf ${repo_browser_root}/simple_repository_browser/* ${acc_py_root}/simple_repository_browser
