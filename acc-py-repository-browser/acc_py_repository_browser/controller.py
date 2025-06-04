@@ -1,12 +1,12 @@
-import datetime
-import typing
 from copy import deepcopy
 from dataclasses import replace
+import datetime
 from functools import wraps
+import typing
 from typing import TypedDict
 
-import fastapi
 from authlib.integrations.starlette_client import OAuth
+import fastapi
 from fastapi.responses import RedirectResponse, Response
 
 import simple_repository_browser.controller as base
@@ -26,7 +26,7 @@ class Token(TypedDict):
 
 def add_login(fn: typing.Callable) -> typing.Callable:
     @wraps(fn)
-    async def new_fn(*args, **kwargs):
+    async def new_fn(*args, **kwargs):  # type: ignore[annotation-unchecked]
         request: fastapi.Request = kwargs["request"]
         token = request.session.get("token")
 
@@ -43,7 +43,7 @@ def add_login(fn: typing.Callable) -> typing.Callable:
 
 def authenticated(fn: typing.Callable) -> typing.Callable:
     @wraps(fn)
-    async def new_fn(*args, **kwargs):
+    async def new_fn(*args, **kwargs):  # type: ignore[annotation-unchecked]
         request: fastapi.Request = kwargs["request"]
         token = request.session.get("token")
 

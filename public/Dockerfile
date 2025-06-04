@@ -26,7 +26,9 @@
 
 FROM python:3.11.0-alpine
 
-RUN pip install simple-repository-browser==0.4.2 \
+RUN pip install \
+    simple-repository-browser==0.5.1 \
+    uvicorn[standard] \
 ;
 
 # ENDIF

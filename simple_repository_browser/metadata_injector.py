@@ -1,11 +1,10 @@
+from dataclasses import replace
 import pathlib
 import tarfile
 import zipfile
-from dataclasses import replace
 
 from simple_repository import model
-from simple_repository.components.metadata_injector import \
-    MetadataInjectorRepository
+from simple_repository.components.metadata_injector import MetadataInjectorRepository
 
 
 def get_metadata_from_sdist(package_path: pathlib.Path) -> str:

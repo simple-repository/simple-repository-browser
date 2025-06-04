@@ -1,7 +1,7 @@
 import logging
+from pathlib import Path
 import sqlite3
 import typing
-from pathlib import Path
 from urllib.parse import urlparse
 
 import aiosqlite

@@ -1,6 +1,6 @@
 import logging
-import pathlib
 from logging.handlers import RotatingFileHandler
+import pathlib
 
 import uvicorn
 import uvicorn.config

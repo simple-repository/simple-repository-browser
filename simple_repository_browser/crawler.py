@@ -1,9 +1,9 @@
 import asyncio
+from datetime import datetime, timedelta, timezone
 import logging
 import os
 import sqlite3
 import typing
-from datetime import timedelta
 
 import diskcache
 import httpx
@@ -171,8 +171,6 @@ class Crawler:
         )
 
         info_file, pkg_info = await package_info(releases[version].files, self._source, prj.name)
-        if pkg_info is not None:
-            await self.release_info_retrieved(prj, pkg_info)
 
         self._cache[key] = info_file, releases[version].files, pkg_info
         release_info = releases[version]
@@ -181,12 +179,8 @@ class Crawler:
                 self._projects_db,
                 name=canonicalize_name(prj.name),
                 summary=pkg_info.summary,
-                release_date=info_file.upload_time,
+                release_date=info_file.upload_time or datetime.fromtimestamp(0, tz=timezone.utc),
                 release_version=str(version),
             )
 
         return info_file, pkg_info
-
-    # TODO: Document this function, or remove it.
-    async def release_info_retrieved(self, project: model.ProjectDetail, package_info: PackageInfo) -> None:
-        pass

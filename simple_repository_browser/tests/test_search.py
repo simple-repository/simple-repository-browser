@@ -93,6 +93,7 @@ def test_simple_name_proposal(query, expected_result):
     ["query", "expected_predicate"],
     [
         ("", ("", ())),
+        (" ", ("", ())),
         ("name:foo", ('canonical_name LIKE ?', ('%foo%',))),
         ("name:foo__unnormed", ('canonical_name LIKE ?', ('%foo-unnormed%',))),
         ("foo", ('(canonical_name LIKE ? OR summary LIKE ?)', ('%foo%', '%foo%'))),
@@ -115,7 +116,7 @@ def test_build_sql_predicate(query, expected_predicate):
     ["query", "expected_exception"],
     [
         # ("", ()),   ? Should this be an error? Currently explicitly enabled.
-        (" ", pytest.raises(parsley.ParseError)),
+        # (" ", pytest.raises(parsley.ParseError)),
         ("'s'", pytest.raises(parsley.ParseError)),
         ("\"imbalanced", pytest.raises(parsley.ParseError)),
         ("unacceptable;char", pytest.raises(parsley.ParseError)),

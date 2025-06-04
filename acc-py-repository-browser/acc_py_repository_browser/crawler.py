@@ -1,7 +1,7 @@
+from datetime import timedelta
 import logging
 import sqlite3
 import typing
-from datetime import timedelta
 
 import diskcache
 import httpx

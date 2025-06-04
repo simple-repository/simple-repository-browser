@@ -1,6 +1,6 @@
 import dataclasses
-import typing
 from datetime import datetime
+import typing
 
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
