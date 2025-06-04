@@ -118,7 +118,7 @@
               } %}
               {% for name, url in file_metadata.project_urls.items() %}
               {% set fa_icon=icon_lookup.get(name, 'fa-link') %}
-                <button class="btn btn-link col-md-12 rounded-0 files text-start">
+                <button class="btn btn-link col-md-12 rounded-0 text-start">
                      <a href="{{ url }}">
                          <i class="fa fa-align-left fa-fw {{ fa_icon }}"></i>
                          {{ name }}
