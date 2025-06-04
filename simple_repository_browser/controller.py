@@ -1,9 +1,9 @@
 import asyncio
 import dataclasses
-import typing
 from enum import Enum
 from functools import partial
 from pathlib import Path
+import typing
 
 import fastapi
 from fastapi.responses import StreamingResponse
@@ -24,7 +24,7 @@ class Route:
 
 class Router:
     # A class-level router definition, capable of generating an instance specific router with its "build_fastapi_router".
-    def __init__(self):
+    def __init__(self) -> None:
         self._routes_register: dict[str, Route] = {}
 
     def route(
