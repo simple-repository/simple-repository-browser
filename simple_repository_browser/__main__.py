@@ -5,6 +5,7 @@ from pathlib import Path
 import typing
 
 import uvicorn
+from uvicorn.config import LOGGING_CONFIG
 
 from . import __version__
 from ._app import AppBuilder
@@ -47,10 +48,19 @@ def handler(args: typing.Any) -> None:
         browser_version=__version__,
     ).create_app()
 
+    log_conf = LOGGING_CONFIG.copy()
+    log_conf["formatters"]["default"]["fmt"] = "%(asctime)s [%(name)s] %(levelprefix)s %(message)s"
+    log_conf["formatters"]["access"][
+        "fmt"
+    ] = '%(asctime)s [%(name)s] %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
+
     uvicorn.run(
         app=app,
         host=args.host,
         port=args.port,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+        log_config=log_conf,
     )
 
 
