@@ -1,6 +1,7 @@
-from packaging.requirements import Requirement
-
-from simple_repository_browser.fetch_description import RequirementsSequence
+from simple_repository_browser.fetch_description import (
+    Requirement,
+    RequirementsSequence,
+)
 
 
 def test_extra__basic():
@@ -42,6 +43,12 @@ def test_extras__and_py_version():
         ),
     )
     assert s.extras() == {'bar'}
+
+
+def test_extras__legacy_format():
+    # As seen in cliff/2.10.0
+    s = RequirementsSequence((Requirement("unicodecsv (>=0.8.0); (python_version<'3.0')"),))
+    assert s.extras() == set()
 
 
 def test_extras__none():

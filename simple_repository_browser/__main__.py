@@ -1,8 +1,8 @@
 import argparse
 import logging
 import os
-import typing
 from pathlib import Path
+import typing
 
 import uvicorn
 

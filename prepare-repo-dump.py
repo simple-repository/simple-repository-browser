@@ -1,6 +1,6 @@
+from pathlib import Path
 import shutil
 import textwrap
-from pathlib import Path
 
 import tomlkit
 

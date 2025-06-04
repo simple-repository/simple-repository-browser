@@ -1,7 +1,7 @@
 import os
+from pathlib import Path
 import typing
 import uuid
-from pathlib import Path
 
 import aiosqlite
 import fastapi

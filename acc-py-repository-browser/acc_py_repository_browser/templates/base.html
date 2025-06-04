@@ -6,7 +6,7 @@
 
 
 {% block navbar_right %}
-        {% if request.state.username is defined and request.state.username%}
+        {% if request.state.username is defined and request.state.username %}
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('user') }}">{{ request.state.username }}</a>
             </li>

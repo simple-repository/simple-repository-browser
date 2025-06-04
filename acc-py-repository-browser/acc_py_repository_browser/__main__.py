@@ -5,8 +5,8 @@ import typing
 
 import uvicorn
 
-import simple_repository_browser.__main__ as base
 from simple_repository_browser import __version__
+import simple_repository_browser.__main__ as base
 
 from . import logging_utils
 from ._app import AccAppBuilder

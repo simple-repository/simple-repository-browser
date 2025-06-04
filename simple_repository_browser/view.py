@@ -1,5 +1,5 @@
-import typing
 from pathlib import Path
+import typing
 
 import fastapi
 import jinja2
@@ -96,9 +96,9 @@ def render_marker_ast(ast: list | tuple, *, format_strings: dict[str, str]) -> t
     #     ]
     # ]
 
-    if len(ast) == 1:
+    if isinstance(ast, list) and len(ast) == 1:
         # https://github.com/pypa/packaging/blob/09f131b326453f18a217fe34f4f7a77603b545db/src/packaging/markers.py#L75
-        ast = ast[0]
+        return render_marker_ast(ast[0], format_strings=format_strings)
 
     if isinstance(ast, list):
         lhs_str, lhs_maxdepth = render_marker_ast(ast[0], format_strings=format_strings)
