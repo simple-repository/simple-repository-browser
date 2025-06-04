@@ -28,6 +28,9 @@ for line in pyproject_file.read_text().splitlines():
         lines.append('root = ".."')
         line = 'version_file = "simple_repository_browser/_version.py"'
 
+    if "\"static/js/*\"" in line:
+      line = line.replace("\"static/js/*\"", "\"static/js/*\", \"static/images/*\"")
+
     lines.append(line)
 pyproject_file.write_text('\n'.join(lines) + '\n')
 
