@@ -1,0 +1,16 @@
+{% extends "page.html" %}
+
+{% block page_content %}
+{{ super() }}
+<section>
+    <div class="container">
+        <p>
+            This simple-repository-browser is developed by CERN. We are actively seeking feedback in order to understand whether we should invest in releasing this as an openly developed project. See <a href="https://github.com/simple-repository/simple-repository-browser">https://github.com/simple-repository/simple-repository-browser</a> for more details.
+        </p>
+        <p>
+            There are {{ "{:,}".format(n_packages) }} packages in the index, and metadata for {{ "{:,}".format(n_dist_info) }} specific distributions ({{ "{:,}".format(n_packages_w_dist_info) }} distinct packages) cached.
+        </p>
+    </div>
+</section>
+
+{% endblock page_content %}

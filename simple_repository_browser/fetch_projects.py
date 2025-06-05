@@ -66,7 +66,7 @@ async def fully_populate_db(connection, repository: SimpleRepository):
     if names_in_db_no_longer_in_index:
         logging.warning(
             f'Removing the following { len(names_in_db_no_longer_in_index) } names from the database:\n   '
-            "\n   ".join(list(names_in_db_no_longer_in_index)[:2000]),
+            "\n   ".join(list(names_in_db_no_longer_in_index)[:2000]) + "\n",
         )
     with con as cursor:
         for name in names_in_db_no_longer_in_index:
