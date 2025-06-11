@@ -1,5 +1,6 @@
 import dataclasses
 from datetime import datetime
+import types
 import typing
 
 from packaging.utils import canonicalize_name
@@ -15,8 +16,7 @@ class ShortReleaseInfo:
     version: Version
     files: tuple[model.File, ...]
     release_date: datetime | None
-    is_latest: bool
-    yank_status: bool | typing.Literal['partial']
+    labels: typing.Mapping[str, typing.Annotated[str, 'reason']]  # A mapping between labels (yank, partial-yank, quarantined, latest-release, etc.) to a reason for that label.
 
 
 class ReleaseInfoModel:
@@ -40,34 +40,89 @@ class ReleaseInfoModel:
                 release = Version('0.0rc0')
             files_grouped_by_version.setdefault(release, []).append(file)
 
+        # Ensure there is a release for each version, even if there is no files for it.
         for version_str in (project_detail.versions or []):
-            if Version(version_str) not in files_grouped_by_version:
-                files_grouped_by_version[Version(version_str)] = []
+            files_grouped_by_version.setdefault(Version(version_str), [])
 
         result: dict[Version, ShortReleaseInfo] = {}
 
         latest_version = cls.compute_latest_version(files_grouped_by_version)
 
+        if typing.TYPE_CHECKING:
+            RawQuarantinefile = typing.TypedDict(
+                'RawQuarantinefile', {
+                    'filename': str, 'quarantine_release_time': str, 'upload_time': str,
+                },
+            )
+            Quarantinefile = typing.TypedDict(
+                'Quarantinefile', {
+                    'filename': str, 'quarantine_release_time': datetime, 'upload_time': datetime,
+                },
+            )
+
+        quarantined_files: list[RawQuarantinefile] = typing.cast(typing.Any, project_detail.private_metadata.get('_quarantined_files')) or []
+
+        quarantined_files_by_release: dict[Version, list[Quarantinefile]] = {}
+
+        date_format = "%Y-%m-%dT%H:%M:%SZ"
+        for file_info in quarantined_files:
+            quarantined_file: Quarantinefile = {
+                'filename': file_info['filename'],
+                'quarantine_release_time': datetime.strptime(file_info['quarantine_release_time'], date_format),
+                'upload_time': datetime.strptime(file_info['upload_time'], date_format),
+            }
+            release = Version(
+                extract_package_version(
+                    filename=quarantined_file['filename'],
+                    project_name=canonical_name,
+                ),
+            )
+            quarantined_files_by_release.setdefault(release, []).append(quarantined_file)
+            # Make sure there is a record for this release, even if there are no files.
+            files_grouped_by_version.setdefault(release, [])
+
         for version, files in sorted(files_grouped_by_version.items()):
+            quarantined_files_for_release = quarantined_files_by_release.get(version, [])
+
             upload_times = [file.upload_time for file in files if file.upload_time]
+
+            labels = {}
+
+            yanked_files = 0
+            not_yanked_files = 0
+            yank_reasons = set()
+            for file in files:
+                if file.yanked:
+                    yanked_files += 1
+                    if isinstance(file.yanked, str):
+                        yank_reasons.add(file.yanked)
+                else:
+                    not_yanked_files += 1
+            if yanked_files > 0 and not_yanked_files > 0:
+                labels['partial-yank'] = 'Partially yanked'
+            elif yanked_files > 0 and not_yanked_files == 0:
+                labels['yanked'] = '. '.join(yank_reasons or ['No yank reasons given'])
+
+            if quarantined_files_for_release:
+                quarantine_release_times = [file['upload_time'] for file in quarantined_files_for_release]
+                quarantine_release_time = min(quarantine_release_times)
+                # When computing the release time, take into account quarantined files.
+                upload_times += (quarantine_release_time,)
+                labels['quarantined'] = f"Release quarantined. Available from {quarantine_release_time}"
+
+            if version == latest_version:
+                labels['latest-release'] = ''
+
             if upload_times:
                 earliest_release_date = min(upload_times)
             else:
                 earliest_release_date = None
 
-            yankeds = [bool(file.yanked) for file in files]
-            yank_status: bool | typing.Literal['partial'] = False
-            if all(yankeds):
-                yank_status = True
-            elif any(yankeds):
-                yank_status = 'partial'
-
             result[version] = ShortReleaseInfo(
                 version=version,
                 files=tuple(files),
                 release_date=earliest_release_date,
-                is_latest=(version == latest_version),
-                yank_status=yank_status,
+                labels=types.MappingProxyType(labels),
             )
 
         return result, latest_version

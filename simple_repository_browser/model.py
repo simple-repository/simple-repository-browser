@@ -183,9 +183,10 @@ class Model:
         if version not in releases:
             raise errors.RequestError(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
 
-        if not releases[version].files:
+        release = releases[version]
+        if not release.files:
             quarantine_context = ""
-            if getattr(prj, '_quarantined_files', None) or []:
+            if 'quarantined' in release.labels:
                 quarantine_context = " Files have been identified as quarantined for this project."
             raise errors.RequestError(status_code=404, detail=f'Release "{version}" has no files.' + quarantine_context, project_page=prj)
 
@@ -201,7 +202,7 @@ class Model:
         return ProjectPageModel(
             project=prj,
             releases=tuple(releases.values()),
-            this_release=releases[version],
+            this_release=release,
             classifiers_by_top_level=classifiers_by_top_level,
             latest_release=releases[latest_version],  # Note: May be the same release.
             file_info=info_file,

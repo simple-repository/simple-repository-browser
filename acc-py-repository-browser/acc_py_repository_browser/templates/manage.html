@@ -43,7 +43,7 @@
                                 {% endif %}
                             </div>
                             <div class="col-md-4 d-flex align-items-center justify-content-end">
-                                {% if release_info.yank_status is true %}
+                                {% if 'yanked' in release_info.labels %}
                                 {# Note: We don't include partial yank in this condition intentionally. #}
                                 <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
                                     <button class="btn btn-danger position-relative me-2 mb-1 btn-sm">
@@ -57,7 +57,7 @@
                                     </button>
                                     <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
                                         <a class="dropdown-item" href="{{ url_for('project_version', project_name=project.name, version=release_info.version) }}">View</a>
-                                        {% if release_info.yank_status is false%}
+                                        {% if 'yanked' not in release_info.labels and 'partially-yanked' not in release_info.labels %}
                                         <form
                                             action="{{ url_for('yank', project_name=project.name, version=release_info.version) }}"
                                             onsubmit="return confirm('Do you really want to yank {{ project.name }} version {{ release_info.version }}?');"
