@@ -7,6 +7,7 @@ from packaging.version import Version
 from simple_repository import SimpleRepository, errors, model
 from simple_repository.components.http import HttpRepository
 
+from simple_repository_browser.errors import RequestError
 import simple_repository_browser.model as base
 
 
@@ -63,7 +64,8 @@ class SourceContext:
             return [self._internal_name]
 
         try:
-            external_pkg = self._external.get_project_page(prj.name)
+            # TODO: This probably doesn't work, since there was a bug with it...
+            external_pkg = await self._external.get_project_page(prj.name)
         except errors.PackageNotFoundError:
             # We don't know... (this shouldn't happen!)
             return []
@@ -125,7 +127,18 @@ class AccPyModel(base.Model):
         self.ownership_service = ownership_service
 
     async def project_page(self, project_name: str, version: Version | None, recache: bool) -> ProjectPageModel:
-        base_res = await super().project_page(project_name, version, recache)
+        try:
+            base_res = await super().project_page(project_name, version, recache)
+        except RequestError as err:
+            if 'quarantined' in err.detail:
+                raise RequestError(
+                    err.status_code, detail=(
+                        err.detail
+                        + "\nYou can find out more about the Acc-Py quarantine policy at "
+                        + "https://acc-py.docs.cern.ch/services/python-package-index/"
+                    ),
+                )
+            raise
         prj = base_res['project']
         source_package_index = await self.source_context.determine_source(prj)
         source_package_index_str = ",".join(source_package_index)

@@ -151,6 +151,7 @@ class Crawler:
         key = ('pkg-info', prj.name, str(version))
         if key in self._cache and not force_recache:
             info_file, files_used_for_cache, pkg_info = self._cache[key]
+
             # Validate that the cached result covers all of the files, and that no new
             # files have been added since the cache was made. In that case, we re-cache.
             if all(
@@ -174,7 +175,7 @@ class Crawler:
 
         self._cache[key] = info_file, releases[version].files, pkg_info
         release_info = releases[version]
-        if release_info.is_latest:
+        if 'latest-release' in release_info.labels:
             fetch_projects.update_summary(
                 self._projects_db,
                 name=canonicalize_name(prj.name),

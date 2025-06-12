@@ -9,7 +9,7 @@
   <div class="col-md-6">
     <h1> {{ project.name }} {{ this_release.version }}</h1>
     <br>
-    {% if this_release.is_latest %}
+    {% if 'latest-release' in this_release.labels %}
     <span class="pip-command" id="pip-command">pip install {{ project.name }}
       <a href="#" onClick="javascript: navigator.clipboard.writeText('python -m pip install {{ project.name }}=={{ this_release.version }}'); return false;"><i class="fa fad fa-clone fa-fw"></i></a>
     </span>
@@ -22,13 +22,13 @@
 
   <div class="offset-md-2 col-md-4 text-end">
     <br>
-    {% if this_release.yank_status is true %}
+    {% if 'yanked' in this_release.labels %}
         {# Note: We don't include partial yank in this condition intentionally. #}
     <a class="status-badge status-badge--bad" href="{{ url_for('project_version', project_name=project.name, version=latest_release.version) }}">
       <i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp
-        <span>This release has been {% if this_release.yank_status == 'partial' %}partially {% endif %}yanked</span>
+        <span>This release has been yanked</span>
     </a>
-    {% elif this_release.is_latest %}
+    {% elif 'latest-release' in this_release.labels %}
     <a class="status-badge status-badge--good" href="">
       <i class="fa fa-check fa-fw"></i>&nbsp
         <span>Latest version</span>
@@ -167,7 +167,9 @@
           </div>
           <div id="releases-page" data-purpose="page-switch" data-source="releases">
           {% for release_info in releases|reverse %}
+            {% if 'quarantined' not in release_info.labels %}
             <a href="{{ url_for('project_version', project_name=project.name, version=release_info.version) }}">
+            {% endif %}
                 <div class="card m-1em">
                   <div class="card-body">
                     <span class="listing-icon">
@@ -179,31 +181,40 @@
                             {{ release_info.release_date.strftime('%b %d, %Y') }}
                         </span>
                     {% endif %}
-                    {% if release_info.yank_status is true %}
+                    {% if 'quarantined' in release_info.labels %}
+                        <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
+                            <button class="btn btn-danger position-relative me-2 mb-1 btn-sm active" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ release_info.labels["quarantined"] }}">
+                                Quarantined
+                            </button>
+                        </span>
+                    {% endif %}
+                    {% if 'yanked' in release_info.labels %}
                         {# Note: We don't include partial yank in this condition intentionally. #}
                         <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
-                            <button class="btn btn-danger position-relative me-2 mb-1 btn-sm">
+                            <button class="btn btn-danger position-relative me-2 mb-1 btn-sm active" data-bs-toggle="tooltip" data-bs-placement="right" title="{{ release_info.labels["yanked"] }}">
                                 Yanked
                             </button>
                         </span>
                     {% endif %}
                     {% if release_info.version == this_release.version %}
                     <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
-                       <button class="btn base-color position-relative me-2 mb-1 btn-sm">
+                       <button class="btn base-color position-relative me-2 mb-1 btn-sm active">
                            This release
                        </button>
                     </span>
                     {% endif %}
                     {% if release_info.version.is_prerelease %}
                     <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
-                       <button class="btn btn-warning position-relative me-2 mb-1 btn-sm">
+                       <button class="btn btn-warning position-relative me-2 mb-1 btn-sm active">
                            Pre-release
                        </button>
                     </span>
                     {% endif %}
                   </div>
                 </div>
+            {% if 'quarantined' not in release_info.labels %}
             </a>
+            {% endif %}
           {% endfor %}
           </div>
           <div id="files-page" data-purpose="page-switch" data-source="files">
@@ -259,7 +270,7 @@
                     {{ file['filename'] }}{% if file_metadata.files_info[file.filename].size %} ({{ fmt_size(file_metadata.files_info[file.filename].size) }}){% endif %}
                     {% if file.yanked is not none and file.yanked is not false %}
                         <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
-                            <button class="btn btn-danger position-relative me-2 mb-1 btn-sm" {% if file.yanked is not true %}title="{{ file.yanked }}" {% endif %}>
+                            <button class="btn btn-danger position-relative me-2 mb-1 btn-sm"  data-bs-toggle="tooltip" data-bs-placement="right" {% if file.yanked is not true %}title="{{ file.yanked }}" {% endif %}>
                                 Yanked
                             </button>
                         </span>
@@ -408,6 +419,12 @@ $('button.dependencies').click(
   } else {
     show_page('description');
   }
+
+// Enable bootstrap v5 tooltips.
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+tooltipTriggerList.map(function (tooltipTriggerEl) {
+  return new bootstrap.Tooltip(tooltipTriggerEl);
+})
 
 </script>
 {% endblock extra_footer %}

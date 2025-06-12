@@ -31,7 +31,7 @@ dependencies = [
   "parsley",
   "pkginfo>=1.12",
   "readme-renderer[md]",
-  "simple-repository~=0.8",
+  "simple-repository~=0.9",
   "uvicorn",
   "authlib",
   "starlette[full]",
