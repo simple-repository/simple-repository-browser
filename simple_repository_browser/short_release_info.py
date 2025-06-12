@@ -84,7 +84,9 @@ class ReleaseInfoModel:
         for version, files in sorted(files_grouped_by_version.items()):
             quarantined_files_for_release = quarantined_files_by_release.get(version, [])
 
-            upload_times = [file.upload_time for file in files if file.upload_time]
+            upload_times: list[datetime] = [
+                file.upload_time for file in files if file.upload_time is not None
+            ]
 
             labels = {}
 
@@ -104,10 +106,11 @@ class ReleaseInfoModel:
                 labels['yanked'] = '. '.join(yank_reasons or ['No yank reasons given'])
 
             if quarantined_files_for_release:
-                quarantine_release_times = [file['upload_time'] for file in quarantined_files_for_release]
+                quarantine_release_times = [file['quarantine_release_time'] for file in quarantined_files_for_release]
                 quarantine_release_time = min(quarantine_release_times)
                 # When computing the release time, take into account quarantined files.
-                upload_times += (quarantine_release_time,)
+                if not upload_times:
+                    upload_times = [file['upload_time'] for file in quarantined_files_for_release]
                 labels['quarantined'] = f"Release quarantined. Available from {quarantine_release_time}"
 
             if version == latest_version:
