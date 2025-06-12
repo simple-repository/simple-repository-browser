@@ -1,35 +1,36 @@
 # IF FROM SOURCE:
 
-#FROM python:3.11.0-alpine as build
-#
-#COPY . /opt/src
-#RUN export PIP_TRUSTED_HOST=acc-py-repo.cern.ch \
-# && export PIP_INDEX_URL=https://acc-py-repo.cern.ch/repository/vr-py-releases/simple \
-# && python -m pip install build \
-# && export SETUPTOOLS_SCM_PRETEND_VERSION_FOR_SIMPLE_REPOSITORY_BROWSER=0.5.0post1 \
-# && python -m build --wheel /opt/src -o /opt/dist/ \
-#;
-#
-#FROM python:3.11.0-alpine
-#
-#COPY --from=build /opt/dist /opt/dist
-#
-#RUN PIP_TRUSTED_HOST=acc-py-repo.cern.ch \
-#    PIP_INDEX_URL=https://acc-py-repo.cern.ch/repository/vr-py-releases/simple \
-#    python -m pip install \
-#        --no-cache \
-#        /opt/dist/*.whl \
-#;
+FROM python:3.11.0-alpine as build
+
+COPY . /opt/src
+RUN export PIP_TRUSTED_HOST=acc-py-repo.cern.ch \
+ && export PIP_INDEX_URL=https://acc-py-repo.cern.ch/repository/vr-py-releases/simple \
+ && python -m pip install build \
+ && export SETUPTOOLS_SCM_PRETEND_VERSION_FOR_SIMPLE_REPOSITORY_BROWSER=0.5.1post1 \
+ && python -m build --wheel /opt/src -o /opt/dist/ \
+;
+
+FROM python:3.11.0-alpine
+
+COPY --from=build /opt/dist /opt/dist
+
+RUN PIP_TRUSTED_HOST=acc-py-repo.cern.ch \
+    PIP_INDEX_URL=https://acc-py-repo.cern.ch/repository/vr-py-releases/simple \
+    python -m pip install \
+        --no-cache \
+        /opt/dist/*.whl \
+        fastapi[standard] \
+;
 
 
 # ELSEIF
 
-FROM python:3.11.0-alpine
-
-RUN pip install \
-    simple-repository-browser==0.5.1 \
-    uvicorn[standard] \
-;
+#FROM python:3.11.0-alpine
+#
+#RUN pip install \
+#    simple-repository-browser==0.5.1 \
+#    uvicorn[standard] \
+#;
 
 # ENDIF
 
