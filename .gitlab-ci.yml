@@ -1,7 +1,8 @@
 include:
  - project: acc-co/devops/python/acc-py-gitlab-ci-templates
    file: v2/python.gitlab-ci.yml
-
+ - project: acc-co/devops/python/acc-py-gitlab-ci-templates
+   file: v2/acc-py-deploy.gitlab-ci.yml
 
 variables:
   project_name: simple_repository_browser
@@ -39,7 +40,7 @@ fetch_external_deps:
     project_root: acc-py-repository-browser/
 
 
-build_wheel_acc_py:
+build_wheel:
   needs:
     - fetch_external_deps
   stage: build
@@ -48,28 +49,17 @@ build_wheel_acc_py:
     - .acc_py_repo_variables
 
 
-freeze_wheel_acc_py:
+freeze_wheel:
   # Inject the lockfiles from the source directory into the wheel
-  stage: build
-  needs:
-    - build_wheel_acc_py
   extends:
-   - .acc_py_run_on_acc_py
+   - .acc_py_freeze_wheel
    - .acc_py_repo_variables
-  variables:
-      ACC_PY_BASE_IMAGE_NAME: acc-py_el9_ci
   script:
-    # Figure out the wheel to install, compatible with this python version.
-    - cd ${project_root}  # Important - means we are in the right directory to find the distribution directory.
-    - python -m pip wheel ${project_name}
-      --no-deps --no-index
-      --find-links ./dist/
-      --wheel-dir ./.wheel-to-deploy
-    # Lock the wheel using the existing lock-files.
-    - acc-py -vv app lock ./.wheel-to-deploy/*.whl
+    - !reference [.acc_py_freeze_wheel, script]
   artifacts:
     paths:
-      - ${project_root}/.wheel-to-deploy/*.whl
+      - ${project_root}/build/acc-py-app-container
+      - ${project_root}/dist/*.whl
 
 
 publish_wheel:
@@ -77,9 +67,4 @@ publish_wheel:
     - .acc_py_publish
     - .acc_py_repo_variables
   needs:
-    - freeze_wheel_acc_py
-  before_script:
-    - rm -rf ${project_root}/dist; mkdir -p ${project_root}/dist
-    - cp ${project_root}/.wheel-to-deploy/* ${project_root}/dist/
-    - find ${project_root}/dist/
-    - !reference [.acc_py_publish, before_script]
+    - freeze_wheel
