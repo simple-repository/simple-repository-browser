@@ -39,13 +39,6 @@ fetch_external_deps:
     project_root: acc-py-repository-browser/
 
 
-build_wheel:
-  needs:
-    - fetch_external_deps
-  stage: build
-  extends: .acc_py_build_wheel
-
-
 build_wheel_acc_py:
   needs:
     - fetch_external_deps
@@ -55,13 +48,14 @@ build_wheel_acc_py:
     - .acc_py_repo_variables
 
 
-freeze_wheel:
+freeze_wheel_acc_py:
   # Inject the lockfiles from the source directory into the wheel
   stage: build
   needs:
-    - build_wheel
-  extends: .acc_py_run_on_acc_py
-  # NOTE: use a "_ci" image with the same tag as your Dockerfile
+    - build_wheel_acc_py
+  extends:
+   - .acc_py_run_on_acc_py
+   - .acc_py_repo_variables
   variables:
       ACC_PY_BASE_IMAGE_NAME: acc-py_el9_ci
   script:
@@ -76,43 +70,6 @@ freeze_wheel:
   artifacts:
     paths:
       - ${project_root}/.wheel-to-deploy/*.whl
-
-
-freeze_wheel_acc_py:
-  extends:
-    - freeze_wheel
-    - .acc_py_repo_variables
-  needs:
-    - build_wheel_acc_py
-    - fetch_external_deps  # Because we need the distribution/requirements.txt to have been updated
-
-
-build_and_publish_container_image:
-  # Build a container image with Kaniko, for more details see
-  # https://gitlab.cern.ch/gitlabci-examples/build_docker_image
-  stage: deploy
-  extends:
-    - .acc_py_on_tag
-    - .acc_py_repo_variables
-  needs:
-    - fetch_external_deps
-    - freeze_wheel_acc_py
-  image:
-    name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
-    entrypoint: ['']
-  before_script:
-    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
-    # Extract the version (according to setuptools-scm) from one of the wheels.
-    - export VERSION=$(cd ${project_root}/.wheel-to-deploy/ && ls -1 *.whl | head -n 1 | cut -d'-' -f2 | tr + .)
-    - echo $VERSION
-  script:
-    - mkdir -p ${project_root}/context/
-    - cp -r ${project_root}/.wheel-to-deploy ${project_root}/context/
-    - echo "Publishing ${CI_REGISTRY_IMAGE}:${VERSION}"
-    - /kaniko/executor
-      --context ${project_root}/context
-      --dockerfile ${project_root}/deployment/Dockerfile
-      --destination "${CI_REGISTRY_IMAGE}:${VERSION}"
 
 
 publish_wheel:
