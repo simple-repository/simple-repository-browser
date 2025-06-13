@@ -15,10 +15,10 @@ pre-commit:
 
 
 fetch_external_deps:
-  image: registry.cern.ch/acc/acc-py_el9:pro
+  image: registry.cern.ch/acc/acc-py_el9_ci:pro
   stage: build
   script:
-    - yum install -y nodejs npm
+    - yum install -y nodejs npm git
     - pushd javascript
     - npm install --include=dev
     - npm run build

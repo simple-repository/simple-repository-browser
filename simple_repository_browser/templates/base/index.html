@@ -48,7 +48,7 @@
 
         <section>
             <div class="container">
-                <img src="{{ url_for('static', path='/images/logo-large.svg') }}" class="mx-auto d-block" style="max-height: 40vh;">
+                <img src="{{ static_file_url('/images/logo-large.svg') }}" class="mx-auto d-block" style="max-height: 40vh;">
             </div>
         </section>
 {% endblock page_content %}

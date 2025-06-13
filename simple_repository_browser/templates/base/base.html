@@ -4,10 +4,11 @@
     {% block head %}
     <title>{% block title %}Python Simple Repository Browser{% endblock title %}</title>
 
-    <script src="{{ url_for('static', path='/js/simple-repository-browser.core.js') }}"></script>
+    <script src="{{ static_file_url('/js/simple-repository-browser.core.js') }}"></script>
     {# Note that currently, simple-repository-browser.core.js also includes some css, and the stylesheet must be loaded after that. #}
-    <link rel="stylesheet" href={{ url_for('static', path='/css/theme.css') }} >
-    <link rel="icon" href="{{ url_for('static', path='/images/favicon.6a76275d.ico') }}" type="image/x-icon">
+    <link rel="stylesheet" href={{ static_file_url('/css/theme.variables.css') }} >
+    <link rel="stylesheet" href={{ static_file_url('/css/theme.css') }} >
+    <link rel="icon" href="{{ static_file_url('/images/favicon.ico') }}" type="image/x-icon">
 
     {% block extra_head %}
     {% endblock extra_head %}
@@ -21,7 +22,7 @@
 
       <a class="navbar-brand" href="{{ url_for('index') }}">
           {% block logo %}
-            <img src="{{ url_for('static', path='/images/logo-small.svg') }}" style="height: 80px;">
+            <img src="{{ static_file_url('/images/logo-small.svg') }}" style="height: 80px;">
           {% endblock logo %}
       </a>
 

@@ -57,7 +57,7 @@ class AccAppBuilder(AppBuilder):
         return app
 
     def create_view(self) -> View:
-        return View(self.template_paths, self.browser_version)
+        return View(self.template_paths, self.browser_version, static_files_path=self.static_files_path)
 
     def create_controller(self, view: view.View, model: model.Model) -> Controller:
         client_id = os.getenv("CLIENT_ID")

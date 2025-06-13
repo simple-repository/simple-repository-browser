@@ -107,7 +107,7 @@ class AppBuilder:
         return app
 
     def create_view(self) -> view.View:
-        return view.View(self.template_paths, self.browser_version)
+        return view.View(self.template_paths, self.browser_version, static_files_path=self.static_files_path)
 
     def create_crawler(self, http_client: httpx.AsyncClient, source: SimpleRepository) -> crawler.Crawler:
         return crawler.Crawler(

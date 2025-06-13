@@ -12,11 +12,23 @@ cp -rf ${repo_browser_root}/pyproject.toml ${acc_py_root}
 mkdir -p ${acc_py_root}/simple_repository_browser
 cp -rf ${repo_browser_root}/simple_repository_browser/* ${acc_py_root}/simple_repository_browser
 
-git clean -fdX ${repo_browser_root}/acc_py_repository_browser/static/
-cp --no-clobber -r ${repo_browser_root}/simple_repository_browser/static/* ${acc_py_root}/acc_py_repository_browser/static/
-
+python -m pip install build
+python -m build -s ${repo_browser_root}
 python <(cat <<EoF
 from pathlib import Path
+import sys
+
+sys.path.append('${repo_browser_root}')
+from simple_repository_browser._compile_static import compile_static_files;
+
+compile_static_files(
+    destination=Path('./acc_py_repository_browser/static'),
+    sources=[
+      Path('${repo_browser_root}') / 'simple_repository_browser' / 'static_source',
+      Path('${acc_py_root}') / 'acc_py_repository_browser' / 'static_source',
+  ],
+)
+
 lines = []
 pyproject_file = Path('${acc_py_root}/pyproject.toml')
 for line in pyproject_file.read_text().splitlines():

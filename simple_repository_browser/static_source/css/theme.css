@@ -1,6 +1,3 @@
-@import "./theme.variables.css";
-
-
 .top-nav {
    background: var(--base-color);
 }
