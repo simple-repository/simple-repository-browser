@@ -11,8 +11,9 @@ cp -rf ${repo_browser_root}/pyproject.toml ${acc_py_root}
 # Ship the code for the simple_repository_browser, which we extend in Acc-Py Repository browser
 mkdir -p ${acc_py_root}/simple_repository_browser
 cp -rf ${repo_browser_root}/simple_repository_browser/* ${acc_py_root}/simple_repository_browser
-cp -rf ${repo_browser_root}/simple_repository_browser/static/images/python-logo-only.svg ${acc_py_root}/acc_py_repository_browser/static/images
-cp -rf ${repo_browser_root}/simple_repository_browser/static/images/favicon.6a76275d.ico ${acc_py_root}/acc_py_repository_browser/static/images
+
+git clean -fdX ${repo_browser_root}/acc_py_repository_browser/static/
+cp --no-clobber -r ${repo_browser_root}/simple_repository_browser/static/* ${acc_py_root}/acc_py_repository_browser/static/
 
 python <(cat <<EoF
 from pathlib import Path
@@ -36,5 +37,3 @@ pyproject_file.write_text('\n'.join(lines) + '\n')
 
 EoF
 )
-
-${acc_py_root}/javascript/build.sh
