@@ -134,11 +134,12 @@ class ReleaseInfoModel:
     def compute_latest_version(cls, versions: dict[Version, list[typing.Any]]) -> Version:
         # Use the pip logic to determine the latest release. First, pick the greatest non-dev version,
         # and if nothing, fall back to the greatest dev version. If no release is available return None.
-        sorted_versions = sorted(versions)
-        for version in sorted_versions[::-1]:
-            if not versions[version]:
-                # If there are no files for this version, skip it (just like pip would).
-                continue
-            if not version.is_devrelease and not version.is_prerelease:
-                return version
+        sorted_versions = sorted(
+            versions,
+            key=lambda version: (
+                len(versions[version]) > 0,  # Prioritise the releases with files (e.g. not quarantined).
+                not version.is_devrelease and not version.is_prerelease,
+                version,
+            ),
+        )
         return sorted_versions[-1]
