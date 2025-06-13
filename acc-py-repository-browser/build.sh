@@ -11,11 +11,24 @@ cp -rf ${repo_browser_root}/pyproject.toml ${acc_py_root}
 # Ship the code for the simple_repository_browser, which we extend in Acc-Py Repository browser
 mkdir -p ${acc_py_root}/simple_repository_browser
 cp -rf ${repo_browser_root}/simple_repository_browser/* ${acc_py_root}/simple_repository_browser
-cp -rf ${repo_browser_root}/simple_repository_browser/static/images/python-logo-only.svg ${acc_py_root}/acc_py_repository_browser/static/images
-cp -rf ${repo_browser_root}/simple_repository_browser/static/images/favicon.6a76275d.ico ${acc_py_root}/acc_py_repository_browser/static/images
 
+python -m pip install build
+python -m build -s ${repo_browser_root}
 python <(cat <<EoF
 from pathlib import Path
+import sys
+
+sys.path.append('${repo_browser_root}')
+from simple_repository_browser._compile_static import compile_static_files;
+
+compile_static_files(
+    destination=Path('./acc_py_repository_browser/static'),
+    sources=[
+      Path('${repo_browser_root}') / 'simple_repository_browser' / 'static_source',
+      Path('${acc_py_root}') / 'acc_py_repository_browser' / 'static_source',
+  ],
+)
+
 lines = []
 pyproject_file = Path('${acc_py_root}/pyproject.toml')
 for line in pyproject_file.read_text().splitlines():
@@ -36,5 +49,3 @@ pyproject_file.write_text('\n'.join(lines) + '\n')
 
 EoF
 )
-
-${acc_py_root}/javascript/build.sh

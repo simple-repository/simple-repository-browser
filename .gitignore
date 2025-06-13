@@ -1,10 +1,9 @@
-acc-py-repository-browser/js_build/
-acc-py-repository-browser/setup.py
-simple_repository_browser/static/js
-acc-py-repository-browser/acc_py_repository_browser/static/js
-acc-py-repository-browser/acc_py_repository_browser/static/images/python-logo-only.svg
-acc-py-repository-browser/acc_py_repository_browser/static/images/favicon.6a76275d.ico
 acc-py-repository-browser/simple_repository_browser
+
+simple_repository_browser/static_source/js/simple-repository-browser.project.js.LICENSE.txt
+simple_repository_browser/static_source/js/simple-repository-browser.core.js.LICENSE.txt
+simple_repository_browser/static_source/js/simple-repository-browser.core.js
+simple_repository_browser/static_source/js/simple-repository-browser.project.js
 
 */_version.py
 node_modules
