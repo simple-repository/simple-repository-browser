@@ -8,7 +8,6 @@ from typing import TypedDict
 from authlib.integrations.starlette_client import OAuth
 import fastapi
 from fastapi.responses import RedirectResponse, Response
-
 import simple_repository_browser.controller as base
 from simple_repository_browser.errors import RequestError
 from simple_repository_browser.model import Model as BaseModel

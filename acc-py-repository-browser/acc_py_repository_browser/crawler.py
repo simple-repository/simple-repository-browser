@@ -6,7 +6,6 @@ import typing
 import diskcache
 import httpx
 from simple_repository import SimpleRepository
-
 import simple_repository_browser.crawler as base
 
 

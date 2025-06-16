@@ -6,7 +6,6 @@ from packaging.utils import canonicalize_name
 from packaging.version import Version
 from simple_repository import SimpleRepository, errors, model
 from simple_repository.components.http import HttpRepository
-
 from simple_repository_browser.errors import RequestError
 import simple_repository_browser.model as base
 

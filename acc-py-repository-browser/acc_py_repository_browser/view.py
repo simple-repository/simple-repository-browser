@@ -1,5 +1,4 @@
 import fastapi
-
 import simple_repository_browser.view as base
 
 from .model import UserInfoModel

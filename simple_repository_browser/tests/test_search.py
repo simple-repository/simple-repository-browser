@@ -1,6 +1,5 @@
 import parsley
 import pytest
-
 from simple_repository_browser import _search
 from simple_repository_browser._search import Filter, FilterOn
 

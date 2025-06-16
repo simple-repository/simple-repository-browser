@@ -1,5 +1,4 @@
 from packaging.requirements import Requirement
-
 from simple_repository_browser.view import render_markers
 
 
