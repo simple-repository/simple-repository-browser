@@ -7,7 +7,7 @@ import shutil
 import sys
 import typing
 
-from starlette.responses import FileResponse
+from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 from typing_extensions import override
 
@@ -17,7 +17,7 @@ def compile_static_files(*, destination: pathlib.Path, sources: typing.Sequence[
     # This function is designed to write the static files, could be useful for serving static
     # files via apache/nginx/etc.
     manifest = generate_manifest(sources)
-    file_map = {'file-map': {}}
+    file_map: dict[str, dict[str, str]] = {'file-map': {}}
 
     for input_filename, (hashed_relpath, source_path) in manifest.items():
         target = destination / hashed_relpath
@@ -33,8 +33,8 @@ def generate_manifest(sources: typing.Sequence[pathlib.Path]) -> dict[str, tuple
     """
     Generate a manifest which maps template_rel_path to a (hashed_relpath, full_path) tuple.
     """
-    manifest: dict[str, tuple[str, str]] = {}
-    files_to_compile = {}
+    manifest: dict[str, tuple[str, pathlib.Path]] = {}
+    files_to_compile: dict[pathlib.Path, pathlib.Path] = {}
     for source in sources:
         assert source.exists()
         for path in sorted(source.glob('**/*')):
@@ -63,18 +63,18 @@ class HashedStaticFileHandler(StaticFiles):
     def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:
         actual_path = self._inverted_manifest.get(path)
         if actual_path is None:
-            super.lookup_path(path)
+            return super().lookup_path(path)
         return actual_path, os.stat(actual_path)
 
     @override
-    async def get_response(self, path: str, scope):
-        response: FileResponse = await super().get_response(path, scope)
+    async def get_response(self, path: str, scope) -> Response:
+        response = await super().get_response(path, scope)
         if response.status_code in [200, 304]:
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response
 
 
-def main(argv: typing.Sequence[str]) -> int:
+def main(argv: typing.Sequence[str]) -> None:
     parser = argparse.ArgumentParser(prog='simple_repository_browser.static')
 
     subparsers = parser.add_subparsers()
