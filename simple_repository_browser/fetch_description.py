@@ -10,12 +10,12 @@ import tempfile
 import typing
 
 import httpx
+from packaging.requirements import InvalidRequirement
+from packaging.requirements import Requirement as _PkgRequirement
 import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
 import readme_renderer.txt
-from packaging.requirements import InvalidRequirement
-from packaging.requirements import Requirement as _PkgRequirement
 from simple_repository import SimpleRepository, model
 
 
@@ -45,21 +45,20 @@ class RequirementsSequence(tuple[Requirement | InvalidRequirementSpecification])
         return _extras
 
     @classmethod
-    def extra_for_requirement(cls, requirement: Requirement) -> str | None:
+    def extra_for_requirement(cls, requirement: Requirement) -> list[str] | None:
         extras = list(cls.extras_for_requirement(requirement))
-        if len(extras) > 1:
-            raise ValueError("Not possible from setuptools")
-        elif extras:
-            return extras[0]
+        if extras:
+            return extras
         else:
             return None
 
     @classmethod
     def discover_extra_markers(cls, ast) -> typing.Generator[str, None, None]:
         # Find all extra parts of the markers.
-        if len(ast) == 1:
+        if isinstance(ast, list) and len(ast) == 1:
             # https://github.com/pypa/packaging/blob/09f131b326453f18a217fe34f4f7a77603b545db/src/packaging/markers.py#L75
-            ast = ast[0]
+            yield from cls.discover_extra_markers(ast[0])
+            return
         if isinstance(ast, list):
             if isinstance(ast[0], (list, tuple)):
                 yield from cls.discover_extra_markers(ast[0])

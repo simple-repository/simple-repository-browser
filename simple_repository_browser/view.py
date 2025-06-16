@@ -1,5 +1,6 @@
-import typing
+import json
 from pathlib import Path
+import typing
 
 import fastapi
 import jinja2
@@ -10,9 +11,10 @@ from . import model
 
 
 class View:
-    def __init__(self, templates_paths: typing.Sequence[Path], browser_version: str):
+    def __init__(self, templates_paths: typing.Sequence[Path], browser_version: str, static_files_path: Path):
         self.templates_paths = templates_paths
         self.version = browser_version
+        self.static_files_path = static_files_path
         self.templates_env = self.create_templates_environment()
 
     def create_templates_environment(self) -> jinja2.Environment:
@@ -29,6 +31,20 @@ class View:
             # proposed solution.
             return URL(str(request.app.url_path_for(name, **path_params)))
 
+        # Load manifest to map original filenames to hashed ones
+        manifest_path = self.static_files_path / ".manifest.json"
+        with open(manifest_path) as f:
+            static_files_manifest = json.load(f)
+
+        @jinja2.pass_context
+        def static_file_url(context: typing.Mapping[str, typing.Any], target_file: str) -> URL:
+            if target_file.startswith("/"):
+                target_file = target_file[1:]
+            filename = static_files_manifest['file-map'].get(target_file)
+            if not filename:
+                raise ValueError(f"Asset not found in manifest: {target_file}")
+            return url_for(context, 'static', path=filename)
+
         def sizeof_fmt(num: float, suffix: str = "B"):
             for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
                 if abs(num) < 1024.0:
@@ -37,6 +53,7 @@ class View:
             return f"{num:.1f}Yi{suffix}"
 
         templates.globals['url_for'] = url_for
+        templates.globals['static_file_url'] = static_file_url
         templates.globals['fmt_size'] = sizeof_fmt
         templates.globals['browser_version'] = self.version
         templates.globals['render_markers'] = render_markers
@@ -96,9 +113,9 @@ def render_marker_ast(ast: list | tuple, *, format_strings: dict[str, str]) -> t
     #     ]
     # ]
 
-    if len(ast) == 1:
+    if isinstance(ast, list) and len(ast) == 1:
         # https://github.com/pypa/packaging/blob/09f131b326453f18a217fe34f4f7a77603b545db/src/packaging/markers.py#L75
-        ast = ast[0]
+        return render_marker_ast(ast[0], format_strings=format_strings)
 
     if isinstance(ast, list):
         lhs_str, lhs_maxdepth = render_marker_ast(ast[0], format_strings=format_strings)

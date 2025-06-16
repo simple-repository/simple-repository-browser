@@ -1,12 +1,3 @@
-{#
- Copyright (C) 2023, CERN
- This software is distributed under the terms of the MIT
- licence, copied verbatim in the file "LICENSE".
- In applying this license, CERN does not waive the privileges and immunities
- granted to it by virtue of its status as Intergovernmental Organization
- or submit itself to any jurisdiction.
-#}
-
 {% extends "base.html" %}
 
 {% macro page_banner() -%}
@@ -57,7 +48,7 @@
 
         <section>
             <div class="container">
-                <img src="{{ url_for('static', path='/images/logo-large.svg') }}" class="mx-auto d-block" style="max-height: 40vh;">
+                <img src="{{ static_file_url('/images/logo-large.svg') }}" class="mx-auto d-block" style="max-height: 40vh;">
             </div>
         </section>
 {% endblock page_content %}

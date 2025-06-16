@@ -1,8 +1,8 @@
 import dataclasses
+from enum import Enum
 import re
 import textwrap
 import typing
-from enum import Enum
 
 import parsley
 
