@@ -24,7 +24,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 12
+
+      # Install an older Python (needed for the javascript build to succeed)
+      - name: Set up temporary Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.9
 
       - name: Build JS assets
         run: |
