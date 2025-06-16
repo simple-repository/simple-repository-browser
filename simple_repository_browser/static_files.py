@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 from hashlib import sha256
 import json
@@ -9,14 +11,20 @@ import typing
 
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
+from starlette.types import Scope
 from typing_extensions import override
 
+#: A StaticFilesManifest maps the relative path to the static files root
+#: (i.e. the input value of a template requiring a static file) to the relative
+#: path that should be rendered in a template, and the full path of the file on
+#: disk.
+StaticFilesManifest: typing.TypeAlias = dict[str, tuple[str, pathlib.Path]]
 
-def compile_static_files(*, destination: pathlib.Path, sources: typing.Sequence[pathlib.Path]):
+
+def compile_static_files(*, destination: pathlib.Path, manifest: StaticFilesManifest) -> None:
     """Compile a static directory from one or more source directories."""
     # This function is designed to write the static files, could be useful for serving static
     # files via apache/nginx/etc.
-    manifest = generate_manifest(sources)
     file_map: dict[str, dict[str, str]] = {'file-map': {}}
 
     for input_filename, (hashed_relpath, source_path) in manifest.items():
@@ -29,7 +37,7 @@ def compile_static_files(*, destination: pathlib.Path, sources: typing.Sequence[
     (destination / '.gitignore').write_text('*')
 
 
-def generate_manifest(sources: typing.Sequence[pathlib.Path]) -> dict[str, tuple[str, pathlib.Path]]:
+def generate_manifest(sources: typing.Sequence[pathlib.Path]) -> StaticFilesManifest:
     """
     Generate a manifest which maps template_rel_path to a (hashed_relpath, full_path) tuple.
     """
@@ -54,7 +62,7 @@ def generate_manifest(sources: typing.Sequence[pathlib.Path]) -> dict[str, tuple
 
 
 class HashedStaticFileHandler(StaticFiles):
-    def __init__(self, *, manifest, **kwargs):
+    def __init__(self, *, manifest: StaticFilesManifest, **kwargs) -> None:
         super().__init__(**kwargs)
         self.manifest = manifest
         self._inverted_manifest = {src: path for src, path in manifest.values()}
@@ -64,10 +72,10 @@ class HashedStaticFileHandler(StaticFiles):
         actual_path = self._inverted_manifest.get(path)
         if actual_path is None:
             return super().lookup_path(path)
-        return actual_path, os.stat(actual_path)
+        return str(actual_path), os.stat(actual_path)
 
     @override
-    async def get_response(self, path: str, scope) -> Response:
+    async def get_response(self, path: str, scope: Scope) -> Response:
         response = await super().get_response(path, scope)
         if response.status_code in [200, 304]:
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
@@ -95,7 +103,8 @@ def main(argv: typing.Sequence[str]) -> None:
 
 def handle_compile(args: argparse.Namespace):
     print(f'Writing static files to {args.destination}')
-    compile_static_files(destination=args.destination, sources=args.source)
+    manifest = generate_manifest(args.source)
+    compile_static_files(destination=args.destination, manifest=manifest)
 
 
 if __name__ == '__main__':

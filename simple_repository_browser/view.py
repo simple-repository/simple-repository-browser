@@ -7,10 +7,11 @@ from packaging.requirements import Requirement
 from starlette.datastructures import URL
 
 from . import model
+from .static_files import StaticFilesManifest
 
 
 class View:
-    def __init__(self, templates_paths: typing.Sequence[Path], browser_version: str, static_files_manifest: dict[str, tuple[str, Path]]):
+    def __init__(self, templates_paths: typing.Sequence[Path], browser_version: str, static_files_manifest: StaticFilesManifest):
         self.templates_paths = templates_paths
         self.version = browser_version
         self.static_files_manifest = static_files_manifest
