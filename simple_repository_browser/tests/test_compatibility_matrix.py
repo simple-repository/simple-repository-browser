@@ -1,5 +1,4 @@
 from simple_repository import model
-
 from simple_repository_browser.compatibility_matrix import compatibility_matrix
 
 

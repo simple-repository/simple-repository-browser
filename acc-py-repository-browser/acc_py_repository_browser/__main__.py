@@ -3,10 +3,9 @@ import logging
 import pathlib
 import typing
 
-import uvicorn
-
 from simple_repository_browser import __version__
 import simple_repository_browser.__main__ as base
+import uvicorn
 
 from . import logging_utils
 from ._app import AccAppBuilder

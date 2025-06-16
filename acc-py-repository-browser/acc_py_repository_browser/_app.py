@@ -8,11 +8,10 @@ import fastapi
 import httpx
 from simple_repository import SimpleRepository
 from simple_repository.components.http import HttpRepository
-from starlette.middleware.sessions import SessionMiddleware
-
 from simple_repository_browser import model, view
 from simple_repository_browser._app import AppBuilder
 from simple_repository_browser.metadata_injector import MetadataInjector
+from starlette.middleware.sessions import SessionMiddleware
 
 from .controller import Controller
 from .crawler import Crawler

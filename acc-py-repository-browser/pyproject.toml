@@ -34,6 +34,9 @@ Repository = "https://gitlab.cern.ch/acc-co/devops/python/package-index/acc-py-r
 root = ".."
 version_file = "acc_py_repository_browser/_version.py"
 
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+
 [tool.isort]
 multi_line_output = 3
 include_trailing_comma = true
