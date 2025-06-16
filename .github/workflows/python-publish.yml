@@ -26,6 +26,14 @@ jobs:
         with:
           python-version: "3.x"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+        run: |
+          cd javascript
+          npm install --include=dev
+          npm run build
+
       - name: Build release distributions
         run: |
           # NOTE: put your own distribution build steps here.

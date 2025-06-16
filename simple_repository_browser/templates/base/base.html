@@ -4,12 +4,12 @@
     {% block head %}
     <title>{% block title %}Python Simple Repository Browser{% endblock title %}</title>
 
-    <script src="{{ static_file_url('/js/simple-repository-browser.core.js') }}"></script>
-    {# Note that currently, simple-repository-browser.core.js also includes some css, and the stylesheet must be loaded after that. #}
+    <link rel="stylesheet" href={{ static_file_url('/vendored/bootstrap.customized.js.css') }} >
     <link rel="stylesheet" href={{ static_file_url('/css/theme.variables.css') }} >
     <link rel="stylesheet" href={{ static_file_url('/css/theme.css') }} >
     <link rel="icon" href="{{ static_file_url('/images/favicon.ico') }}" type="image/x-icon">
 
+    <script src="{{ static_file_url('/vendored/bootstrap.customized.js') }}" defer></script>
     {% block extra_head %}
     {% endblock extra_head %}
     {% endblock head %}
