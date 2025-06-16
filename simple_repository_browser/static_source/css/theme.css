@@ -1,0 +1,139 @@
+.top-nav {
+   background: var(--base-color);
+}
+
+.nav-link {
+   color: white;
+}
+
+.nav-link:hover, .nav-link:focus {
+   color: white;
+}
+
+.navbar-brand {
+   font-size: xx-large;
+   color: white;
+   font-weight: bolder;
+}
+.navbar-brand:hover {
+   text-decoration: none;
+   color: white;
+}
+
+.jumbo-banner {
+   background: var(--base-color2);
+   color: white;
+   padding: 0px;
+   margin: 0px;
+}
+
+.jumbo-separator {
+   background-color: #ececec;
+   color: #464646;
+   border-bottom: 1px solid #d3d3d3;
+   padding: 1em;
+   margin-bottom: 1em;
+}
+
+
+a:hover, a:visited, a:link, a:active
+{
+    text-decoration: none;
+}
+
+
+.btn-link {
+   text-decoration: none;
+}
+
+nav a:hover {
+   text-decoration: underline;
+}
+
+.pip-command {
+   font-family: Source Code Pro, monospace;
+   font-weight: 500;
+   font-size: 1.2rem;
+   background-color: rgba(0, 0, 0, .15);
+   padding: 8px;
+   border: 1px dotted hsla(0, 0%, 100%, .4);
+   line-height: 30px;
+   white-space: nowrap;  // Long pip commands shouldn't wrap
+}
+
+.pip-command a, .pip-command a:hover {
+   color: white;
+}
+
+.listing-icon {
+   padding: 0 1em 0 0.5em;
+}
+
+footer {
+   background-color: var(--base-color);
+   color: white;
+   padding: 2em;
+}
+
+footer.text-muted.mt-auto {
+   color: white !important;
+   margin-top: 2em !important;
+}
+
+.btn-primary, .btn-primary:hover, .btn-primary:active, .btn-primary:focus {
+   background-color:  var(--base-color);
+   border-color:  var(--base-color);
+   box-shadow: none;  // On focus otherwise
+}
+
+dev#page-content a:hover {
+   color: var(--base-color);
+}
+
+
+a.status-badge {
+   font-weight: 400;
+   line-height: 1.4;
+   border: 1px solid hsla(0, 0%, 100%, .5);
+   border-radius: 3px;
+   box-sizing: border-box;
+   display: inline-flex;
+   font-size: .8rem;
+   min-height: 40px;
+   padding: 12px;
+   color: #fff;
+}
+
+a.status-badge--bad {
+   background-color: #d52d40;
+}
+
+a.status-badge--good {
+   background-color: #148024;
+}
+
+img {
+   max-width: 100%;
+}
+
+
+.link-unstyled, .link-unstyled:link, .link-unstyled:hover {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+
+.base-color {
+   background: var(--base-color) !important;
+   color: white !important;
+}
+
+.secondary-color {
+   background: var(--base-color2) !important;
+   color: white !important;
+}
+
+
+.m-1em {
+   margin: 1em;
+}

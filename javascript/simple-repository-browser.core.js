@@ -1,12 +1,8 @@
-/*
- * Copyright (C) 2023, CERN
- * This software is distributed under the terms of the MIT
- * licence, copied verbatim in the file "LICENSE".
- * In applying this license, CERN does not waive the privileges and immunities
- * granted to it by virtue of its status as Intergovernmental Organization
- * or submit itself to any jurisdiction.
- */
+import './scss/app.scss';
+
+import 'popper.js';  // Needed for bootstrap tooltips.
 
 import 'bootstrap';
 
-import './scss/app.scss';
+// Expose bootstrap, so that we can initiate some events with it (like enabling tooltips).
+window.bootstrap = require('bootstrap/dist/js/bootstrap.bundle.js');

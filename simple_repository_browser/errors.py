@@ -6,10 +6,10 @@ class RequestError(Exception):
         self,
         status_code: int,
         detail: str,
-        *args: typing.Any,
-        **kwags: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
-        super().__init__(*args, **kwags)
+        self._kwargs = kwargs
+        super().__init__()
         self.status_code = status_code
         self.detail = detail
 

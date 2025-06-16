@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2023, CERN
- * This software is distributed under the terms of the MIT
- * licence, copied verbatim in the file "LICENSE".
- * In applying this license, CERN does not waive the privileges and immunities
- * granted to it by virtue of its status as Intergovernmental Organization
- * or submit itself to any jurisdiction.
- */
-
 const path = require('path');
 
 module.exports = {
@@ -16,7 +7,7 @@ module.exports = {
   },
   output: {
     filename: '[name]',
-    path: path.resolve(__dirname, '../simple_repository_browser/static/js/')
+    path: path.resolve(__dirname, '../simple_repository_browser/static_source/js/')
   },
   resolve: {
     extensions: [".ts", ".js"],
