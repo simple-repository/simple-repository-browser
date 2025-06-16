@@ -42,7 +42,7 @@ def handler(args: typing.Any) -> None:
             # Include the "base" folder, such that upstream templates can inherit from "base/...".
             here/"templates",
         ],
-        static_files_paths=[here / "static_source"],
+        static_files_paths=[here / "static"],
         crawl_popular_projects=args.crawl_popular_projects,
         url_prefix=args.url_prefix,
         browser_version=__version__,
