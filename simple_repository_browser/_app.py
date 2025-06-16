@@ -15,6 +15,7 @@ from simple_repository.components.local import LocalRepository
 
 from . import controller, crawler, errors, fetch_projects, model, view
 from .metadata_injector import MetadataInjector
+from .static_files import generate_manifest
 
 
 class AppBuilder:
@@ -24,7 +25,7 @@ class AppBuilder:
         repository_url: str,
         cache_dir: Path,
         template_paths: typing.Sequence[Path],
-        static_files_path: Path,
+        static_files_paths: typing.Sequence[Path],
         crawl_popular_projects: bool,
         browser_version: str,
     ) -> None:
@@ -32,7 +33,7 @@ class AppBuilder:
         self.repository_url = repository_url
         self.cache_dir = cache_dir
         self.template_paths = template_paths
-        self.static_files_path = static_files_path
+        self.static_files_manifest = generate_manifest(static_files_paths)
         self.crawl_popular_projects = crawl_popular_projects
         self.browser_version = browser_version
 
@@ -50,6 +51,7 @@ class AppBuilder:
         _view = self.create_view()
 
         async def lifespan(app: fastapi.FastAPI):
+
             async with (
                 httpx.AsyncClient(timeout=30) as http_client,
                 aiosqlite.connect(self.db_path, timeout=5) as db,
@@ -61,7 +63,7 @@ class AppBuilder:
                     ),
                     view=_view,
                 )
-                router = _controller.create_router(self.static_files_path)
+                router = _controller.create_router(self.static_files_manifest)
                 app.mount(self.url_prefix or "/", router)
 
                 if self.url_prefix:
@@ -107,7 +109,7 @@ class AppBuilder:
         return app
 
     def create_view(self) -> view.View:
-        return view.View(self.template_paths, self.browser_version, static_files_path=self.static_files_path)
+        return view.View(self.template_paths, self.browser_version, static_files_manifest=self.static_files_manifest)
 
     def create_crawler(self, http_client: httpx.AsyncClient, source: SimpleRepository) -> crawler.Crawler:
         return crawler.Crawler(

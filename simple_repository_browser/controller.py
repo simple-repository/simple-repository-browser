@@ -2,16 +2,15 @@ import asyncio
 import dataclasses
 from enum import Enum
 from functools import partial
-from pathlib import Path
 import typing
 
 import fastapi
 from fastapi.responses import StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from markupsafe import Markup
 from packaging.version import InvalidVersion, Version
 
 from . import errors, model, view
+from .static_files import HashedStaticFileHandler
 
 
 @dataclasses.dataclass(frozen=True)
@@ -82,9 +81,9 @@ class Controller:
         self.model = model
         self.view = view
 
-    def create_router(self, static_file_path: Path) -> fastapi.APIRouter:
+    def create_router(self, static_files_manifest) -> fastapi.APIRouter:
         router = self.router.build_fastapi_router(self)
-        router.mount("/static", StaticFiles(directory=static_file_path), name="static")
+        router.mount("/static", HashedStaticFileHandler(manifest=static_files_manifest), name="static")
         return router
 
     @router.get("/", name="index")

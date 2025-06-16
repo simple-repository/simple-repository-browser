@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 import typing
 
@@ -11,10 +10,10 @@ from . import model
 
 
 class View:
-    def __init__(self, templates_paths: typing.Sequence[Path], browser_version: str, static_files_path: Path):
+    def __init__(self, templates_paths: typing.Sequence[Path], browser_version: str, static_files_manifest: dict[str, tuple[str, Path]]):
         self.templates_paths = templates_paths
         self.version = browser_version
-        self.static_files_path = static_files_path
+        self.static_files_manifest = static_files_manifest
         self.templates_env = self.create_templates_environment()
 
     def create_templates_environment(self) -> jinja2.Environment:
@@ -31,16 +30,11 @@ class View:
             # proposed solution.
             return URL(str(request.app.url_path_for(name, **path_params)))
 
-        # Load manifest to map original filenames to hashed ones
-        manifest_path = self.static_files_path / ".manifest.json"
-        with open(manifest_path) as f:
-            static_files_manifest = json.load(f)
-
         @jinja2.pass_context
         def static_file_url(context: typing.Mapping[str, typing.Any], target_file: str) -> URL:
             if target_file.startswith("/"):
                 target_file = target_file[1:]
-            filename = static_files_manifest['file-map'].get(target_file)
+            filename, _ = self.static_files_manifest.get(target_file) or [None, None]
             if not filename:
                 raise ValueError(f"Asset not found in manifest: {target_file}")
             return url_for(context, 'static', path=filename)
