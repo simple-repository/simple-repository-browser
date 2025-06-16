@@ -1,0 +1,6 @@
+version = 1
+
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "2023 CERN"
+SPDX-License-Identifier = "MIT"
