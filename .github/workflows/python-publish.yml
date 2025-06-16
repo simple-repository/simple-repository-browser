@@ -22,17 +22,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
       - uses: actions/setup-node@v4
         with:
           node-version: 18
+
+      - name: Build JS assets
         run: |
           cd javascript
           npm install --include=dev
           npm run build
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
       - name: Build release distributions
         run: |
