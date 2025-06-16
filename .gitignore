@@ -1,7 +1,7 @@
-simple_repository_browser/static_source/js/simple-repository-browser.project.js.LICENSE.txt
-simple_repository_browser/static_source/js/simple-repository-browser.core.js.LICENSE.txt
-simple_repository_browser/static_source/js/simple-repository-browser.core.js
-simple_repository_browser/static_source/js/simple-repository-browser.project.js
+simple_repository_browser/static/js/simple-repository-browser.project.js.LICENSE.txt
+simple_repository_browser/static/js/simple-repository-browser.core.js.LICENSE.txt
+simple_repository_browser/static/js/simple-repository-browser.core.js
+simple_repository_browser/static/js/simple-repository-browser.project.js
 
 */_version.py
 node_modules

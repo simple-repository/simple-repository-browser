@@ -79,4 +79,3 @@ The browser can be run with:
 ```bash
 python -m simple_repository_browser
 ```
-

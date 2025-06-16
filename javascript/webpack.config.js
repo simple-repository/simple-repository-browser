@@ -7,7 +7,7 @@ module.exports = {
   },
   output: {
     filename: '[name]',
-    path: path.resolve(__dirname, '../simple_repository_browser/static_source/js/')
+    path: path.resolve(__dirname, '../simple_repository_browser/static/js/')
   },
   resolve: {
     extensions: [".ts", ".js"],
