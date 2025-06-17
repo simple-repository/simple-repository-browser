@@ -51,6 +51,9 @@ simple-repository-browser = "simple_repository_browser.__main__:main"
 [tool.setuptools_scm]
 version_file = "simple_repository_browser/_version.py"
 
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+
 # [tool.mypy]
 # check_untyped_defs = true
 # disallow_untyped_defs = true
