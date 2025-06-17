@@ -5,14 +5,9 @@
   "main": "index.js",
   "scripts": {
     "build": "mkdir -p ../simple_repository_browser/static/vendored; npm run -s build-bootstrap; npm run -s build-jquery; npm run -s build-fontawesome; npm run -s build-popper.js; npm run -s build-custom-bootstrap",
-    "build-bootstrap": "npm run -s build-bootstrap-js && npm run -s build-bootstrap-css",
-    "build-bootstrap-js": "cp node_modules/bootstrap/dist/js/bootstrap.bundle.min.js* ../simple_repository_browser/static/vendored/",
-    "build.bootstrap-css": "cp node_modules/bootstrap/dist/css/bootstrap.min.css ../simple_repository_browser/static/vendored/",
+    "build-bootstrap": "cp node_modules/bootstrap/dist/js/bootstrap.bundle.min.js* ../simple_repository_browser/static/vendored/",
     "build-jquery": "cp node_modules/jquery/dist/jquery.min.js ../simple_repository_browser/static/vendored/",
-    "build-fontawesome": "npm run -s build-fontawesome-core && npm run -s build-fontawesome-solid && npm run -s build-fontawesome-regular",
-    "build-fontawesome-core": "cp node_modules/@fortawesome/fontawesome-free/js/fontawesome.min.js ../simple_repository_browser/static/vendored/",
-    "build-fontawesome-solid": "cp node_modules/@fortawesome/fontawesome-free/js/solid.min.js ../simple_repository_browser/static/vendored/",
-    "build-fontawesome-regular": "cp node_modules/@fortawesome/fontawesome-free/js/regular.min.js ../simple_repository_browser/static/vendored/",
+    "build-fontawesome": "cp node_modules//@fortawesome/fontawesome-free/js/all.min.js ../simple_repository_browser/static/vendored/fontawesome-free.all.min.js",
     "build-popper.js": "cp node_modules/popper.js/dist/umd/popper.min.js ../simple_repository_browser/static/vendored/",
     "build-custom-bootstrap": "webpack"
   },

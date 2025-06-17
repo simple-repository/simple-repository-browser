@@ -63,6 +63,8 @@
         <p></p>
       </div>
       {% block extra_footer %}
+          {# Fontawesome can be used in all templates. #}
+          <script src="{{ static_file_url('/vendored/fontawesome-free.all.min.js') }}" defer></script>
       {% endblock extra_footer %}
     </footer>
   {% endblock body %}
