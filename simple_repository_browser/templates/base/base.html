@@ -58,7 +58,9 @@
       <footer class="text-muted mt-auto">
       <div class="container text-center">
         <p class="float-right">
+            {% block browser_version %}
             simple-repository-browser v{{ browser_version }}
+            {% endblock browser_version %}
         </p>
         <p></p>
       </div>
