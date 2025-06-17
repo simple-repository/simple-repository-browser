@@ -9,11 +9,12 @@ def test_view_format__no_markers():
     )
 
     result = render_markers(
-        req, format_strings={
-            'expr': "{lhs} :{op}: {rhs}",
+        req,
+        format_strings={
+            "expr": "{lhs} :{op}: {rhs}",
         },
     )
-    assert result == ''
+    assert result == ""
 
 
 def test_view_format__simple_extra():
@@ -22,8 +23,9 @@ def test_view_format__simple_extra():
     )
 
     result = render_markers(
-        req, format_strings={
-            'expr': "{lhs} :{op}: {rhs}",
+        req,
+        format_strings={
+            "expr": "{lhs} :{op}: {rhs}",
         },
     )
     expected = 'extra :==: "blah"'
@@ -37,10 +39,11 @@ def test_view_format__nested():
     )
 
     result = render_markers(
-        req, format_strings={
-            'combine_nested_expr': "[{lhs}] [{op}] [{rhs}]",
-            'group_expr': '<<{expr}>>',
-            'expr': "|{lhs}/ |{op}/ |{rhs}/",
+        req,
+        format_strings={
+            "combine_nested_expr": "[{lhs}] [{op}] [{rhs}]",
+            "group_expr": "<<{expr}>>",
+            "expr": "|{lhs}/ |{op}/ |{rhs}/",
         },
     )
     expected = (
@@ -56,9 +59,10 @@ def test_view_format__legacy_format():
     req = Requirement("unicodecsv (>=0.8.0); (python_version<'3.0')")
 
     result = render_markers(
-        req, format_strings={
-            'expr': "{lhs} :{op}: {rhs}",
-            'combine_nested_expr': '{lhs} @{op}@ {rhs}',
+        req,
+        format_strings={
+            "expr": "{lhs} :{op}: {rhs}",
+            "combine_nested_expr": "{lhs} @{op}@ {rhs}",
         },
     )
     expected = 'python_version :<: "3.0"'
@@ -72,9 +76,10 @@ def test_view_format__simple_extra_plus_os():
     )
 
     result = render_markers(
-        req, format_strings={
-            'expr': "{lhs} :{op}: {rhs}",
-            'combine_nested_expr': '{lhs} @{op}@ {rhs}',
+        req,
+        format_strings={
+            "expr": "{lhs} :{op}: {rhs}",
+            "combine_nested_expr": "{lhs} @{op}@ {rhs}",
         },
     )
     expected = 'python_version :<=: "3.8" @and@ extra :==: "blah"'

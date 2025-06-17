@@ -20,13 +20,25 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     # parsed arguments.
     parser.set_defaults(handler=handler)
 
-    parser.add_argument("repository_url", type=str, nargs='?', default='https://pypi.org/simple/')
+    parser.add_argument(
+        "repository_url", type=str, nargs="?", default="https://pypi.org/simple/"
+    )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
-    parser.add_argument("--cache-dir", type=str, default=Path(os.environ.get('XDG_CACHE_DIR', Path.home() / '.cache')) / 'simple-repository-browser')
+    parser.add_argument(
+        "--cache-dir",
+        type=str,
+        default=Path(os.environ.get("XDG_CACHE_DIR", Path.home() / ".cache"))
+        / "simple-repository-browser",
+    )
     parser.add_argument("--url-prefix", type=str, default="")
-    parser.add_argument('--no-popular-project-crawl', dest='crawl_popular_projects', action='store_false', default=True)
-    parser.add_argument('--templates-dir', default=here / "templates", type=Path)
+    parser.add_argument(
+        "--no-popular-project-crawl",
+        dest="crawl_popular_projects",
+        action="store_false",
+        default=True,
+    )
+    parser.add_argument("--templates-dir", default=here / "templates", type=Path)
 
 
 def handler(args: typing.Any) -> None:
@@ -38,9 +50,9 @@ def handler(args: typing.Any) -> None:
             # Include the base templates so that the given templates directory doesn't have to
             # implement *all* of the templates. This must be at a lower precedence than the given
             # templates path, so that they can be overriden.
-            here/"templates"/"base",
+            here / "templates" / "base",
             # Include the "base" folder, such that upstream templates can inherit from "base/...".
-            here/"templates",
+            here / "templates",
         ],
         static_files_paths=[here / "static"],
         crawl_popular_projects=args.crawl_popular_projects,
@@ -49,10 +61,12 @@ def handler(args: typing.Any) -> None:
     ).create_app()
 
     log_conf = LOGGING_CONFIG.copy()
-    log_conf["formatters"]["default"]["fmt"] = "%(asctime)s [%(name)s] %(levelprefix)s %(message)s"
-    log_conf["formatters"]["access"][
-        "fmt"
-    ] = '%(asctime)s [%(name)s] %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
+    log_conf["formatters"]["default"]["fmt"] = (
+        "%(asctime)s [%(name)s] %(levelprefix)s %(message)s"
+    )
+    log_conf["formatters"]["access"]["fmt"] = (
+        '%(asctime)s [%(name)s] %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
+    )
 
     uvicorn.run(
         app=app,
@@ -71,8 +85,8 @@ def main():
     args.handler(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    logging.getLogger('httpcore').setLevel(logging.WARNING)
-    logging.getLogger('httpx').setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     main()

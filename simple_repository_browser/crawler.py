@@ -23,6 +23,7 @@ class Crawler:
     A crawler designed to populate and periodically reindex
     the content of the project's metadata database.
     """
+
     def __init__(
         self,
         http_client: httpx.AsyncClient,
@@ -110,24 +111,26 @@ class Crawler:
         )
         packages_w_dist_info = set()
         for cache_type, name, version in self._cache:
-            if cache_type == 'pkg-info':
+            if cache_type == "pkg-info":
                 packages_w_dist_info.add(name)
 
         popular_projects = []
         if self._crawl_popular_projects:
             # Add the top 100 packages (and their dependencies) to the repository
-            URL = 'https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json'
+            URL = "https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json"
             try:
                 resp = await self._http_client.get(URL)
                 s = resp.json()
-                for _, row in zip(range(100), s['rows']):
-                    popular_projects.append(row['project'])
+                for _, row in zip(range(100), s["rows"]):
+                    popular_projects.append(row["project"])
             except Exception as err:
-                logging.warning(f'Problem fetching popular projects ({err})')
+                logging.warning(f"Problem fetching popular projects ({err})")
                 pass
 
         projects_to_crawl = packages_w_dist_info | set(popular_projects)
-        logging.info(f'About to start crawling {len(projects_to_crawl)} projects (and their transient dependencies)')
+        logging.info(
+            f"About to start crawling {len(projects_to_crawl)} projects (and their transient dependencies)"
+        )
         await self.crawl_recursively(projects_to_crawl)
 
     async def run_reindex_periodically(self) -> None:
@@ -147,8 +150,7 @@ class Crawler:
         releases: dict[Version, ShortReleaseInfo],
         force_recache: bool,
     ) -> tuple[model.File, PackageInfo]:
-
-        key = ('pkg-info', prj.name, str(version))
+        key = ("pkg-info", prj.name, str(version))
         if key in self._cache and not force_recache:
             info_file, files_used_for_cache, pkg_info = self._cache[key]
 
@@ -163,7 +165,7 @@ class Crawler:
                 return info_file, pkg_info
 
         if force_recache:
-            logging.info('Recaching')
+            logging.info("Recaching")
 
         fetch_projects.insert_if_missing(
             self._projects_db,
@@ -171,16 +173,19 @@ class Crawler:
             prj.name,
         )
 
-        info_file, pkg_info = await package_info(releases[version].files, self._source, prj.name)
+        info_file, pkg_info = await package_info(
+            releases[version].files, self._source, prj.name
+        )
 
         self._cache[key] = info_file, releases[version].files, pkg_info
         release_info = releases[version]
-        if 'latest-release' in release_info.labels:
+        if "latest-release" in release_info.labels:
             fetch_projects.update_summary(
                 self._projects_db,
                 name=canonicalize_name(prj.name),
                 summary=pkg_info.summary,
-                release_date=info_file.upload_time or datetime.fromtimestamp(0, tz=timezone.utc),
+                release_date=info_file.upload_time
+                or datetime.fromtimestamp(0, tz=timezone.utc),
                 release_version=str(version),
             )
 

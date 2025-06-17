@@ -65,8 +65,8 @@ class RequirementsSequence(tuple[Requirement | InvalidRequirementSpecification])
             if isinstance(ast[2], (list, tuple)):
                 yield from cls.discover_extra_markers(ast[2])
         elif isinstance(ast, tuple):
-            lhs_v = getattr(ast[0], 'value', None)
-            if lhs_v == 'extra':
+            lhs_v = getattr(ast[0], "value", None)
+            if lhs_v == "extra":
                 yield ast[2].value
             # Note: Technically, it is possible to build a '"foo" == extra' style
             #       marker. We don't bother with it though, since it isn't something
@@ -87,6 +87,7 @@ class RequirementsSequence(tuple[Requirement | InvalidRequirementSpecification])
 @dataclasses.dataclass
 class PackageInfo:
     """Represents a simplified pkg-info/dist-info metadata, suitable for easy (and safe) use in html templates"""
+
     summary: str
     description: str  # This is HTML safe (rendered with readme_renderer).
     author: typing.Optional[str] = None
@@ -108,9 +109,9 @@ async def fetch_file(url, dest):
             try:
                 r.raise_for_status()
             except httpx.HTTPError as err:
-                raise IOError(f'Unable to fetch file (reason: { str(err) })')
+                raise IOError(f"Unable to fetch file (reason: {str(err)})")
             chunk_size = 1024 * 100
-            with open(dest, 'wb') as fd:
+            with open(dest, "wb") as fd:
                 async for chunk in r.aiter_bytes(chunk_size):
                     fd.write(chunk)
 
@@ -134,9 +135,9 @@ async def package_info(
         release_files,
         key=lambda file: (
             not file.dist_info_metadata,  # Put those with dist info metadata first.
-            not file.filename.endswith('.whl'),
-            not file.filename.endswith('.tar.gz'),
-            not file.filename.endswith('.zip'),
+            not file.filename.endswith(".whl"),
+            not file.filename.endswith(".tar.gz"),
+            not file.filename.endswith(".zip"),
             file.upload_time,  # Distinguish conflicts by picking the earliest one.
         ),
     )
@@ -154,6 +155,7 @@ async def package_info(
     # Compute the size of each file.
     # TODO: This should be done as part of the repository component interface.
     async with httpx.AsyncClient(verify=False) as http_client:
+
         async def semaphored_head(filename: str, url: str):
             async with limited_concurrency:
                 headers: dict[str, str] = {}
@@ -161,6 +163,7 @@ async def package_info(
                     filename,
                     await http_client.head(url, follow_redirects=True, headers=headers),
                 )
+
         coros = [
             semaphored_head(file.filename, file.url)
             for file in files
@@ -169,20 +172,20 @@ async def package_info(
         for coro in asyncio.as_completed(coros):
             filename, response = await coro
             files_info[filename] = FileInfo(
-                size=int(response.headers['Content-Length']),
+                size=int(response.headers["Content-Length"]),
             )
 
     file = files[0]
 
     if file.dist_info_metadata:
-        resource_name = file.filename + '.metadata'
+        resource_name = file.filename + ".metadata"
     else:
         raise ValueError(f"Metadata not available for {file}")
 
-    logging.debug(f'Downloading metadata for {file.filename} from {resource_name}')
+    logging.debug(f"Downloading metadata for {file.filename} from {resource_name}")
 
     with tempfile.NamedTemporaryFile(
-            suffix=os.path.splitext(file.filename)[1],
+        suffix=os.path.splitext(file.filename)[1],
     ) as tmp:
         resource = await repository.get_resource(project_name, resource_name)
 
@@ -191,9 +194,11 @@ async def package_info(
             if not file.upload_time:
                 # If the repository doesn't provide information about the upload time, estimate
                 # it from the headers of the resource, if they exist.
-                if ct := resource.context.get('creation-date'):
+                if ct := resource.context.get("creation-date"):
                     if isinstance(ct, str):
-                        file = dataclasses.replace(file, upload_time=datetime.datetime.fromisoformat(ct))
+                        file = dataclasses.replace(
+                            file, upload_time=datetime.datetime.fromisoformat(ct)
+                        )
         elif isinstance(resource, model.HttpResource):
             await fetch_file(resource.url, tmp.name)
         else:
@@ -210,11 +215,11 @@ async def package_info(
         def extract_usernames(emails):
             names = []
             parsed = email.parser.Parser(policy=email.policy.default).parsestr(
-                f'To: {info.author_email}',
+                f"To: {info.author_email}",
             )
-            for address in parsed['to'].addresses:
+            for address in parsed["to"].addresses:
                 names.append(address.display_name)
-            return ', '.join(names)
+            return ", ".join(names)
 
         if not info.author and info.author_email:
             info.author = extract_usernames(info.author_email)
@@ -223,17 +228,18 @@ async def package_info(
             info.maintainer = extract_usernames(info.maintainer_email)
 
         project_urls = {
-            url.split(',')[0].strip().title(): url.split(',')[1].strip()
+            url.split(",")[0].strip().title(): url.split(",")[1].strip()
             for url in info.project_urls or []
         }
         # Ensure that a Homepage exists in the project urls
-        if info.home_page and 'Homepage' not in project_urls:
-            project_urls['Homepage'] = info.home_page
+        if info.home_page and "Homepage" not in project_urls:
+            project_urls["Homepage"] = info.home_page
 
         sorted_urls = {
-            name: url for name, url in sorted(
+            name: url
+            for name, url in sorted(
                 project_urls.items(),
-                key=lambda item: (item[0] != 'Homepage', item[0]),
+                key=lambda item: (item[0] != "Homepage", item[0]),
             )
         }
 
@@ -245,7 +251,7 @@ async def package_info(
                 reqs.append(InvalidRequirementSpecification(req))
 
         pkg = PackageInfo(
-            summary=info.summary or '',
+            summary=info.summary or "",
             description=description,
             author=info.author,
             maintainer=info.maintainer,
@@ -270,17 +276,21 @@ async def package_info(
 def generate_safe_description_html(package_info: pkginfo.Distribution) -> str:
     # Handle the valid description content types.
     # https://packaging.python.org/specifications/core-metadata
-    description_type = package_info.description_content_type or 'text/x-rst'
-    raw_description = package_info.description or ''
+    description_type = package_info.description_content_type or "text/x-rst"
+    raw_description = package_info.description or ""
 
     # Seen in the wild (internal only: sps-deep-hysteresis-compensation).
-    description_type = description_type.replace('\"', '')
+    description_type = description_type.replace('"', "")
 
-    if description_type == 'text/x-rst' or description_type.startswith('text/x-rst;'):
+    if description_type == "text/x-rst" or description_type.startswith("text/x-rst;"):
         return readme_renderer.rst.render(raw_description) or ""
-    elif description_type == 'text/markdown' or description_type.startswith('text/markdown;'):  # Seen longer form with orjson
+    elif description_type == "text/markdown" or description_type.startswith(
+        "text/markdown;"
+    ):  # Seen longer form with orjson
         return readme_renderer.markdown.render(raw_description) or ""
-    elif description_type == 'text/plain' or description_type.startswith('text/plain;'):  # seen with nbformat
+    elif description_type == "text/plain" or description_type.startswith(
+        "text/plain;"
+    ):  # seen with nbformat
         return readme_renderer.txt.render(raw_description) or ""
     else:
         raise ValueError(f"Unknown readme format {description_type}")
