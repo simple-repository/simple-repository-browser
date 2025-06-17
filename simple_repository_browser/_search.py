@@ -13,9 +13,9 @@ class Term:
 
 
 class FilterOn(Enum):
-    name = 'name'
-    summary = 'summary'
-    name_or_summary = 'name_or_summary'
+    name = "name"
+    summary = "summary"
+    name_or_summary = "name_or_summary"
 
 
 @dataclasses.dataclass
@@ -57,8 +57,8 @@ def prepare_name(term: Filter) -> SafeSQLStmt:
         value = term.value[1:-1]
     else:
         value = normalise_name(term.value)
-    value = value.replace('*', '%')
-    return "canonical_name LIKE ?", (f'%{value}%',)
+    value = value.replace("*", "%")
+    return "canonical_name LIKE ?", (f"%{value}%",)
 
 
 def prepare_summary(term: Filter) -> SafeSQLStmt:
@@ -67,8 +67,8 @@ def prepare_summary(term: Filter) -> SafeSQLStmt:
         value = term.value[1:-1]
     else:
         value = term.value
-    value = value.replace('*', '%')
-    return "summary LIKE ?", (f'%{value}%',)
+    value = value.replace("*", "%")
+    return "summary LIKE ?", (f"%{value}%",)
 
 
 def build_sql(term: typing.Union[Term, typing.Tuple[Term, ...]]) -> SafeSQLStmt:
@@ -76,7 +76,7 @@ def build_sql(term: typing.Union[Term, typing.Tuple[Term, ...]]) -> SafeSQLStmt:
     # Instead, any user input must be in the parameters, which undergoes sqllite built-in cleaning.
     if isinstance(term, tuple):
         if len(term) == 0:
-            return '', ()
+            return "", ()
 
         # No known query can produce a multi-value term
         assert len(term) == 1
@@ -103,7 +103,7 @@ def build_sql(term: typing.Union[Term, typing.Tuple[Term, ...]]) -> SafeSQLStmt:
         return f"({sql1} OR {sql2})", terms1 + terms2
     elif isinstance(term, Not):
         sql1, terms1 = build_sql(term.term)
-        return f'(Not {sql1})', terms1
+        return f"(Not {sql1})", terms1
     else:
         raise ValueError(f"unknown term type {type(term)}")
 
@@ -145,11 +145,11 @@ grammar = parsley.makeGrammar(
                    | -> ())
     """),
     {
-        'And': And,
-        'Or': Or,
-        'Filter': Filter,
-        'Not': Not,
-        'FilterOn': FilterOn,
+        "And": And,
+        "Or": Or,
+        "Filter": Filter,
+        "Not": Not,
+        "FilterOn": FilterOn,
     },
 )
 
@@ -166,7 +166,7 @@ def simple_name_from_query(terms: typing.Tuple[Term, ...]) -> typing.Optional[st
     for term in terms:
         if isinstance(term, Filter):
             if term.filter_on in [FilterOn.name_or_summary, FilterOn.name]:
-                if '*' in term.value or '"' in term.value:
+                if "*" in term.value or '"' in term.value:
                     break
                 return normalise_name(term.value)
         else:

@@ -38,6 +38,7 @@ class Router:
         def dec(fn):
             self._routes_register[path] = Route(fn, methods, response_class, kwargs)
             return fn
+
         return dec
 
     def get(self, path: str, **kwargs: typing.Any):
@@ -83,9 +84,15 @@ class Controller:
         self.model = model
         self.view = view
 
-    def create_router(self, static_files_manifest: StaticFilesManifest) -> fastapi.APIRouter:
+    def create_router(
+        self, static_files_manifest: StaticFilesManifest
+    ) -> fastapi.APIRouter:
         router = self.router.build_fastapi_router(self)
-        router.mount("/static", HashedStaticFileHandler(manifest=static_files_manifest), name="static")
+        router.mount(
+            "/static",
+            HashedStaticFileHandler(manifest=static_files_manifest),
+            name="static",
+        )
         return router
 
     @router.get("/", name="index")
@@ -102,7 +109,9 @@ class Controller:
         # Note: page is 1 based. We don't have a page 0.
         page_size = 50
         try:
-            response = self.model.project_query(query=query, page_size=page_size, page=page)
+            response = self.model.project_query(
+                query=query, page_size=page_size, page=page
+            )
         except errors.InvalidSearchQuery as e:
             raise errors.RequestError(
                 detail=str(e),
@@ -111,8 +120,14 @@ class Controller:
         return self.view.search_page(response, request)
 
     @router.get("/project/{project_name}", name="project", response_model=None)
-    @router.get("/project/{project_name}/{version}", name='project_version', response_model=None)
-    @router.get("/project/{project_name}/{version}/{page_section}", name='project_version_section', response_model=None)
+    @router.get(
+        "/project/{project_name}/{version}", name="project_version", response_model=None
+    )
+    @router.get(
+        "/project/{project_name}/{version}/{page_section}",
+        name="project_version_section",
+        response_model=None,
+    )
     async def project(
         self,
         request: fastapi.Request,
@@ -127,19 +142,26 @@ class Controller:
             try:
                 _version = Version(version)
             except InvalidVersion:
-                raise errors.RequestError(status_code=404, detail=f"Invalid version {version}.")
+                raise errors.RequestError(
+                    status_code=404, detail=f"Invalid version {version}."
+                )
 
-        t = asyncio.create_task(self.model.project_page(project_name, _version, recache))
+        t = asyncio.create_task(
+            self.model.project_page(project_name, _version, recache)
+        )
         # Try for 5 seconds to get the response. Otherwise, fall back to a waiting page which can
         # re-direct us back here once the data is available.
         # TODO: Prevent infinite looping.
         await asyncio.wait([t], timeout=5)
         if not t.done():
+
             async def iter_file():
                 # TODO: use a different view for this.
                 yield self.view.error_page(
                     context=model.ErrorModel(
-                        detail=Markup("<div>Project metadata is being fetched. This page will reload when ready.</div>"),
+                        detail=Markup(
+                            "<div>Project metadata is being fetched. This page will reload when ready.</div>"
+                        ),
                     ),
                     request=request,
                 )
@@ -150,7 +172,8 @@ class Controller:
                     else:
                         break
                 # We are done (or were in an infinite loop). Signal that we are finished, then exit.
-                yield 'Done!<script>location.reload();</script><br>\n'
+                yield "Done!<script>location.reload();</script><br>\n"
+
             return StreamingResponse(iter_file(), media_type="text/html")
 
         response = t.result()

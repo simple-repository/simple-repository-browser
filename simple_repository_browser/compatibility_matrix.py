@@ -13,7 +13,7 @@ class CompatibilityMatrixModel:
 
 
 def compatibility_matrix(
-        files: tuple[model.File, ...],
+    files: tuple[model.File, ...],
 ) -> CompatibilityMatrixModel:
     """
     Look at the given files, and compute a compatibility matrix.
@@ -28,18 +28,22 @@ def compatibility_matrix(
     interpreted_py_abi_tags: dict[tuple[str, str], InterpretedPyAndABITag] = {}
 
     for file in files:
-        if not file.filename.lower().endswith('.whl'):
+        if not file.filename.lower().endswith(".whl"):
             continue
         _, _, _, tags = parse_wheel_filename(file.filename)
 
         # Ensure that the tags have a consistent sort order. From
         # packaging they come as a frozenset, so no such upstream guarantee is provided.
-        sorted_tags = sorted(tags, key=lambda tag: (tag.platform, tag.abi, tag.interpreter))
+        sorted_tags = sorted(
+            tags, key=lambda tag: (tag.platform, tag.abi, tag.interpreter)
+        )
 
         for tag in sorted_tags:
             inter_abi_key = (tag.interpreter, tag.abi)
             if inter_abi_key not in interpreted_py_abi_tags:
-                interpreted_py_abi_tags[inter_abi_key] = interpret_py_and_abi_tag(tag.interpreter, tag.abi)
+                interpreted_py_abi_tags[inter_abi_key] = interpret_py_and_abi_tag(
+                    tag.interpreter, tag.abi
+                )
 
             tag_interp = interpreted_py_abi_tags[inter_abi_key]
             compat_matrix[(tag_interp.nice_name, tag.platform)] = file
@@ -60,11 +64,11 @@ def compatibility_matrix(
 
 # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#python-tag
 py_tag_implementations = {
-    'py': 'Python',
-    'cp': 'CPython',
-    'ip': 'IronPython',
-    'pp': 'PyPy',
-    'jy': 'Jython',
+    "py": "Python",
+    "cp": "CPython",
+    "ip": "IronPython",
+    "pp": "PyPy",
+    "jy": "Jython",
 }
 
 
@@ -79,39 +83,49 @@ def interpret_py_and_abi_tag(py_tag: str, abi_tag: str) -> InterpretedPyAndABITa
     if py_tag[:2] in py_tag_implementations:
         py_impl, version_nodot = py_tag[:2], py_tag[2:]
         py_impl = py_tag_implementations.get(py_impl, py_impl)
-        if '_' in version_nodot:
-            py_version = Version('.'.join(version_nodot.split('_')))
+        if "_" in version_nodot:
+            py_version = Version(".".join(version_nodot.split("_")))
         elif len(version_nodot) == 1:
             # e.g. Pure python wheels
             py_version = Version(version_nodot)
         else:
-            py_version = Version(f'{version_nodot[0]}.{version_nodot[1:]}')
+            py_version = Version(f"{version_nodot[0]}.{version_nodot[1:]}")
 
         if abi_tag.startswith(py_tag):
-            abi_tag_flags = abi_tag[len(py_tag):]
-            if 'd' in abi_tag_flags:
-                abi_tag_flags = abi_tag_flags.replace('d', '')
-                py_impl += ' (debug)'
-            if 'u' in abi_tag_flags:
-                abi_tag_flags = abi_tag_flags.replace('u', '')
+            abi_tag_flags = abi_tag[len(py_tag) :]
+            if "d" in abi_tag_flags:
+                abi_tag_flags = abi_tag_flags.replace("d", "")
+                py_impl += " (debug)"
+            if "u" in abi_tag_flags:
+                abi_tag_flags = abi_tag_flags.replace("u", "")
                 # A python 2 concept.
-                py_impl += ' (wide)'
-            if 'm' in abi_tag_flags:
-                abi_tag_flags = abi_tag_flags.replace('m', '')
+                py_impl += " (wide)"
+            if "m" in abi_tag_flags:
+                abi_tag_flags = abi_tag_flags.replace("m", "")
                 pass
             if abi_tag_flags:
-                py_impl += f' (additional flags: {abi_tag_flags})'
-            return InterpretedPyAndABITag(f'{py_impl} {py_version}', py_impl, py_version)
-        elif abi_tag.startswith('pypy') and py_impl == 'PyPy':
-            abi = abi_tag.split('_')[1]
-            return InterpretedPyAndABITag(f'{py_impl} {py_version} ({abi})', py_impl, py_version)
-        elif abi_tag == 'abi3':
+                py_impl += f" (additional flags: {abi_tag_flags})"
+            return InterpretedPyAndABITag(
+                f"{py_impl} {py_version}", py_impl, py_version
+            )
+        elif abi_tag.startswith("pypy") and py_impl == "PyPy":
+            abi = abi_tag.split("_")[1]
+            return InterpretedPyAndABITag(
+                f"{py_impl} {py_version} ({abi})", py_impl, py_version
+            )
+        elif abi_tag == "abi3":
             # Example PyQt6
-            return InterpretedPyAndABITag(f'{py_impl} >={py_version} (abi3)', py_impl, py_version)
-        elif abi_tag == 'none':
+            return InterpretedPyAndABITag(
+                f"{py_impl} >={py_version} (abi3)", py_impl, py_version
+            )
+        elif abi_tag == "none":
             # Seen with pydantic-core 2.11.0
-            return InterpretedPyAndABITag(f'{py_impl} {py_version}', py_impl, py_version)
+            return InterpretedPyAndABITag(
+                f"{py_impl} {py_version}", py_impl, py_version
+            )
         else:
-            return InterpretedPyAndABITag(f'{py_impl} {py_version} ({abi_tag})', py_impl, py_version)
+            return InterpretedPyAndABITag(
+                f"{py_impl} {py_version} ({abi_tag})", py_impl, py_version
+            )
 
-    return InterpretedPyAndABITag(f'{py_tag} ({abi_tag})')
+    return InterpretedPyAndABITag(f"{py_tag} ({abi_tag})")

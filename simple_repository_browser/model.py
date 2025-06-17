@@ -78,13 +78,15 @@ class Model:
 
     def repository_stats(self) -> RepositoryStatsModel:
         with self.projects_db as cursor:
-            [n_packages] = cursor.execute('SELECT COUNT(canonical_name) FROM projects').fetchone()
+            [n_packages] = cursor.execute(
+                "SELECT COUNT(canonical_name) FROM projects"
+            ).fetchone()
 
         with self.cache as cache:
             n_dist_info = len(cache)
             packages_w_dist_info = set()
             for cache_type, name, version in cache:
-                if cache_type == 'pkg-info':
+                if cache_type == "pkg-info":
                     packages_w_dist_info.add(name)
             n_packages_w_dist_info = len(packages_w_dist_info)
 
@@ -94,7 +96,9 @@ class Model:
             n_packages_w_dist_info=n_packages_w_dist_info,
         )
 
-    def _compatibility_matrix(self, files: tuple[File, ...]) -> compatibility_matrix.CompatibilityMatrixModel:
+    def _compatibility_matrix(
+        self, files: tuple[File, ...]
+    ) -> compatibility_matrix.CompatibilityMatrixModel:
         # Compute the compatibility matrix for the given files.
         return compatibility_matrix.compatibility_matrix(files)
 
@@ -114,14 +118,14 @@ class Model:
         single_name_proposal = _search.simple_name_from_query(search_terms)
         exact = None
 
-        offset = (page-1) * page_size  # page is 1 based.
+        offset = (page - 1) * page_size  # page is 1 based.
 
         with self.projects_db as cursor:
             result_count = cursor.execute(
-                "SELECT COUNT(*) as count FROM projects WHERE "
-                f"{condition_query}", condition_terms,
+                f"SELECT COUNT(*) as count FROM projects WHERE {condition_query}",
+                condition_terms,
             ).fetchone()
-            n_results = result_count['count']
+            n_results = result_count["count"]
 
             n_pages = math.ceil(n_results / page_size)
             if n_pages > 0 and (page < 1 or page > n_pages):
@@ -131,7 +135,7 @@ class Model:
 
             if single_name_proposal:
                 exact = cursor.execute(
-                    'SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?',
+                    "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?",
                     (single_name_proposal,),
                 ).fetchone()
             results = cursor.execute(
@@ -163,17 +167,23 @@ class Model:
         canonical_name = canonicalize_name(project_name)
         try:
             prj = await self.source.get_project_page(canonical_name)
-            fetch_projects.insert_if_missing(self.projects_db, canonical_name, project_name)
+            fetch_projects.insert_if_missing(
+                self.projects_db, canonical_name, project_name
+            )
         except PackageNotFoundError:
             # Tidy up the cache if the project is no longer found.
             for key in list(self.cache):
-                if key[:2] == ('pkg-info', canonical_name):
+                if key[:2] == ("pkg-info", canonical_name):
                     self.cache.pop(key)
             fetch_projects.remove_if_found(self.projects_db, canonical_name)
-            raise errors.RequestError(status_code=404, detail=f"Project {project_name} not found.")
+            raise errors.RequestError(
+                status_code=404, detail=f"Project {project_name} not found."
+            )
 
         if not prj.files:
-            raise errors.RequestError(status_code=404, detail=f"No releases for {project_name}.")
+            raise errors.RequestError(
+                status_code=404, detail=f"No releases for {project_name}."
+            )
 
         releases, latest_version = self._release_info_model.release_infos(prj)
 
@@ -181,19 +191,32 @@ class Model:
             version = latest_version
 
         if version not in releases:
-            raise errors.RequestError(status_code=404, detail=f'Release "{version}" not found for {project_name}.')
+            raise errors.RequestError(
+                status_code=404,
+                detail=f'Release "{version}" not found for {project_name}.',
+            )
 
         release = releases[version]
         if not release.files:
             quarantine_context = ""
-            if 'quarantined' in release.labels:
-                quarantine_context = " Files have been identified as quarantined for this project."
-            raise errors.RequestError(status_code=404, detail=f'Release "{version}" has no files.' + quarantine_context, project_page=prj)
+            if "quarantined" in release.labels:
+                quarantine_context = (
+                    " Files have been identified as quarantined for this project."
+                )
+            raise errors.RequestError(
+                status_code=404,
+                detail=f'Release "{version}" has no files.' + quarantine_context,
+                project_page=prj,
+            )
 
-        info_file, pkg_info = await self.crawler.fetch_pkg_info(prj, version, releases, force_recache=recache)
+        info_file, pkg_info = await self.crawler.fetch_pkg_info(
+            prj, version, releases, force_recache=recache
+        )
         classifiers_by_top_level = {
-            top_level: tuple(classifier) for top_level, classifier in itertools.groupby(
-                pkg_info.classifiers, key=lambda s: s.split('::')[0],
+            top_level: tuple(classifier)
+            for top_level, classifier in itertools.groupby(
+                pkg_info.classifiers,
+                key=lambda s: s.split("::")[0],
             )
         }
 

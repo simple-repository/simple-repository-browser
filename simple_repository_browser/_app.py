@@ -37,8 +37,8 @@ class AppBuilder:
         self.crawl_popular_projects = crawl_popular_projects
         self.browser_version = browser_version
 
-        self.cache = diskcache.Cache(str(cache_dir/'diskcache'))
-        self.db_path = cache_dir / 'projects.sqlite'
+        self.cache = diskcache.Cache(str(cache_dir / "diskcache"))
+        self.db_path = cache_dir / "projects.sqlite"
         self.con = sqlite3.connect(
             self.db_path,
             detect_types=sqlite3.PARSE_DECLTYPES,
@@ -51,7 +51,6 @@ class AppBuilder:
         _view = self.create_view()
 
         async def lifespan(app: fastapi.FastAPI):
-
             async with (
                 httpx.AsyncClient(timeout=30) as http_client,
                 aiosqlite.connect(self.db_path, timeout=5) as db,
@@ -72,7 +71,9 @@ class AppBuilder:
                     # convenient for development purposes.
                     @app.get("/")
                     async def redirect_to_index():
-                        return fastapi.responses.RedirectResponse(url=app.url_path_for('index'))
+                        return fastapi.responses.RedirectResponse(
+                            url=app.url_path_for("index")
+                        )
 
                 yield
 
@@ -92,7 +93,7 @@ class AppBuilder:
                 detail = f"Internal server error ({err})"
                 # raise
                 logging.getLogger("simple_repository_browser.error").error(
-                    'Unhandled exception',
+                    "Unhandled exception",
                     exc_info=err,
                 )
             content = _view.error_page(
@@ -104,14 +105,20 @@ class AppBuilder:
                 status_code=status_code,
             )
 
-        app.middleware('http')(catch_exceptions_middleware)
+        app.middleware("http")(catch_exceptions_middleware)
 
         return app
 
     def create_view(self) -> view.View:
-        return view.View(self.template_paths, self.browser_version, static_files_manifest=self.static_files_manifest)
+        return view.View(
+            self.template_paths,
+            self.browser_version,
+            static_files_manifest=self.static_files_manifest,
+        )
 
-    def create_crawler(self, http_client: httpx.AsyncClient, source: SimpleRepository) -> crawler.Crawler:
+    def create_crawler(
+        self, http_client: httpx.AsyncClient, source: SimpleRepository
+    ) -> crawler.Crawler:
         return crawler.Crawler(
             http_client=http_client,
             crawl_popular_projects=self.crawl_popular_projects,
@@ -120,7 +127,9 @@ class AppBuilder:
             cache=self.cache,
         )
 
-    def _repo_from_url(self, url: str, http_client: httpx.AsyncClient) -> SimpleRepository:
+    def _repo_from_url(
+        self, url: str, http_client: httpx.AsyncClient
+    ) -> SimpleRepository:
         if urlparse(url).scheme in ("http", "https"):
             return HttpRepository(
                 url=url,
@@ -129,7 +138,9 @@ class AppBuilder:
         else:
             return LocalRepository(Path(url))
 
-    def create_model(self, http_client: httpx.AsyncClient, database: aiosqlite.Connection) -> model.Model:
+    def create_model(
+        self, http_client: httpx.AsyncClient, database: aiosqlite.Connection
+    ) -> model.Model:
         source = MetadataInjector(
             self._repo_from_url(self.repository_url, http_client=http_client),
             http_client=http_client,
@@ -141,7 +152,9 @@ class AppBuilder:
             crawler=self.create_crawler(http_client, source),
         )
 
-    def create_controller(self, view: view.View, model: model.Model) -> controller.Controller:
+    def create_controller(
+        self, view: view.View, model: model.Model
+    ) -> controller.Controller:
         return controller.Controller(
             model=model,
             view=view,
