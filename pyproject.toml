@@ -7,11 +7,6 @@ name = "simple-repository-browser"
 dynamic = ["version"]
 description = "A web interface to browse and search packages in any simple package repository (PEP-503), inspired by PyPI / warehouse"
 requires-python = ">=3.11"
-classifiers = [
-  "License :: OSI Approved :: MIT License",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3",
-]
 authors = [
     {name = "Phil Elson"},
     {name = "Francesco Iannaccone"},
