@@ -40,6 +40,7 @@ Homepage = "https://github.com/simple-repository/simple-repository-browser"
 [project.optional-dependencies]
 test = [
   "pytest",
+  "pytest-asyncio",
 ]
 dev = [
   "simple-repository-browser[test]",
