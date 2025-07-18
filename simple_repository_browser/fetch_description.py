@@ -1,4 +1,3 @@
-import asyncio
 import dataclasses
 import datetime
 import email.parser
@@ -144,35 +143,11 @@ async def package_info(
 
     files_info: typing.Dict[str, FileInfo] = {}
 
-    # Get the size from the repository, if possible.
+    # Get the size from the repository files
     for file in files:
         if file.size:
             files_info[file.filename] = FileInfo(
-                size=file.size,
-            )
-
-    limited_concurrency = asyncio.Semaphore(10)
-    # Compute the size of each file.
-    # TODO: This should be done as part of the repository component interface.
-    async with httpx.AsyncClient(verify=False) as http_client:
-
-        async def semaphored_head(filename: str, url: str):
-            async with limited_concurrency:
-                headers: dict[str, str] = {}
-                return (
-                    filename,
-                    await http_client.head(url, follow_redirects=True, headers=headers),
-                )
-
-        coros = [
-            semaphored_head(file.filename, file.url)
-            for file in files
-            if file.filename not in files_info
-        ]
-        for coro in asyncio.as_completed(coros):
-            filename, response = await coro
-            files_info[filename] = FileInfo(
-                size=int(response.headers["Content-Length"]),
+                size=file.size or 0,
             )
 
     file = files[0]
