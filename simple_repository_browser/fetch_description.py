@@ -125,11 +125,8 @@ class PkgInfoFromFile(pkginfo.Distribution):
         return content.encode()
 
 
-async def package_info(
-    release_files: tuple[model.File, ...],
-    repository: SimpleRepository,
-    project_name: str,
-) -> tuple[model.File, PackageInfo]:
+def _select_best_file(release_files: tuple[model.File, ...]) -> model.File:
+    """Select the best file from release files based on priority criteria."""
     files = sorted(
         release_files,
         key=lambda file: (
@@ -140,18 +137,29 @@ async def package_info(
             file.upload_time,  # Distinguish conflicts by picking the earliest one.
         ),
     )
+    return files[0]
 
+
+def _create_files_info_mapping(
+    release_files: tuple[model.File, ...],
+) -> typing.Dict[str, FileInfo]:
+    """Create mapping of filename to FileInfo for files with size information."""
     files_info: typing.Dict[str, FileInfo] = {}
-
-    # Get the size from the repository files
-    for file in files:
+    for file in release_files:
         if file.size:
             files_info[file.filename] = FileInfo(
                 size=file.size or 0,
             )
+    return files_info
 
-    file = files[0]
 
+async def _fetch_metadata_resource(
+    repository: SimpleRepository,
+    project_name: str,
+    file: model.File,
+    tmp_file_path: str,
+) -> tuple[model.File, pkginfo.Distribution]:
+    """Fetch metadata resource and return updated file and package info."""
     if file.dist_info_metadata:
         resource_name = file.filename + ".metadata"
     else:
@@ -159,71 +167,97 @@ async def package_info(
 
     logging.debug(f"Downloading metadata for {file.filename} from {resource_name}")
 
+    resource = await repository.get_resource(project_name, resource_name)
+
+    if isinstance(resource, model.TextResource):
+        with open(tmp_file_path, "wb") as tmp:
+            tmp.write(resource.text.encode())
+        if not file.upload_time:
+            # If the repository doesn't provide information about the upload time, estimate
+            # it from the headers of the resource, if they exist.
+            if ct := resource.context.get("creation-date"):
+                if isinstance(ct, str):
+                    file = dataclasses.replace(
+                        file, upload_time=datetime.datetime.fromisoformat(ct)
+                    )
+    elif isinstance(resource, model.HttpResource):
+        await fetch_file(resource.url, tmp_file_path)
+    else:
+        raise ValueError(f"Unhandled resource type ({type(resource)})")
+
+    info = PkgInfoFromFile(tmp_file_path)
+    return file, info
+
+
+def _enhance_author_maintainer_info(info: pkginfo.Distribution) -> None:
+    """Extract author/maintainer names from email addresses if names are missing."""
+
+    def extract_usernames(emails: str) -> str:
+        names = []
+        parsed = email.parser.Parser(policy=email.policy.default).parsestr(
+            f"To: {emails}",
+        )
+        for address in parsed["to"].addresses:
+            names.append(address.display_name)
+        return ", ".join(names)
+
+    if not info.author and info.author_email:
+        info.author = extract_usernames(info.author_email)
+
+    if not info.maintainer and info.maintainer_email:
+        info.maintainer = extract_usernames(info.maintainer_email)
+
+
+def _process_project_urls(info: pkginfo.Distribution) -> typing.Dict[str, str]:
+    """Process and sort project URLs, ensuring Homepage is first."""
+    project_urls = {
+        url.split(",")[0].strip().title(): url.split(",")[1].strip()
+        for url in info.project_urls or []
+    }
+    # Ensure that a Homepage exists in the project urls
+    if info.home_page and "Homepage" not in project_urls:
+        project_urls["Homepage"] = info.home_page
+
+    sorted_urls = {
+        name: url
+        for name, url in sorted(
+            project_urls.items(),
+            key=lambda item: (item[0] != "Homepage", item[0]),
+        )
+    }
+    return sorted_urls
+
+
+def _parse_requirements(info: pkginfo.Distribution) -> RequirementsSequence:
+    """Parse requirements from distribution info, handling invalid requirements."""
+    reqs: list[Requirement | InvalidRequirementSpecification] = []
+    for req in info.requires_dist:
+        try:
+            reqs.append(Requirement(req))
+        except InvalidRequirement:
+            reqs.append(InvalidRequirementSpecification(req))
+    return RequirementsSequence(reqs)
+
+
+async def package_info(
+    release_files: tuple[model.File, ...],
+    repository: SimpleRepository,
+    project_name: str,
+) -> tuple[model.File, PackageInfo]:
+    files_info = _create_files_info_mapping(release_files)
+    file = _select_best_file(release_files)
+
     with tempfile.NamedTemporaryFile(
         suffix=os.path.splitext(file.filename)[1],
     ) as tmp:
-        resource = await repository.get_resource(project_name, resource_name)
+        file, info = await _fetch_metadata_resource(
+            repository, project_name, file, tmp.name
+        )
 
-        if isinstance(resource, model.TextResource):
-            tmp.write(resource.text.encode())
-            if not file.upload_time:
-                # If the repository doesn't provide information about the upload time, estimate
-                # it from the headers of the resource, if they exist.
-                if ct := resource.context.get("creation-date"):
-                    if isinstance(ct, str):
-                        file = dataclasses.replace(
-                            file, upload_time=datetime.datetime.fromisoformat(ct)
-                        )
-        elif isinstance(resource, model.HttpResource):
-            await fetch_file(resource.url, tmp.name)
-        else:
-            raise ValueError(f"Unhandled resource type ({type(resource)})")
-
-        tmp.flush()
-        tmp.seek(0)
-        info = PkgInfoFromFile(tmp.name)
         description = generate_safe_description_html(info)
-
-        # If there is email information, but not a name in the "author" or "maintainer"
-        # attribute, extract this information from the first person's email address.
-        # Will take something like ``"Ivan" foo@example.com`` and extract the "Ivan" part.
-        def extract_usernames(emails):
-            names = []
-            parsed = email.parser.Parser(policy=email.policy.default).parsestr(
-                f"To: {info.author_email}",
-            )
-            for address in parsed["to"].addresses:
-                names.append(address.display_name)
-            return ", ".join(names)
-
-        if not info.author and info.author_email:
-            info.author = extract_usernames(info.author_email)
-
-        if not info.maintainer and info.maintainer_email:
-            info.maintainer = extract_usernames(info.maintainer_email)
-
-        project_urls = {
-            url.split(",")[0].strip().title(): url.split(",")[1].strip()
-            for url in info.project_urls or []
-        }
-        # Ensure that a Homepage exists in the project urls
-        if info.home_page and "Homepage" not in project_urls:
-            project_urls["Homepage"] = info.home_page
-
-        sorted_urls = {
-            name: url
-            for name, url in sorted(
-                project_urls.items(),
-                key=lambda item: (item[0] != "Homepage", item[0]),
-            )
-        }
-
-        reqs: list[Requirement | InvalidRequirementSpecification] = []
-        for req in info.requires_dist:
-            try:
-                reqs.append(Requirement(req))
-            except InvalidRequirement:
-                reqs.append(InvalidRequirementSpecification(req))
+        _enhance_author_maintainer_info(info)
+        project_urls = _process_project_urls(info)
+        requires_dist = _parse_requirements(info)
 
         pkg = PackageInfo(
             summary=info.summary or "",
@@ -231,9 +265,9 @@ async def package_info(
             author=info.author,
             maintainer=info.maintainer,
             classifiers=info.classifiers,
-            project_urls=sorted_urls,
+            project_urls=project_urls,
             requires_python=info.requires_python,
-            requires_dist=RequirementsSequence(reqs),
+            requires_dist=requires_dist,
             # We include files info as it is the only way to influence the file.size of
             # all files (for the files list page). In the future, this can be a standalone
             # component.
