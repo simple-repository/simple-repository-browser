@@ -15,7 +15,9 @@ import pkginfo
 import readme_renderer.markdown
 import readme_renderer.rst
 import readme_renderer.txt
+import simple_repository
 from simple_repository import SimpleRepository, model
+import simple_repository.errors
 
 
 @dataclasses.dataclass
@@ -153,6 +155,13 @@ def _create_files_info_mapping(
     return files_info
 
 
+class MinimalDistribution(pkginfo.Distribution):
+    def __init__(self, name: str, summary: str):
+        super().__init__()  # Get all the default None values
+        self.name = name
+        self.summary = summary
+
+
 async def _fetch_metadata_resource(
     repository: SimpleRepository,
     project_name: str,
@@ -160,14 +169,25 @@ async def _fetch_metadata_resource(
     tmp_file_path: str,
 ) -> tuple[model.File, pkginfo.Distribution]:
     """Fetch metadata resource and return updated file and package info."""
-    if file.dist_info_metadata:
-        resource_name = file.filename + ".metadata"
-    else:
-        raise ValueError(f"Metadata not available for {file}")
+    if not file.dist_info_metadata:
+        # No metadata available for this file type (e.g., .egg files)
+        # Return a minimal distribution object with basic info
+        ext = file.filename.rsplit(".", 1)[-1]
+        reason = f"Legacy package format ({ext}) - metadata not available"
+        minimal_dist = MinimalDistribution(project_name, summary=reason)
+        return file, minimal_dist
+
+    resource_name = file.filename + ".metadata"
 
     logging.debug(f"Downloading metadata for {file.filename} from {resource_name}")
 
-    resource = await repository.get_resource(project_name, resource_name)
+    try:
+        resource = await repository.get_resource(project_name, resource_name)
+    except simple_repository.errors.ResourceUnavailable as err:
+        reason = f"Unable to retrieve metadata for {file.filename} ({err})"
+        minimal_dist = MinimalDistribution(project_name, summary=reason)
+        logging.exception(reason)
+        return file, minimal_dist
 
     if isinstance(resource, model.TextResource):
         with open(tmp_file_path, "wb") as tmp:
