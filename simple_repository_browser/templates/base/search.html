@@ -9,7 +9,7 @@
 
 
 {% macro package_card(content) -%}
-<a href="{{ url_for('project', project_name=content[0]) }}">
+<a href="{{ url_for('project', project_name=content.canonical_name) }}">
     <div class="card" style="margin: 1em;">
       <div class="card-body">
          <img src="{{ static_file_url('/images/python-logo-only.svg') }}" style="padding: 0 1em 0 0.5em; vertical-align: top; width: 64px;" >
@@ -30,25 +30,11 @@
 <!--        <div class="col-md-3"></div>-->
           <div class="col-md-9 mx-auto">
 
-            {% if exact %}
-                Exact match found:
-                {{ package_card(exact) }}
-            {% endif %}
-
-            {% if not exact and single_name_proposal %}
-              No exact match found. Were you expecting one? If so, visit the
-                <a href="{{ url_for('project', project_name=single_name_proposal) }}">
-                    "{{ single_name_proposal }}" project page
-                </a>
-              to have the index updated automatically.
-              <br><br>
-            {% elif results_count == 0 %}
-              No results found. Consider reducing the number of filters in your query.
-            {% endif %}
-
-            {% if results_count > 0 %}
+            {% if results_count == 0 %}
+              No results found.
+            {% else %}
               Found {{ results_count }} results
-                {% if n_pages > 1%}. Page {{ page }} of {{  n_pages }}:{% endif %}
+                {% if n_pages > 1%}. Page {{ page }} of {{ n_pages }}:{% endif %}
               <br>
 
               {% for result in results %}
