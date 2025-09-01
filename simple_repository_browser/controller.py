@@ -109,7 +109,7 @@ class Controller:
         # Note: page is 1 based. We don't have a page 0.
         page_size = 50
         try:
-            response = self.model.project_query(
+            response = await self.model.project_query(
                 query=query, page_size=page_size, page=page
             )
         except errors.InvalidSearchQuery as e:

@@ -1,3 +1,5 @@
+import dataclasses
+import datetime
 import itertools
 import math
 import sqlite3
@@ -15,6 +17,14 @@ from .fetch_description import PackageInfo
 from .short_release_info import ReleaseInfoModel, ShortReleaseInfo
 
 
+@dataclasses.dataclass(frozen=True)
+class SearchResultItem:
+    canonical_name: str
+    summary: str | None = None
+    release_version: str | None = None
+    release_date: datetime.datetime | None = None
+
+
 class RepositoryStatsModel(typing.TypedDict):
     n_packages: int
     n_dist_info: int
@@ -22,11 +32,9 @@ class RepositoryStatsModel(typing.TypedDict):
 
 
 class QueryResultModel(typing.TypedDict):
-    exact: tuple[str, str, str, str] | None
     search_query: str
-    results: list[tuple[str, str, str, str]]
+    results: list[SearchResultItem]
     results_count: int  # May be more than in the results list (since paginated).
-    single_name_proposal: str | None
     page: int  # Note: starts at 1.
     n_pages: int
 
@@ -102,7 +110,9 @@ class Model:
         # Compute the compatibility matrix for the given files.
         return compatibility_matrix.compatibility_matrix(files)
 
-    def project_query(self, query: str, page_size: int, page: int) -> QueryResultModel:
+    async def project_query(
+        self, query: str, page_size: int, page: int
+    ) -> QueryResultModel:
         try:
             search_terms = _search.parse(query)
         except _search.ParseError:
@@ -133,27 +143,34 @@ class Model:
                     f"Requested page (page: {page}) is beyond the number of pages ({n_pages})",
                 )
 
-            if single_name_proposal:
-                exact = cursor.execute(
-                    "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE canonical_name == ?",
-                    (single_name_proposal,),
-                ).fetchone()
             results = cursor.execute(
                 "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE "
                 f"{condition_query} LIMIT ? OFFSET ?",
                 condition_terms + (page_size, offset),
             ).fetchall()
 
-        # Drop the duplicate.
-        if exact in results:
-            results.remove(exact)
+        # Convert results to SearchResultItem objects
+        results = [SearchResultItem(*result) for result in results]
+
+        # Check if single_name_proposal is already in the results
+        if single_name_proposal and page == 1:
+            exact_found = any(r.canonical_name == single_name_proposal for r in results)
+            if not exact_found:
+                # Not in results, check if it exists in repository
+                try:
+                    await self.source.get_project_page(single_name_proposal)
+                    # Package exists in repository! Add it to the beginning
+                    results.insert(
+                        0, SearchResultItem(canonical_name=single_name_proposal)
+                    )
+                    n_results += 1
+                except PackageNotFoundError:
+                    pass
 
         return QueryResultModel(
-            exact=exact,
             search_query=query,
             results=results,
             results_count=n_results,
-            single_name_proposal=single_name_proposal,
             page=page,
             n_pages=n_pages,
         )
