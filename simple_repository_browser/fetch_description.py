@@ -160,10 +160,20 @@ async def _fetch_metadata_resource(
     tmp_file_path: str,
 ) -> tuple[model.File, pkginfo.Distribution]:
     """Fetch metadata resource and return updated file and package info."""
-    if file.dist_info_metadata:
-        resource_name = file.filename + ".metadata"
-    else:
-        raise ValueError(f"Metadata not available for {file}")
+    if not file.dist_info_metadata:
+        # No metadata available for this file type (e.g., .egg files)
+        # Return a minimal distribution object with basic info
+        class MinimalDistribution(pkginfo.Distribution):
+            def __init__(self, name: str, filename: str):
+                super().__init__()  # Get all the default None values
+                self.name = name
+                ext = filename.split(".")[-1] if "." in filename else "unknown"
+                self.summary = f"Legacy package format ({ext}) - metadata not available"
+
+        minimal_dist = MinimalDistribution(project_name, file.filename)
+        return file, minimal_dist
+
+    resource_name = file.filename + ".metadata"
 
     logging.debug(f"Downloading metadata for {file.filename} from {resource_name}")
 
