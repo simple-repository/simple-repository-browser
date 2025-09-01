@@ -156,10 +156,10 @@ def _create_files_info_mapping(
 
 
 class MinimalDistribution(pkginfo.Distribution):
-    def __init__(self, name: str, summary: str):
+    def __init__(self, name: str, description: str):
         super().__init__()  # Get all the default None values
         self.name = name
-        self.summary = summary
+        self.description = description
 
 
 async def _fetch_metadata_resource(
@@ -174,7 +174,7 @@ async def _fetch_metadata_resource(
         # Return a minimal distribution object with basic info
         ext = file.filename.rsplit(".", 1)[-1]
         reason = f"Legacy package format ({ext}) - metadata not available"
-        minimal_dist = MinimalDistribution(project_name, summary=reason)
+        minimal_dist = MinimalDistribution(project_name, description=reason)
         return file, minimal_dist
 
     resource_name = file.filename + ".metadata"
@@ -185,7 +185,7 @@ async def _fetch_metadata_resource(
         resource = await repository.get_resource(project_name, resource_name)
     except simple_repository.errors.ResourceUnavailable as err:
         reason = f"Unable to retrieve metadata for {file.filename} ({err})"
-        minimal_dist = MinimalDistribution(project_name, summary=reason)
+        minimal_dist = MinimalDistribution(project_name, description=reason)
         logging.exception(reason)
         return file, minimal_dist
 
