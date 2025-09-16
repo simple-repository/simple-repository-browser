@@ -56,7 +56,7 @@ class FileSizeEnrichmentRepository(RepositoryContainer):
         self,
         project_name: str,
         *,
-        request_context: model.RequestContext = model.RequestContext.DEFAULT,
+        request_context: model.RequestContext | None = None,
     ) -> model.ProjectDetail:
         """
         Get project page with file sizes enriched.

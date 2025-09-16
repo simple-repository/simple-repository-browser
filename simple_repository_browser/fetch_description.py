@@ -214,10 +214,10 @@ def _enhance_author_maintainer_info(info: pkginfo.Distribution) -> None:
 
     def extract_usernames(emails: str) -> str:
         names = []
-        parsed = email.parser.Parser(policy=email.policy.default).parsestr(
+        parsed = email.parser.Parser(policy=email.policy.default).parsestr(  # type: ignore[arg-type]
             f"To: {emails}",
         )
-        for address in parsed["to"].addresses:
+        for address in getattr(parsed["to"], "addresses", []):
             names.append(address.display_name)
         return ", ".join(names)
 
