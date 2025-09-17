@@ -147,6 +147,13 @@
               <div data-source="requires_python"><strong>Requires Python: </strong> {{ file_metadata.requires_python }}</div>
               {% endif %}
           </div>
+          {% if '_source_repository' in project.private_metadata %}
+          <hr/>
+          <div>
+            <strong>Source: </strong>
+            {{ project.private_metadata['_source_repository'] }}
+          </div>
+          {% endif %}
           {% block sidebar_additional_content
  %}
 
