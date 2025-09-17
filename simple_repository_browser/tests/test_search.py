@@ -192,9 +192,20 @@ def test_invalid_query(query, expected_exception):
 class MockSimpleRepository:
     """Mock repository for testing search functionality."""
 
+    def __init__(self, available_packages=None):
+        # Packages that exist in the repository but not in the database
+        self.available_packages = available_packages or set()
+
     async def get_project_page(self, name: str):
-        """Mock project page retrieval - not needed for search ordering tests."""
-        raise Exception(f"Project {name} not found")
+        """Mock project page retrieval."""
+        from simple_repository.errors import PackageNotFoundError
+
+        if name in self.available_packages:
+            # Return a mock project detail for testing
+            from simple_repository.model import Meta, ProjectDetail
+
+            return ProjectDetail(meta=Meta("1.0"), name=name, files=())
+        raise PackageNotFoundError(f"Project {name} not found")
 
 
 @pytest.fixture
@@ -386,22 +397,7 @@ async def test_complex_mixed_query(test_model):
     """Test complex mixed query with multiple exact names."""
     result = await test_model.project_query("numpy OR scipy", page_size=10, page=1)
 
-    names = [item.canonical_name for item in result["results"]]
-
-    # Should include both families
-    assert "numpy" in names
-    assert "scipy" in names
-    assert "numpy-image" in names
-    assert "scipy2" in names
-
-    # Exact matches should come before their related packages
-    numpy_idx = names.index("numpy")
-    scipy_idx = names.index("scipy")
-    numpy_image_idx = names.index("numpy-image")
-    scipy2_idx = names.index("scipy2")
-
-    assert numpy_idx < numpy_image_idx
-    assert scipy_idx < scipy2_idx
+    assert_order(["numpy", "scipy", "numpy-image", "scipy2"], result["results"])
 
 
 @pytest.mark.asyncio
@@ -429,3 +425,34 @@ async def test_empty_results(test_model):
 
     assert result["results"] == []
     assert result["results_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_injected_results_when_not_in_db(test_model):
+    assert isinstance(test_model.source, MockSimpleRepository)
+    test_model.source.available_packages = [
+        "jingo",
+        "wibble",
+        "wibbleof",
+        "bongo",
+        "bongo-bong",
+    ]
+    result = await test_model.project_query(
+        "jingo OR wibble* OR boNgo OR bongo_Bong OR numpy OR totallyMissing",
+        page_size=10,
+        page=1,
+    )
+    # result = await test_model.project_query("jingo OR numpy", page_size=10, page=1)
+
+    names = [item.canonical_name for item in result["results"]]
+
+    assert "wibble" not in names
+    assert_order(
+        ["jingo", "bongo", "bongo-bong", "numpy"],
+        result["results"],
+    )
+    # Check that the one result that came from the db actually has the summary.
+    [numpy_result] = [
+        item for item in result["results"] if item.canonical_name == "numpy"
+    ]
+    assert "Fundamental" in numpy_result.summary

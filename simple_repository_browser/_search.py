@@ -51,10 +51,11 @@ def normalise_name(name: str) -> str:
 class SQLBuilder:
     """Immutable SQL WHERE and ORDER BY clauses with parameters."""
 
-    where_clause: str = ""
-    where_params: tuple[typing.Any, ...] = ()
-    order_clause: str = "ORDER BY canonical_name"
-    order_params: tuple[typing.Any, ...] = ()
+    where_clause: str
+    where_params: tuple[typing.Any, ...]
+    order_clause: str
+    order_params: tuple[typing.Any, ...]
+    search_context: SearchContext
 
     @property
     def where_params_count(self) -> int:
@@ -92,24 +93,37 @@ _OrderClause = tuple[str, tuple[typing.Any, ...]]
 class SearchContext:
     """Context collected during WHERE clause building."""
 
-    exact_names: set[str] = dataclasses.field(default_factory=set)
-    fuzzy_patterns: set[str] = dataclasses.field(default_factory=set)
+    exact_names: tuple[str, ...] = ()
+    fuzzy_patterns: tuple[str, ...] = ()
 
     def with_exact_name(self, name: str) -> SearchContext:
         """Add an exact name match."""
-        return dataclasses.replace(self, exact_names=self.exact_names | {name})
+        if name in self.exact_names:
+            return self
+        else:
+            return dataclasses.replace(self, exact_names=self.exact_names + (name,))
 
     def with_fuzzy_pattern(self, pattern: str) -> SearchContext:
         """Add a fuzzy search pattern."""
-        return dataclasses.replace(self, fuzzy_patterns=self.fuzzy_patterns | {pattern})
+        if pattern in self.fuzzy_patterns:
+            return self
+        else:
+            return dataclasses.replace(
+                self, fuzzy_patterns=self.fuzzy_patterns + (pattern,)
+            )
 
     def merge(self, other: SearchContext) -> SearchContext:
         """Merge contexts from multiple terms (for OR/AND)."""
-        return dataclasses.replace(
-            self,
-            exact_names=self.exact_names | other.exact_names,
-            fuzzy_patterns=self.fuzzy_patterns | other.fuzzy_patterns,
+        names = self.exact_names + tuple(
+            name for name in other.exact_names if name not in self.exact_names
         )
+        patterns = self.fuzzy_patterns + tuple(
+            pattern
+            for pattern in other.fuzzy_patterns
+            if pattern not in self.fuzzy_patterns
+        )
+
+        return dataclasses.replace(self, exact_names=names, fuzzy_patterns=patterns)
 
 
 class SearchCompiler:
@@ -127,11 +141,16 @@ class SearchCompiler:
             terms = (terms,) if terms else ()
 
         if len(terms) == 0:
-            return SQLBuilder()
+            return SQLBuilder(
+                where_clause="",
+                where_params=(),
+                order_clause="",
+                order_params=(),
+                search_context=SearchContext(),
+            )
+        assert len(terms) == 1
 
         # Build WHERE clause and collect context
-        # Note: Current grammar only produces single terms
-        # TODO: If this changes, we'll need to handle term combinations
         context = SearchContext()
         where_clause, where_params, final_context = cls._visit_term(terms[0], context)
 
@@ -143,6 +162,7 @@ class SearchCompiler:
             where_params=where_params,
             order_clause=order_clause,
             order_params=order_params,
+            search_context=final_context,
         )
 
     @classmethod

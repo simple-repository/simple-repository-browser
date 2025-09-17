@@ -155,21 +155,27 @@ class Model:
         # Convert results to SearchResultItem objects
         results = [SearchResultItem(*result) for result in results]
 
-        # TODO: Re-enable package repository lookup for missing exact matches
-        # Check if single_name_proposal is already in the results
-        # if single_name_proposal and page == 1:
-        #     exact_found = any(r.canonical_name == single_name_proposal for r in results)
-        #     if not exact_found:
-        #         # Not in results, check if it exists in repository
-        #         try:
-        #             await self.source.get_project_page(single_name_proposal)
-        #             # Package exists in repository! Add it to the beginning
-        #             results.insert(
-        #                 0, SearchResultItem(canonical_name=single_name_proposal)
-        #             )
-        #             n_results += 1
-        #         except PackageNotFoundError:
-        #             pass
+        # If the search was for a specific name, then make sure we return it if
+        # it is in the package repository.
+        if page == 1:
+            result_names = {r.canonical_name for r in results}
+            missing = tuple(
+                name
+                for name in sql_builder.search_context.exact_names
+                if name not in result_names
+            )
+            if missing:
+                for name_proposal in reversed(missing):
+                    # Not in results, check if it exists in repository
+                    try:
+                        await self.source.get_project_page(name_proposal)
+                        # Package exists in repository! Add it to the beginning
+                        results.insert(
+                            0, SearchResultItem(canonical_name=name_proposal)
+                        )
+                        n_results += 1
+                    except PackageNotFoundError:
+                        pass
 
         return QueryResultModel(
             search_query=query,
