@@ -159,7 +159,6 @@ class SearchCompiler:
             raise ValueError(f"No handler for term type {type(term).__name__}")
         return handler(term, context)
 
-    # AST-style handlers for term types
     @classmethod
     def handle_term_Filter(
         cls, term: Filter, context: SearchContext
@@ -179,7 +178,6 @@ class SearchCompiler:
     def handle_term_And(
         cls, term: And, context: SearchContext
     ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
-        """Handle AND logic between terms."""
         lhs_sql, lhs_params, lhs_context = cls._visit_term(term.lhs, context)
         rhs_sql, rhs_params, rhs_context = cls._visit_term(term.rhs, context)
 
@@ -190,7 +188,6 @@ class SearchCompiler:
     def handle_term_Or(
         cls, term: Or, context: SearchContext
     ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
-        """Handle OR logic between terms."""
         lhs_sql, lhs_params, lhs_context = cls._visit_term(term.lhs, context)
         rhs_sql, rhs_params, rhs_context = cls._visit_term(term.rhs, context)
 
@@ -201,7 +198,6 @@ class SearchCompiler:
     def handle_term_Not(
         cls, term: Not, context: SearchContext
     ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
-        """Handle NOT logic."""
         inner_sql, inner_params, _ = cls._visit_term(term.term, context)
         return f"(NOT {inner_sql})", inner_params, context
 
@@ -209,7 +205,6 @@ class SearchCompiler:
     def handle_filter_name(
         cls, term: Filter, context: SearchContext
     ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
-        """Handle name filtering."""
         if term.value.startswith('"'):
             # Exact quoted match
             value = term.value[1:-1]
@@ -233,7 +228,6 @@ class SearchCompiler:
     def handle_filter_summary(
         cls, term: Filter, context: SearchContext
     ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
-        """Handle summary filtering."""
         if term.value.startswith('"'):
             value = term.value[1:-1]
         else:
@@ -257,13 +251,7 @@ class SearchCompiler:
     def _build_ordering_from_context(
         cls, context: SearchContext
     ) -> tuple[str, tuple[typing.Any, ...]]:
-        """Build mixed ordering for exact names and fuzzy patterns.
-
-        For "scipy or scikit-*", the ordering is:
-        1. Exact matches get closeness-based priority (scipy, scipy2, etc.)
-        2. Fuzzy matches get length-based priority (scikit-learn, scikit-image, etc.)
-        3. Everything else alphabetical
-        """
+        """Build mixed ordering for exact names and fuzzy patterns."""
 
         exact_names, fuzzy_patterns = context.exact_names, context.fuzzy_patterns
         order_parts = []
@@ -289,9 +277,10 @@ class SearchCompiler:
             all_params.extend([f"{name}%", f"%{name}"])
 
         if case_conditions:
+            cond = "\n".join(case_conditions)
             priority_expr = f"""
                 CASE
-                    {chr(10).join(case_conditions)}
+                    {cond}
                     ELSE 3
                 END
             """
