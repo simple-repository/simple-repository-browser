@@ -13,94 +13,80 @@ from simple_repository_browser._search import Filter, FilterOn
 @pytest.mark.parametrize(
     ["query", "expected_expression_graph"],
     [
-        ("", ()),
-        pytest.param("some-name", (Filter(FilterOn.name_or_summary, "some-name"),)),
+        ("", None),
+        pytest.param("some-name", Filter(FilterOn.name_or_summary, "some-name")),
         pytest.param(
             "some name",
-            (
-                _search.And(
-                    Filter(FilterOn.name_or_summary, "some"),
-                    Filter(FilterOn.name_or_summary, "name"),
-                ),
+            _search.And(
+                Filter(FilterOn.name_or_summary, "some"),
+                Filter(FilterOn.name_or_summary, "name"),
             ),
         ),
-        pytest.param("som*name", (Filter(FilterOn.name_or_summary, "som*name"),)),
-        pytest.param('"some name"', (Filter(FilterOn.name_or_summary, '"some name"'),)),
-        pytest.param('"some-name"', (Filter(FilterOn.name_or_summary, '"some-name"'),)),
-        pytest.param('"CASE"', (Filter(FilterOn.name_or_summary, '"CASE"'),)),
-        pytest.param("-foo", (_search.Not(Filter(FilterOn.name_or_summary, "foo")),)),
+        pytest.param("som*name", Filter(FilterOn.name_or_summary, "som*name")),
+        pytest.param('"some name"', Filter(FilterOn.name_or_summary, '"some name"')),
+        pytest.param('"some-name"', Filter(FilterOn.name_or_summary, '"some-name"')),
+        pytest.param('"CASE"', Filter(FilterOn.name_or_summary, '"CASE"')),
+        pytest.param("-foo", _search.Not(Filter(FilterOn.name_or_summary, "foo"))),
         pytest.param(
-            '-"foo bar"', (_search.Not(Filter(FilterOn.name_or_summary, '"foo bar"')),)
+            '-"foo bar"', _search.Not(Filter(FilterOn.name_or_summary, '"foo bar"'))
         ),
         pytest.param(
-            '-name:"foo bar"', (_search.Not(Filter(FilterOn.name, '"foo bar"')),)
+            '-name:"foo bar"', _search.Not(Filter(FilterOn.name, '"foo bar"'))
         ),
-        pytest.param("name:foo", (Filter(FilterOn.name, "foo"),)),
+        pytest.param("name:foo", Filter(FilterOn.name, "foo")),
         pytest.param(
             "name:foo OR name:bar",
-            (
-                _search.Or(
-                    Filter(FilterOn.name, "foo"),
-                    Filter(FilterOn.name, "bar"),
-                ),
+            _search.Or(
+                Filter(FilterOn.name, "foo"),
+                Filter(FilterOn.name, "bar"),
             ),
         ),
         pytest.param(
             'name:foo AND "fiddle AND sticks"',
-            (
-                _search.And(
-                    Filter(FilterOn.name, "foo"),
-                    Filter(FilterOn.name_or_summary, '"fiddle AND sticks"'),
-                ),
+            _search.And(
+                Filter(FilterOn.name, "foo"),
+                Filter(FilterOn.name_or_summary, '"fiddle AND sticks"'),
             ),
         ),
-        pytest.param("summary:foo", (Filter(FilterOn.summary, "foo"),)),
+        pytest.param("summary:foo", Filter(FilterOn.summary, "foo")),
         pytest.param(
             'name:"NAME OR" AND "fiddle AND sticks"',
-            (
-                _search.And(
-                    Filter(FilterOn.name, '"NAME OR"'),
-                    Filter(FilterOn.name_or_summary, '"fiddle AND sticks"'),
-                ),
+            _search.And(
+                Filter(FilterOn.name, '"NAME OR"'),
+                Filter(FilterOn.name_or_summary, '"fiddle AND sticks"'),
             ),
         ),
-        pytest.param("(((a)))", (Filter(FilterOn.name_or_summary, "a"),)),
+        pytest.param("(((a)))", Filter(FilterOn.name_or_summary, "a")),
         pytest.param(
             "(((a) OR (b)))",
-            (
-                _search.Or(
-                    Filter(FilterOn.name_or_summary, "a"),
-                    Filter(FilterOn.name_or_summary, "b"),
-                ),
+            _search.Or(
+                Filter(FilterOn.name_or_summary, "a"),
+                Filter(FilterOn.name_or_summary, "b"),
             ),
         ),
         pytest.param(
             "(a AND b) OR (c AND d)",
-            (
-                _search.Or(
-                    _search.And(
-                        Filter(FilterOn.name_or_summary, "a"),
-                        Filter(FilterOn.name_or_summary, "b"),
-                    ),
-                    _search.And(
-                        Filter(FilterOn.name_or_summary, "c"),
-                        Filter(FilterOn.name_or_summary, "d"),
-                    ),
+            _search.Or(
+                _search.And(
+                    Filter(FilterOn.name_or_summary, "a"),
+                    Filter(FilterOn.name_or_summary, "b"),
+                ),
+                _search.And(
+                    Filter(FilterOn.name_or_summary, "c"),
+                    Filter(FilterOn.name_or_summary, "d"),
                 ),
             ),
         ),
         pytest.param(
             "((a AND b)) OR (c AND -d)",
-            (
-                _search.Or(
-                    _search.And(
-                        Filter(FilterOn.name_or_summary, "a"),
-                        Filter(FilterOn.name_or_summary, "b"),
-                    ),
-                    _search.And(
-                        Filter(FilterOn.name_or_summary, "c"),
-                        _search.Not(Filter(FilterOn.name_or_summary, "d")),
-                    ),
+            _search.Or(
+                _search.And(
+                    Filter(FilterOn.name_or_summary, "a"),
+                    Filter(FilterOn.name_or_summary, "b"),
+                ),
+                _search.And(
+                    Filter(FilterOn.name_or_summary, "c"),
+                    _search.Not(Filter(FilterOn.name_or_summary, "d")),
                 ),
             ),
         ),

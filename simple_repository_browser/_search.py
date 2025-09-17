@@ -122,13 +122,9 @@ class SearchCompiler:
     """
 
     @classmethod
-    def compile(cls, terms: Term | tuple[Term, ...]) -> SQLBuilder:
+    def compile(cls, term: Term | None) -> SQLBuilder:
         """Compile search terms into SQL WHERE and ORDER BY clauses."""
-        # Normalise to tuple of terms
-        if not isinstance(terms, tuple):
-            terms = (terms,) if terms else ()
-
-        if len(terms) == 0:
+        if term is None:
             return SQLBuilder(
                 where_clause="",
                 where_params=(),
@@ -136,11 +132,10 @@ class SearchCompiler:
                 order_params=(),
                 search_context=SearchContext(),
             )
-        assert len(terms) == 1
 
         # Build WHERE clause and collect context
         context = SearchContext()
-        where_clause, where_params, final_context = cls._visit_term(terms[0], context)
+        where_clause, where_params, final_context = cls._visit_term(term, context)
 
         # Build ORDER BY clause based on collected context
         order_clause, order_params = cls._build_ordering_from_context(final_context)
@@ -338,14 +333,14 @@ class SearchCompiler:
         return order_clause, tuple(all_params)
 
 
-def build_sql(terms: Term | tuple[Term, ...]) -> SQLBuilder:
+def build_sql(term: Term | None) -> SQLBuilder:
     """Build SQL WHERE and ORDER BY clauses from search terms."""
-    return SearchCompiler.compile(terms)
+    return SearchCompiler.compile(term)
 
 
 def query_to_sql(query) -> SQLBuilder:
-    terms = parse(query)
-    return build_sql(terms)
+    term = parse(query)
+    return build_sql(term)
 
 
 grammar = parsley.makeGrammar(
@@ -376,8 +371,8 @@ grammar = parsley.makeGrammar(
             |filter:filter -> filter
             |'-' filters:filters -> Not(filters)
     )
-    search_terms = (filters+:filters -> tuple(filters)
-                   | -> ())
+    search_terms = (filters:filters -> filters
+                   | -> None)
     """),
     {
         "And": And,
@@ -389,7 +384,7 @@ grammar = parsley.makeGrammar(
 )
 
 
-def parse(query: str) -> typing.Tuple[Term, ...]:
+def parse(query: str) -> Term | None:
     return grammar(query.strip()).search_terms()
 
 

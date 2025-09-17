@@ -114,14 +114,14 @@ class Model:
         self, query: str, page_size: int, page: int
     ) -> QueryResultModel:
         try:
-            search_terms = _search.parse(query)
+            search_term = _search.parse(query)
         except _search.ParseError:
             raise errors.InvalidSearchQuery("Invalid search pattern")
 
-        if not search_terms:
+        if search_term is None:
             raise errors.InvalidSearchQuery("Please specify a search query")
         try:
-            sql_builder = _search.build_sql(search_terms)
+            sql_builder = _search.build_sql(search_term)
         except ValueError as err:
             raise errors.InvalidSearchQuery(f"Search query invalid ({str(err)})")
 
