@@ -148,7 +148,8 @@ class Model:
             # Main query uses the builder's complete query method
             query, params = sql_builder.build_complete_query(
                 "SELECT canonical_name, summary, release_version, release_date FROM projects",
-                (page_size, offset),
+                page_size,
+                offset,
             )
             results = cursor.execute(query, params).fetchall()
 

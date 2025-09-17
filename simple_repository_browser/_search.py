@@ -57,23 +57,16 @@ class SQLBuilder:
     order_params: tuple[typing.Any, ...]
     search_context: SearchContext
 
-    @property
-    def where_params_count(self) -> int:
-        """Number of parameters used by WHERE clause (for COUNT queries)"""
-        return len(self.where_params)
-
-    @property
-    def all_params(self) -> tuple[typing.Any, ...]:
-        """All parameters for both WHERE and ORDER BY clauses"""
-        return self.where_params + self.order_params
-
     def build_complete_query(
-        self, base_select: str, limit_offset: tuple[int, int]
+        self,
+        base_select: str,
+        limit: int,
+        offset: int,
     ) -> tuple[str, tuple[typing.Any, ...]]:
         """Build complete query with LIMIT/OFFSET"""
         where_part = f"WHERE {self.where_clause}" if self.where_clause else ""
         query = f"{base_select} {where_part} {self.order_clause} LIMIT ? OFFSET ?"
-        return query, self.all_params + limit_offset
+        return query, self.where_params + self.order_params + (limit, offset)
 
     def with_where(self, clause: str, params: tuple[typing.Any, ...]) -> SQLBuilder:
         """Return new SQLBuilder with updated WHERE clause"""
@@ -82,11 +75,6 @@ class SQLBuilder:
     def with_order(self, clause: str, params: tuple[typing.Any, ...]) -> SQLBuilder:
         """Return new SQLBuilder with updated ORDER BY clause"""
         return dataclasses.replace(self, order_clause=clause, order_params=params)
-
-
-# Helper types
-_WhereClause = tuple[str, tuple[typing.Any, ...]]
-_OrderClause = tuple[str, tuple[typing.Any, ...]]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -222,7 +210,6 @@ class SearchCompiler:
         inner_sql, inner_params, _ = cls._visit_term(term.term, context)
         return f"(NOT {inner_sql})", inner_params, context
 
-    # Field-specific filter handlers
     @classmethod
     def handle_filter_name(
         cls, term: Filter, context: SearchContext
@@ -272,26 +259,18 @@ class SearchCompiler:
         return combined_sql, combined_params, name_context
 
     @classmethod
-    def _build_ordering_from_context(cls, context: SearchContext) -> _OrderClause:
-        """Build mixed ordering for exact names and fuzzy patterns."""
-        if not context.exact_names and not context.fuzzy_patterns:
-            return "ORDER BY canonical_name", ()
-
-        return cls._build_mixed_ordering(
-            list(context.exact_names), context.fuzzy_patterns
-        )
-
-    @classmethod
-    def _build_mixed_ordering(
-        cls, exact_names: list[str], fuzzy_patterns: set[str]
-    ) -> _OrderClause:
-        """Build ordering that handles both exact names and fuzzy patterns.
+    def _build_ordering_from_context(
+        cls, context: SearchContext
+    ) -> tuple[str, tuple[typing.Any, ...]]:
+        """Build mixed ordering for exact names and fuzzy patterns.
 
         For "scipy or scikit-*", the ordering is:
         1. Exact matches get closeness-based priority (scipy, scipy2, etc.)
         2. Fuzzy matches get length-based priority (scikit-learn, scikit-image, etc.)
         3. Everything else alphabetical
         """
+
+        exact_names, fuzzy_patterns = context.exact_names, context.fuzzy_patterns
         order_parts = []
         all_params = []
 

@@ -428,6 +428,16 @@ async def test_empty_results(test_model):
 
 
 @pytest.mark.asyncio
+async def test_summary_search(test_model):
+    """Test queries that return no results."""
+    result = await test_model.project_query("summary:numpy", page_size=1000, page=1)
+    names = [item.canonical_name for item in result["results"]]
+    assert "scipy" not in names
+    assert "numpy" not in names
+    assert "abc" in names
+
+
+@pytest.mark.asyncio
 async def test_injected_results_when_not_in_db(test_model):
     assert isinstance(test_model.source, MockSimpleRepository)
     test_model.source.available_packages = [
