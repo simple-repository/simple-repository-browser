@@ -146,12 +146,12 @@ class Model:
                 )
 
             # Main query uses the builder's complete query method
-            query, params = sql_builder.build_complete_query(
+            sql_query, params = sql_builder.build_complete_query(
                 "SELECT canonical_name, summary, release_version, release_date FROM projects",
                 page_size,
                 offset,
             )
-            results = cursor.execute(query, params).fetchall()
+            results = cursor.execute(sql_query, params).fetchall()
 
         # Convert results to SearchResultItem objects
         results = [SearchResultItem(*result) for result in results]
