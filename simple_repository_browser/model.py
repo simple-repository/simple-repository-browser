@@ -121,19 +121,21 @@ class Model:
         if not search_terms:
             raise errors.InvalidSearchQuery("Please specify a search query")
         try:
-            condition_query, condition_terms = _search.build_sql(search_terms)
+            sql_builder = _search.build_sql(search_terms)
         except ValueError as err:
             raise errors.InvalidSearchQuery(f"Search query invalid ({str(err)})")
-
-        single_name_proposal = _search.simple_name_from_query(search_terms)
-        exact = None
 
         offset = (page - 1) * page_size  # page is 1 based.
 
         with self.projects_db as cursor:
+            # Count query uses only WHERE parameters
+            count_query = f"SELECT COUNT(*) as count FROM projects"
+            if sql_builder.where_clause:
+                count_query += f" WHERE {sql_builder.where_clause}"
+
             result_count = cursor.execute(
-                f"SELECT COUNT(*) as count FROM projects WHERE {condition_query}",
-                condition_terms,
+                count_query,
+                sql_builder.where_params,
             ).fetchone()
             n_results = result_count["count"]
 
@@ -143,29 +145,31 @@ class Model:
                     f"Requested page (page: {page}) is beyond the number of pages ({n_pages})",
                 )
 
-            results = cursor.execute(
-                "SELECT canonical_name, summary, release_version, release_date FROM projects WHERE "
-                f"{condition_query} LIMIT ? OFFSET ?",
-                condition_terms + (page_size, offset),
-            ).fetchall()
+            # Main query uses the builder's complete query method
+            query, params = sql_builder.build_complete_query(
+                "SELECT canonical_name, summary, release_version, release_date FROM projects",
+                (page_size, offset),
+            )
+            results = cursor.execute(query, params).fetchall()
 
         # Convert results to SearchResultItem objects
         results = [SearchResultItem(*result) for result in results]
 
+        # TODO: Re-enable package repository lookup for missing exact matches
         # Check if single_name_proposal is already in the results
-        if single_name_proposal and page == 1:
-            exact_found = any(r.canonical_name == single_name_proposal for r in results)
-            if not exact_found:
-                # Not in results, check if it exists in repository
-                try:
-                    await self.source.get_project_page(single_name_proposal)
-                    # Package exists in repository! Add it to the beginning
-                    results.insert(
-                        0, SearchResultItem(canonical_name=single_name_proposal)
-                    )
-                    n_results += 1
-                except PackageNotFoundError:
-                    pass
+        # if single_name_proposal and page == 1:
+        #     exact_found = any(r.canonical_name == single_name_proposal for r in results)
+        #     if not exact_found:
+        #         # Not in results, check if it exists in repository
+        #         try:
+        #             await self.source.get_project_page(single_name_proposal)
+        #             # Package exists in repository! Add it to the beginning
+        #             results.insert(
+        #                 0, SearchResultItem(canonical_name=single_name_proposal)
+        #             )
+        #             n_results += 1
+        #         except PackageNotFoundError:
+        #             pass
 
         return QueryResultModel(
             search_query=query,
