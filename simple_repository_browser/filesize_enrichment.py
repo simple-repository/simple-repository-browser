@@ -1,15 +1,16 @@
 """
-FileSizeEnrichmentRepository component for adding file size information to project pages.
+File enrichment repository components.
 
-This component wraps another repository and automatically enriches file metadata
-with size information by making HTTP HEAD requests to files that don't already
-have size information.
+This module provides base classes for enriching file metadata in project pages,
+with a concrete implementation for HTTP HEAD-based enrichment.
 """
 
+from __future__ import annotations
+
+import abc
 import asyncio
 from dataclasses import replace
 import logging
-import typing
 
 import httpx
 from simple_repository import SimpleRepository, model
@@ -20,13 +21,106 @@ from ._typing_compat import override
 logger = logging.getLogger(__name__)
 
 
-class FileSizeEnrichmentRepository(RepositoryContainer):
+class FileEnrichingRepository(RepositoryContainer):
     """
-    Repository component that enriches file metadata with size information.
+    Base class to enrich Files in parallel.
 
-    This component automatically adds size information to files that don't already
-    have it by making HTTP HEAD requests. It maintains parallelism for efficiency
-    while respecting concurrency limits.
+    This component handles the mechanics of enriching file metadata in parallel,
+    without any assumptions about how the enrichment is performed. Subclasses
+    implement the _enrich_file method to define enrichment logic.
+    """
+
+    @override
+    async def get_project_page(
+        self,
+        project_name: str,
+        *,
+        request_context: model.RequestContext | None = None,
+    ) -> model.ProjectDetail:
+        """
+        Get project page with enriched files.
+
+        Files will be enriched in parallel according to the _enrich_file implementation.
+        """
+        project_page = await super().get_project_page(
+            project_name, request_context=request_context
+        )
+
+        enriched_files = await self._enrich_files(project_page.files)
+
+        if enriched_files is not project_page.files:
+            project_page = replace(project_page, files=enriched_files)
+
+        return project_page
+
+    @abc.abstractmethod
+    async def _enrich_file(self, file: model.File) -> model.File | None:
+        """
+        Enrich a single file with metadata.
+
+        Subclasses must implement this method to define enrichment logic.
+
+        Parameters
+        ----------
+        file: The file to enrich
+
+        Returns
+        -------
+        The enriched file, or None if no enrichment is needed/possible
+        """
+        ...
+
+    async def _enrich_files(
+        self, files: tuple[model.File, ...]
+    ) -> tuple[model.File, ...]:
+        """
+        Enrich multiple files in parallel.
+
+        Parameters
+        ----------
+        files: Tuple of files to enrich
+
+        Returns
+        -------
+        Tuple of enriched files. If no enrichment took place to original files
+        tuple instance is returned.
+        """
+        # Create tasks for all files
+        tasks = [self._enrich_file(file) for file in files]
+
+        # Wait for all tasks to complete
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results, converting exceptions to None
+        enriched_files = []
+        files_were_enriched = False
+
+        # Create new files with updated information
+        for orig_file, result in zip(files, results):
+            if isinstance(result, BaseException):
+                logger.warning(f"Exception occurred during file enrichment: {result}")
+                enriched_files.append(orig_file)
+            elif result is None:
+                enriched_files.append(orig_file)
+            else:
+                files_were_enriched = True
+                enriched_files.append(result)
+
+        if not files_were_enriched:
+            # Return the original files tuple if no changes. This is an optimisation,
+            # but it also means that we can do `enriched_files is files`.
+            return files
+
+        return tuple(enriched_files)
+
+
+class FileSizeEnrichmentRepository(FileEnrichingRepository):
+    """
+    Repository component that enriches file metadata using HTTP HEAD requests.
+
+    This component makes HTTP HEAD requests to fetch metadata from response headers.
+    It uses a semaphore to limit concurrent requests and provides a template method
+    for processing response headers that can be easily overridden in subclasses.
     """
 
     def __init__(
@@ -52,96 +146,67 @@ class FileSizeEnrichmentRepository(RepositoryContainer):
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
 
     @override
-    async def get_project_page(
-        self,
-        project_name: str,
-        *,
-        request_context: model.RequestContext | None = None,
-    ) -> model.ProjectDetail:
+    async def _enrich_file(self, file: model.File) -> model.File | None:
         """
-        Get project page with file sizes enriched.
+        Enrich a single file by making an HTTP HEAD request.
 
-        Files that don't have size information will have their sizes fetched
-        via HTTP HEAD requests in parallel.
+        This checks if enrichment is needed, makes the HEAD request with semaphore
+        control, and delegates header processing to _enrich_with_resource_head_response.
+
+        Parameters
+        ----------
+        file: The file to enrich
+
+        Returns
+        -------
+        The enriched file, or None if no enrichment is needed/possible
         """
-        project_page = await super().get_project_page(
-            project_name, request_context=request_context
-        )
+        # Skip files that already have size information
+        if file.size is not None:
+            return None
 
-        # Identify files that need size information
-        files_needing_size = [
-            file for file in project_page.files if not file.size and file.url
-        ]
+        # Skip files without URLs (can't fetch metadata)
+        if not file.url:
+            return None
 
-        if not files_needing_size:
-            # No files need size information, return as-is
-            return project_page
+        async with self.semaphore:
+            try:
+                logger.debug(
+                    f"Fetching HEAD metadata for {file.filename} from {file.url}"
+                )
 
-        # Fetch sizes for files that need them
-        size_info = await self._fetch_file_sizes(files_needing_size)
+                response = await self.http_client.head(
+                    file.url, follow_redirects=True, headers={}
+                )
+                response.raise_for_status()
 
-        # Create new files with updated size information
-        enriched_files = []
-        for file in project_page.files:
-            if file.filename in size_info:
-                file = replace(file, size=size_info[file.filename])
-            enriched_files.append(file)
+                return self._enrich_with_resource_head_response(file, response)
 
-        return replace(project_page, files=tuple(enriched_files))
+            except BaseException as e:
+                logger.warning(f"Failed to fetch metadata for {file.filename}: {e}")
+                return None
 
-    async def _fetch_file_sizes(
-        self, files: typing.List[model.File]
-    ) -> typing.Dict[str, int]:
+    def _enrich_with_resource_head_response(
+        self, file: model.File, response: httpx.Response
+    ) -> model.File | None:
         """
-        Fetch file sizes for multiple files in parallel.
+        Process HTTP HEAD response headers to enrich file metadata.
 
-        Args:
-            files: List of files to fetch sizes for
+        Override this method in subclasses to extract additional metadata from headers.
+        By default, this extracts only the file size from Content-Length.
 
-        Returns:
-            Dictionary mapping filename to size in bytes
+        Parameters
+        ----------
+        file: The original file
+        response: The HTTP HEAD response
+
+        Returns
+        -------
+        The enriched file, or None if no enrichment was possible
         """
-
-        async def fetch_single_file_size(
-            file: model.File,
-        ) -> typing.Tuple[str, typing.Optional[int]]:
-            """Fetch size for a single file with semaphore protection."""
-            async with self.semaphore:
-                try:
-                    logger.debug(f"Fetching size for {file.filename} from {file.url}")
-
-                    # Make HEAD request to get Content-Length
-                    response = await self.http_client.head(
-                        file.url, follow_redirects=True, headers={}
-                    )
-                    response.raise_for_status()
-
-                    content_length = response.headers.get("Content-Length")
-                    if content_length:
-                        return file.filename, int(content_length)
-                    else:
-                        logger.warning(f"No Content-Length header for {file.filename}")
-                        return file.filename, None
-
-                except BaseException as e:
-                    logger.warning(f"Failed to get size for {file.filename}: {e}")
-                    return file.filename, None
-
-        # Create tasks for all files
-        tasks = [fetch_single_file_size(file) for file in files]
-
-        # Wait for all tasks to complete
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Process results, filtering out failures
-        size_info = {}
-        for result in results:
-            if isinstance(result, BaseException):
-                logger.warning(f"Exception occurred during size fetching: {result}")
-                continue
-
-            filename, size = result
-            if size is not None:
-                size_info[filename] = size
-
-        return size_info
+        content_length = response.headers.get("Content-Length")
+        if content_length:
+            return replace(file, size=int(content_length))
+        else:
+            logger.warning(f"No Content-Length header for {file.filename}")
+            return None
