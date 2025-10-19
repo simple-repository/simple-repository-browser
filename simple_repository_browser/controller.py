@@ -139,7 +139,7 @@ class Controller:
         recache: bool = False,
     ) -> str | StreamingResponse:
         _ = page_section  # Handled in javascript.
-        _version = None
+        _version: Version | InvalidVersion | None = None
         if version:
             try:
                 _version = Version(version)

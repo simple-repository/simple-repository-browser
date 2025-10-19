@@ -74,6 +74,7 @@ class ReleaseInfoModel:
             raise ValueError("No files for the release")
 
         canonical_name = canonicalize_name(project_detail.name)
+        release: Version | InvalidVersion
         for file in project_detail.files:
             version_str = None
             try:
@@ -88,6 +89,7 @@ class ReleaseInfoModel:
             files_grouped_by_version.setdefault(release, []).append(file)
 
         # Ensure there is a release for each version, even if there is no files for it.
+        version: Version | InvalidVersion
         for version_str in project_detail.versions or []:
             try:
                 version = Version(version_str)

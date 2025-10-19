@@ -189,7 +189,7 @@ class Model:
     async def project_page(
         self,
         project_name: str,
-        version: Version | None,
+        version: Version | InvalidVersion | None,
         recache: bool,
     ) -> ProjectPageModel:
         canonical_name = canonicalize_name(project_name)
@@ -219,19 +219,9 @@ class Model:
             version = latest_version
 
         if version not in releases:
-            # Provide a more helpful error message for invalid versions
-            if isinstance(version, InvalidVersion):
-                available_versions = [f'"{vn}"' for vn in releases]
-                detail = (
-                    f'Release "{version}" not found for {project_name}. '
-                    f"Note: This version does not conform to PEP 440. "
-                    f"Available versions: {', '.join(available_versions[:10])}"
-                )
-            else:
-                detail = f'Release "{version}" not found for {project_name}.'
             raise errors.RequestError(
                 status_code=404,
-                detail=detail,
+                detail=f'Release "{version}" not found for {project_name}.',
             )
 
         release = releases[version]
