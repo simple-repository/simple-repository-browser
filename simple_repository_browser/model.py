@@ -14,7 +14,7 @@ from simple_repository.model import File, ProjectDetail
 
 from . import _search, compatibility_matrix, crawler, errors, fetch_projects
 from .fetch_description import PackageInfo
-from .short_release_info import ReleaseInfoModel, ShortReleaseInfo
+from .short_release_info import InvalidVersion, ReleaseInfoModel, ShortReleaseInfo
 
 
 @dataclasses.dataclass(frozen=True)
@@ -219,9 +219,19 @@ class Model:
             version = latest_version
 
         if version not in releases:
+            # Provide a more helpful error message for invalid versions
+            if isinstance(version, InvalidVersion):
+                available_versions = [f'"{vn}"' for vn in releases]
+                detail = (
+                    f'Release "{version}" not found for {project_name}. '
+                    f"Note: This version does not conform to PEP 440. "
+                    f"Available versions: {', '.join(available_versions[:10])}"
+                )
+            else:
+                detail = f'Release "{version}" not found for {project_name}.'
             raise errors.RequestError(
                 status_code=404,
-                detail=f'Release "{version}" not found for {project_name}.',
+                detail=detail,
             )
 
         release = releases[version]
