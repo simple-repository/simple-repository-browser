@@ -192,14 +192,6 @@ async def _fetch_metadata_resource(
     if isinstance(resource, model.TextResource):
         with open(tmp_file_path, "wb") as tmp:
             tmp.write(resource.text.encode())
-        if not file.upload_time:
-            # If the repository doesn't provide information about the upload time, estimate
-            # it from the headers of the resource, if they exist.
-            if ct := resource.context.get("creation-date"):
-                if isinstance(ct, str):
-                    file = dataclasses.replace(
-                        file, upload_time=datetime.datetime.fromisoformat(ct)
-                    )
     elif isinstance(resource, model.HttpResource):
         await fetch_file(resource.url, tmp_file_path)
     else:
