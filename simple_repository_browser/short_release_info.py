@@ -1,19 +1,59 @@
 import dataclasses
 from datetime import datetime
+import functools
 import types
 import typing
 
 from packaging.utils import canonicalize_name
-from packaging.version import InvalidVersion, Version
+from packaging.version import InvalidVersion as InvalidVersionError
+from packaging.version import Version
 from simple_repository import model
 from simple_repository.packaging import extract_package_version
+
+
+@functools.total_ordering
+class InvalidVersion:
+    """Represents a version string that doesn't conform to PEP 440."""
+
+    def __init__(self, version_string: str = "unknown"):
+        self._version_string = version_string
+
+    def __str__(self):
+        return self._version_string
+
+    def __repr__(self):
+        return f"InvalidVersion({self._version_string!r})"
+
+    def __hash__(self):
+        return hash(("invalid-version", self._version_string))
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, InvalidVersion)
+            and self._version_string == other._version_string
+        )
+
+    def __lt__(self, other):
+        # Sort invalid versions to the beginning (before all real versions)
+        # so they won't be selected as the latest version
+        if isinstance(other, InvalidVersion):
+            return self._version_string < other._version_string
+        return True
+
+    @property
+    def is_prerelease(self):
+        return False
+
+    @property
+    def is_devrelease(self):
+        return False
 
 
 @dataclasses.dataclass(frozen=True)
 class ShortReleaseInfo:
     # A short representation of a release. Intended to be lightweight to compute,
     # such that many ShortReleaseInfo instances can be provided to a view.
-    version: Version
+    version: Version | InvalidVersion
     files: tuple[model.File, ...]
     release_date: datetime | None
     labels: typing.Mapping[
@@ -25,30 +65,39 @@ class ReleaseInfoModel:
     @classmethod
     def release_infos(
         cls, project_detail: model.ProjectDetail
-    ) -> tuple[dict[Version, ShortReleaseInfo], Version]:
-        files_grouped_by_version: dict[Version, list[model.File]] = {}
+    ) -> tuple[
+        dict[Version | InvalidVersion, ShortReleaseInfo], Version | InvalidVersion
+    ]:
+        files_grouped_by_version: dict[Version | InvalidVersion, list[model.File]] = {}
 
         if not project_detail.files:
             raise ValueError("No files for the release")
 
         canonical_name = canonicalize_name(project_detail.name)
+        release: Version | InvalidVersion
         for file in project_detail.files:
+            version_str = None
             try:
-                release = Version(
-                    version=extract_package_version(
-                        filename=file.filename,
-                        project_name=canonical_name,
-                    ),
+                version_str = extract_package_version(
+                    filename=file.filename,
+                    project_name=canonical_name,
                 )
-            except (ValueError, InvalidVersion):
-                release = Version("0.0rc0")
+                release = Version(version=version_str)
+            except (ValueError, InvalidVersionError):
+                # Use the extracted version_str if available, otherwise the filename
+                release = InvalidVersion(version_str or file.filename)
             files_grouped_by_version.setdefault(release, []).append(file)
 
         # Ensure there is a release for each version, even if there is no files for it.
+        version: Version | InvalidVersion
         for version_str in project_detail.versions or []:
-            files_grouped_by_version.setdefault(Version(version_str), [])
+            try:
+                version = Version(version_str)
+            except (ValueError, InvalidVersionError):
+                version = InvalidVersion(version_str)
+            files_grouped_by_version.setdefault(version, [])
 
-        result: dict[Version, ShortReleaseInfo] = {}
+        result: dict[Version | InvalidVersion, ShortReleaseInfo] = {}
 
         latest_version = cls.compute_latest_version(files_grouped_by_version)
 
@@ -77,7 +126,9 @@ class ReleaseInfoModel:
             or []
         )
 
-        quarantined_files_by_release: dict[Version, list[Quarantinefile]] = {}
+        quarantined_files_by_release: dict[
+            Version | InvalidVersion, list[Quarantinefile]
+        ] = {}
 
         date_format = "%Y-%m-%dT%H:%M:%SZ"
         for file_info in quarantined_files:
@@ -88,12 +139,16 @@ class ReleaseInfoModel:
                 ),
                 "upload_time": datetime.strptime(file_info["upload_time"], date_format),
             }
-            release = Version(
-                extract_package_version(
+            version_str = None
+            try:
+                version_str = extract_package_version(
                     filename=quarantined_file["filename"],
                     project_name=canonical_name,
-                ),
-            )
+                )
+                release = Version(version_str)
+            except (ValueError, InvalidVersionError):
+                # Use the extracted version_str if available, otherwise the filename
+                release = InvalidVersion(version_str or quarantined_file["filename"])
             quarantined_files_by_release.setdefault(release, []).append(
                 quarantined_file
             )
@@ -160,8 +215,8 @@ class ReleaseInfoModel:
 
     @classmethod
     def compute_latest_version(
-        cls, versions: dict[Version, list[typing.Any]]
-    ) -> Version:
+        cls, versions: dict[Version | InvalidVersion, list[typing.Any]]
+    ) -> Version | InvalidVersion:
         # Use the pip logic to determine the latest release. First, pick the greatest non-dev version,
         # and if nothing, fall back to the greatest dev version. If no release is available return None.
         sorted_versions = sorted(

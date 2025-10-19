@@ -9,9 +9,11 @@ import typing
 import fastapi
 from fastapi.responses import StreamingResponse
 from markupsafe import Markup
-from packaging.version import InvalidVersion, Version
+from packaging.version import InvalidVersion as InvalidVersionError
+from packaging.version import Version
 
 from . import errors, model, view
+from .short_release_info import InvalidVersion
 from .static_files import HashedStaticFileHandler, StaticFilesManifest
 
 
@@ -137,14 +139,14 @@ class Controller:
         recache: bool = False,
     ) -> str | StreamingResponse:
         _ = page_section  # Handled in javascript.
-        _version = None
+        _version: Version | InvalidVersion | None = None
         if version:
             try:
                 _version = Version(version)
-            except InvalidVersion:
-                raise errors.RequestError(
-                    status_code=404, detail=f"Invalid version {version}."
-                )
+            except InvalidVersionError:
+                # Version string doesn't conform to PEP 440.
+                # Try to find it as an InvalidVersion in the releases.
+                _version = InvalidVersion(version)
 
         t = asyncio.create_task(
             self.model.project_page(project_name, _version, recache)

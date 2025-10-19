@@ -15,7 +15,7 @@ from simple_repository.errors import PackageNotFoundError
 
 from . import fetch_projects
 from .fetch_description import PackageInfo, package_info
-from .short_release_info import ReleaseInfoModel, ShortReleaseInfo
+from .short_release_info import InvalidVersion, ReleaseInfoModel, ShortReleaseInfo
 
 
 class Crawler:
@@ -146,8 +146,8 @@ class Crawler:
     async def fetch_pkg_info(
         self,
         prj: model.ProjectDetail,
-        version: Version,
-        releases: dict[Version, ShortReleaseInfo],
+        version: Version | InvalidVersion,
+        releases: dict[Version | InvalidVersion, ShortReleaseInfo],
         force_recache: bool,
     ) -> tuple[model.File, PackageInfo]:
         key = ("pkg-info", prj.name, str(version))

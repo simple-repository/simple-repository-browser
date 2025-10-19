@@ -14,7 +14,7 @@ from simple_repository.model import File, ProjectDetail
 
 from . import _search, compatibility_matrix, crawler, errors, fetch_projects
 from .fetch_description import PackageInfo
-from .short_release_info import ReleaseInfoModel, ShortReleaseInfo
+from .short_release_info import InvalidVersion, ReleaseInfoModel, ShortReleaseInfo
 
 
 @dataclasses.dataclass(frozen=True)
@@ -189,7 +189,7 @@ class Model:
     async def project_page(
         self,
         project_name: str,
-        version: Version | None,
+        version: Version | InvalidVersion | None,
         recache: bool,
     ) -> ProjectPageModel:
         canonical_name = canonicalize_name(project_name)
