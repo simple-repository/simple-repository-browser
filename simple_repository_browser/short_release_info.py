@@ -1,5 +1,5 @@
 import dataclasses
-from datetime import datetime
+from datetime import datetime, timezone
 import functools
 import types
 import typing
@@ -135,9 +135,12 @@ class ReleaseInfoModel:
             quarantined_file: Quarantinefile = {
                 "filename": file_info["filename"],
                 "quarantine_release_time": datetime.strptime(
-                    file_info["quarantine_release_time"], date_format
-                ),
-                "upload_time": datetime.strptime(file_info["upload_time"], date_format),
+                    file_info["quarantine_release_time"],
+                    date_format,
+                ).replace(tzinfo=timezone.utc),
+                "upload_time": datetime.strptime(
+                    file_info["upload_time"], date_format
+                ).replace(tzinfo=timezone.utc),
             }
             version_str = None
             try:
