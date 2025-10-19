@@ -225,6 +225,13 @@
                        </button>
                     </span>
                     {% endif %}
+                    {% if release_info.version.__class__.__name__ == 'InvalidVersion' %}
+                    <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
+                       <button class="btn btn-danger position-relative me-2 mb-1 btn-sm active" data-bs-toggle="tooltip" data-bs-placement="right" title="Version string does not conform to PEP 440">
+                           Invalid version
+                       </button>
+                    </span>
+                    {% endif %}
                   </div>
                 </div>
             {% if 'quarantined' not in release_info.labels %}
