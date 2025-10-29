@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -198,7 +199,7 @@ class MockSimpleRepository:
 def test_database(tmp_path: Path):
     """Create a temporary SQLite database with test data for search ordering."""
     db_path = tmp_path / "test.db"
-    con = sqlite3.connect(db_path)
+    con = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
     con.row_factory = sqlite3.Row
 
     # Create projects table matching the real schema
@@ -207,7 +208,7 @@ def test_database(tmp_path: Path):
             canonical_name TEXT PRIMARY KEY,
             summary TEXT,
             release_version TEXT,
-            release_date TEXT
+            release_date timestamp
         )
     """)
 
@@ -236,10 +237,12 @@ def test_database(tmp_path: Path):
         ("requests", "HTTP library", "2.28.0", "2022-12-01"),
     ]
 
-    for name, summary, version, date in test_projects:
+    for name, summary, version, date_str in test_projects:
+        # Convert date strings to naive datetime objects (representing UTC)
+        release_date = datetime.strptime(date_str, "%Y-%m-%d")
         con.execute(
             "INSERT INTO projects (canonical_name, summary, release_version, release_date) VALUES (?, ?, ?, ?)",
-            (name, summary, version, date),
+            (name, summary, version, release_date),
         )
 
     con.commit()

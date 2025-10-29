@@ -32,6 +32,11 @@ def remove_if_found(connection, canonical_name):
 def update_summary(
     conn, name: str, summary: str, release_date: datetime.datetime, release_version: str
 ):
+    # Strip timezone info before storing in SQLite to avoid converter issues.
+    # We always store naive datetimes which represent UTC.
+    if release_date.tzinfo is not None:
+        release_date = release_date.replace(tzinfo=None)
+
     with conn as cursor:
         cursor.execute(
             """
