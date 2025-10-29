@@ -24,6 +24,25 @@ class SearchResultItem:
     release_version: str | None = None
     release_date: datetime.datetime | None = None
 
+    @classmethod
+    def from_db_row(cls, row: sqlite3.Row) -> "SearchResultItem":
+        """
+        Convert a database row to SearchResultItem with timezone handling.
+
+        Naive datetimes from SQLite are interpreted as UTC. We store naive datetimes
+        to avoid SQLite converter issues (issue #27), but always work with UTC-aware
+        datetimes in the application.
+        """
+        row_dict = dict(row)
+        if (
+            row_dict["release_date"] is not None
+            and row_dict["release_date"].tzinfo is None
+        ):
+            row_dict["release_date"] = row_dict["release_date"].replace(
+                tzinfo=datetime.timezone.utc
+            )
+        return cls(**row_dict)
+
 
 class RepositoryStatsModel(typing.TypedDict):
     n_packages: int
@@ -154,7 +173,7 @@ class Model:
             results = cursor.execute(sql_query, params).fetchall()
 
         # Convert results to SearchResultItem objects
-        results = [SearchResultItem(*result) for result in results]
+        results = [SearchResultItem.from_db_row(row) for row in results]
 
         # If the search was for a specific name, then make sure we return it if
         # it is in the package repository.
