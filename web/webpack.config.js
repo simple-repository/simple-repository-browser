@@ -6,6 +6,7 @@ module.exports = {
   entry: {
     'bootstrap.customized.js': './bootstrap.customized.js',
   },
+  mode: 'production',
   output: {
     filename: '[name]',
     path: path.resolve(__dirname, '../simple_repository_browser/static/vendored/')
