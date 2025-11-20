@@ -1,4 +1,4 @@
 # Ensure the sdist doesn't get unnecessary build files.
-recursive-exclude javascript *
+recursive-exclude web *
 recursive-exclude screenshots *
 recursive-exclude .github *

@@ -6,6 +6,7 @@ module.exports = {
   entry: {
     'bootstrap.customized.js': './bootstrap.customized.js',
   },
+  mode: 'production',
   output: {
     filename: '[name]',
     path: path.resolve(__dirname, '../simple_repository_browser/static/vendored/')
@@ -50,7 +51,17 @@ module.exports = {
           },
           {
             // Loads a SASS/SCSS file and compiles it to CSS
-            loader: 'sass-loader'
+            loader: 'sass-loader',
+            options: {
+              // Options passed directly to Dart Sass
+              sassOptions: {
+                silenceDeprecations: [
+                  "global-builtin",
+                  "color-functions",
+                  "import"
+                ]
+              }
+            }
           }
         ]
       }
