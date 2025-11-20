@@ -23,7 +23,7 @@ jobs:
 
     - uses: actions/setup-node@v4
       with:
-        node-version: 12
+        node-version: 24
 
     # Install an older Python (needed for the javascript/scss build to succeed)
     - name: Set up temporary Python 3.9
