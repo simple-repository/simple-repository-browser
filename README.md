@@ -59,7 +59,15 @@ versions. There is currently no intelligent cache invalidation for those cases.
 
 ## Development
 
-In order to build the ``simple-repository-browser``, first:
+In order to build the ``simple-repository-browser`` you will need access to npm. If not available on the development host,
+you can do it in a docker container first:
+
+```bash
+docker run --rm -v $PWD:/workdir -it node bash
+cd /workdir
+```
+
+Bundle the web app:
 
 ```bash
 cd javascript
