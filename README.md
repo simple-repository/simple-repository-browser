@@ -82,6 +82,12 @@ And then the normal installation procedure applies:
 python -m pip install -e .
 ```
 
+You may want to disable the indexing to avoid long-running tasks during the development:
+
+```bash
+export DISABLE_REPOSITORY_INDEXING=1
+```
+
 The browser can be run with:
 
 ```bash
