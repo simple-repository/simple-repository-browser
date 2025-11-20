@@ -51,7 +51,17 @@ module.exports = {
           },
           {
             // Loads a SASS/SCSS file and compiles it to CSS
-            loader: 'sass-loader'
+            loader: 'sass-loader',
+            options: {
+              // Options passed directly to Dart Sass
+              sassOptions: {
+                silenceDeprecations: [
+                  "global-builtin",
+                  "color-functions",
+                  "import"
+                ]
+              }
+            }
           }
         ]
       }
