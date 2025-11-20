@@ -70,7 +70,7 @@ cd /workdir
 Bundle the web app:
 
 ```bash
-cd javascript
+cd web
 npm install --include=dev
 npm run build
 cd ..
