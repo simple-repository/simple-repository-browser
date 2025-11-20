@@ -182,7 +182,15 @@ class ReleaseInfoModel:
             if yanked_files > 0 and not_yanked_files > 0:
                 labels["partial-yank"] = "Partially yanked"
             elif yanked_files > 0 and not_yanked_files == 0:
-                labels["yanked"] = ". ".join(yank_reasons or ["No yank reasons given"])
+                yank_reasons_len = len(yank_reasons)
+                if yank_reasons_len == 1:
+                    labels["yanked"] = next(iter(yank_reasons))
+                elif yank_reasons_len > 1:
+                    labels["yanked"] = (
+                        "Yanked for multiple reasons, see individual files for details"
+                    )
+                else:
+                    labels["yanked"] = "No yank reasons given"
 
             if quarantined_files_for_release:
                 quarantine_release_times = [
