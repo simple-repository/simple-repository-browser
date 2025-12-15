@@ -174,7 +174,7 @@ class Crawler:
         )
 
         info_file, pkg_info = await package_info(
-            releases[version].files, self._source, prj.name
+            releases[version].files, self._source, prj.name, self._http_client
         )
 
         self._cache[key] = info_file, releases[version].files, pkg_info
