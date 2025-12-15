@@ -104,17 +104,16 @@ class PackageInfo:
     files_info: dict[str, FileInfo] = dataclasses.field(default_factory=dict)
 
 
-async def fetch_file(url, dest):
-    async with httpx.AsyncClient(verify=False) as http_client:
-        async with http_client.stream("GET", url) as r:
-            try:
-                r.raise_for_status()
-            except httpx.HTTPError as err:
-                raise IOError(f"Unable to fetch file (reason: {str(err)})")
-            chunk_size = 1024 * 100
-            with open(dest, "wb") as fd:
-                async for chunk in r.aiter_bytes(chunk_size):
-                    fd.write(chunk)
+async def fetch_file(url, dest, http_client: httpx.AsyncClient):
+    async with http_client.stream("GET", url) as r:
+        try:
+            r.raise_for_status()
+        except httpx.HTTPError as err:
+            raise IOError(f"Unable to fetch file (reason: {str(err)})")
+        chunk_size = 1024 * 100
+        with open(dest, "wb") as fd:
+            async for chunk in r.aiter_bytes(chunk_size):
+                fd.write(chunk)
 
 
 class PkgInfoFromFile(pkginfo.Distribution):
@@ -167,6 +166,7 @@ async def _fetch_metadata_resource(
     project_name: str,
     file: model.File,
     tmp_file_path: str,
+    http_client: httpx.AsyncClient,
 ) -> tuple[model.File, pkginfo.Distribution]:
     """Fetch metadata resource and return updated file and package info."""
     if not file.dist_info_metadata:
@@ -193,7 +193,7 @@ async def _fetch_metadata_resource(
         with open(tmp_file_path, "wb") as tmp:
             tmp.write(resource.text.encode())
     elif isinstance(resource, model.HttpResource):
-        await fetch_file(resource.url, tmp_file_path)
+        await fetch_file(resource.url, tmp_file_path, http_client)
     else:
         raise ValueError(f"Unhandled resource type ({type(resource)})")
 
@@ -255,6 +255,7 @@ async def package_info(
     release_files: tuple[model.File, ...],
     repository: SimpleRepository,
     project_name: str,
+    http_client: httpx.AsyncClient,
 ) -> tuple[model.File, PackageInfo]:
     files_info = _create_files_info_mapping(release_files)
     file = _select_best_file(release_files)
@@ -263,7 +264,7 @@ async def package_info(
         suffix=os.path.splitext(file.filename)[1],
     ) as tmp:
         file, info = await _fetch_metadata_resource(
-            repository, project_name, file, tmp.name
+            repository, project_name, file, tmp.name, http_client
         )
 
         description = generate_safe_description_html(info)

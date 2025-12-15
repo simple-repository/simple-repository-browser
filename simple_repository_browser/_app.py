@@ -53,7 +53,7 @@ class AppBuilder:
 
         async def lifespan(app: fastapi.FastAPI):
             async with (
-                httpx.AsyncClient(timeout=30) as http_client,
+                httpx.AsyncClient(timeout=30, follow_redirects=True) as http_client,
                 aiosqlite.connect(self.db_path, timeout=5) as db,
             ):
                 _controller = self.create_controller(
