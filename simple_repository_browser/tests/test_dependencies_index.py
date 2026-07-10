@@ -1,0 +1,123 @@
+import json
+import sqlite3
+
+import pytest
+
+from simple_repository_browser import fetch_projects
+
+
+@pytest.fixture
+def con():
+    c = sqlite3.connect(":memory:")
+    fetch_projects.create_table(c)
+    return c
+
+
+def _insert(con, name, requires_dist):
+    blob = json.dumps({"requires_dist": requires_dist})
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?, ?, ?)",
+        (name, name, blob),
+    )
+    con.commit()
+
+
+def test_insert_populates_shadow(con):
+    _insert(
+        con,
+        "acme",
+        [
+            {"name": "numpy", "extra": None, "specifier": ">=1", "marker": None},
+            {
+                "name": "pytest",
+                "extra": "test",
+                "specifier": "",
+                "marker": "extra == 'test'",
+            },
+        ],
+    )
+    rows = con.execute(
+        "SELECT canonical_name, dep_canonical_name, extra FROM dependencies_idx "
+        "ORDER BY dep_canonical_name"
+    ).fetchall()
+    assert rows == [("acme", "numpy", None), ("acme", "pytest", "test")]
+
+
+def test_update_replaces_shadow_rows(con):
+    _insert(
+        con,
+        "acme",
+        [{"name": "numpy", "extra": None, "specifier": "", "marker": None}],
+    )
+    con.execute(
+        "UPDATE projects SET metadata_json = ? WHERE canonical_name = 'acme'",
+        (
+            json.dumps(
+                {
+                    "requires_dist": [
+                        {
+                            "name": "scipy",
+                            "extra": None,
+                            "specifier": "",
+                            "marker": None,
+                        },
+                    ]
+                }
+            ),
+        ),
+    )
+    con.commit()
+    rows = con.execute(
+        "SELECT dep_canonical_name FROM dependencies_idx WHERE canonical_name = 'acme'"
+    ).fetchall()
+    assert rows == [("scipy",)]
+
+
+def test_delete_removes_shadow_rows(con):
+    _insert(
+        con,
+        "acme",
+        [{"name": "numpy", "extra": None, "specifier": "", "marker": None}],
+    )
+    con.execute("DELETE FROM projects WHERE canonical_name = 'acme'")
+    con.commit()
+    assert con.execute("SELECT COUNT(*) FROM dependencies_idx").fetchone()[0] == 0
+
+
+def test_null_metadata_is_tolerated(con):
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name) VALUES ('empty', 'empty')"
+    )
+    con.commit()
+    assert con.execute("SELECT COUNT(*) FROM dependencies_idx").fetchone()[0] == 0
+
+
+def test_migrate_upgrades_pre_v1_db():
+    c = sqlite3.connect(":memory:")
+    c.execute(
+        "CREATE TABLE projects (canonical_name text unique, preferred_name text, "
+        "summary text, release_date timestamp, release_version text)"
+    )
+    c.commit()
+    assert c.execute("PRAGMA user_version").fetchone()[0] == 0
+
+    fetch_projects.migrate(c)
+    fetch_projects.migrate(c)  # second call must be a no-op
+
+    cols = {row[1] for row in c.execute("PRAGMA table_info(projects)").fetchall()}
+    assert "metadata_json" in cols
+    assert (
+        c.execute("PRAGMA user_version").fetchone()[0] == fetch_projects.SCHEMA_VERSION
+    )
+
+
+def test_migrate_on_fresh_db_sets_version_and_creates_tables():
+    c = sqlite3.connect(":memory:")
+    fetch_projects.migrate(c)
+    assert (
+        c.execute("PRAGMA user_version").fetchone()[0] == fetch_projects.SCHEMA_VERSION
+    )
+    tables = {
+        row[0] for row in c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    assert {"projects", "dependencies_idx"} <= tables

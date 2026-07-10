@@ -9,9 +9,108 @@ def create_table(connection):
     with con as cursor:
         cursor.execute(
             """CREATE TABLE IF NOT EXISTS projects
-            (canonical_name text unique, preferred_name text, summary text, release_date timestamp, release_version text)
+            (canonical_name text unique, preferred_name text, summary text,
+             release_date timestamp, release_version text, metadata_json text)
             """,
         )
+        cursor.execute(
+            """CREATE TABLE IF NOT EXISTS dependencies_idx (
+                canonical_name TEXT NOT NULL,
+                dep_canonical_name TEXT NOT NULL,
+                extra TEXT,
+                specifier TEXT,
+                marker TEXT
+            )""",
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS ix_deps_dep "
+            "ON dependencies_idx(dep_canonical_name)",
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS ix_deps_dep_extra "
+            "ON dependencies_idx(dep_canonical_name, extra)",
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS ix_deps_owner "
+            "ON dependencies_idx(canonical_name)",
+        )
+        cursor.execute(
+            """CREATE TRIGGER IF NOT EXISTS projects_deps_ai
+               AFTER INSERT ON projects
+               WHEN NEW.metadata_json IS NOT NULL
+               BEGIN
+                 INSERT INTO dependencies_idx(
+                     canonical_name, dep_canonical_name, extra, specifier, marker
+                 )
+                 SELECT NEW.canonical_name,
+                        json_extract(value, '$.name'),
+                        json_extract(value, '$.extra'),
+                        json_extract(value, '$.specifier'),
+                        json_extract(value, '$.marker')
+                 FROM json_each(
+                     json_extract(NEW.metadata_json, '$.requires_dist')
+                 );
+               END;""",
+        )
+        cursor.execute(
+            """CREATE TRIGGER IF NOT EXISTS projects_deps_au
+               AFTER UPDATE OF metadata_json ON projects
+               BEGIN
+                 DELETE FROM dependencies_idx
+                 WHERE canonical_name = NEW.canonical_name;
+                 INSERT INTO dependencies_idx(
+                     canonical_name, dep_canonical_name, extra, specifier, marker
+                 )
+                 SELECT NEW.canonical_name,
+                        json_extract(value, '$.name'),
+                        json_extract(value, '$.extra'),
+                        json_extract(value, '$.specifier'),
+                        json_extract(value, '$.marker')
+                 FROM json_each(
+                     json_extract(
+                         COALESCE(NEW.metadata_json, '{"requires_dist":[]}'),
+                         '$.requires_dist'
+                     )
+                 );
+               END;""",
+        )
+        cursor.execute(
+            """CREATE TRIGGER IF NOT EXISTS projects_deps_ad
+               AFTER DELETE ON projects
+               BEGIN
+                 DELETE FROM dependencies_idx
+                 WHERE canonical_name = OLD.canonical_name;
+               END;""",
+        )
+
+
+# Bump when adding a migration step. Each step in `migrate` is guarded by
+# `if version < N` and cumulatively advances `PRAGMA user_version`.
+SCHEMA_VERSION = 1
+
+
+def migrate(connection):
+    """Advance the DB to SCHEMA_VERSION via PRAGMA user_version. Idempotent."""
+    with connection as cursor:
+        (version,) = cursor.execute("PRAGMA user_version").fetchone()
+        if version < 1:
+            # v1: introduce projects.metadata_json for pre-existing DBs.
+            # (Fresh DBs get the column via CREATE TABLE below.)
+            tables = {
+                row[0]
+                for row in cursor.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+            if "projects" in tables:
+                cols = {
+                    row[1]
+                    for row in cursor.execute("PRAGMA table_info(projects)").fetchall()
+                }
+                if "metadata_json" not in cols:
+                    cursor.execute("ALTER TABLE projects ADD COLUMN metadata_json text")
+            cursor.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    create_table(connection)
 
 
 def insert_if_missing(connection, canonical_name, preferred_name):
@@ -45,6 +144,14 @@ def update_summary(
         WHERE canonical_name == ?;
         """,
             (summary, release_date, release_version, name),
+        )
+
+
+def update_metadata(conn, name: str, metadata_json: str) -> None:
+    with conn as cursor:
+        cursor.execute(
+            "UPDATE projects SET metadata_json = ? WHERE canonical_name = ?",
+            (metadata_json, name),
         )
 
 
