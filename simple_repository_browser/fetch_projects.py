@@ -86,7 +86,7 @@ def create_table(connection):
 
 # Bump when adding a migration step. Each step in `migrate` is guarded by
 # `if version < N` and cumulatively advances `PRAGMA user_version`.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def migrate(connection):
@@ -114,6 +114,21 @@ def migrate(connection):
             # Null the column so the crawler backfill / next reindex refills it
             # against the new shape. Triggers cascade the delete into
             # dependencies_idx automatically.
+            tables = {
+                row[0]
+                for row in cursor.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+            if "projects" in tables:
+                cursor.execute("UPDATE projects SET metadata_json = NULL")
+        if version < 3:
+            # v3: crawler now caches project-level private_metadata alongside
+            # PackageInfo, so the startup backfill can re-derive `source` (and
+            # any future private-metadata-sourced field) without a full crawl.
+            # Null metadata_json again — projects whose cache was rewritten
+            # since this bump will regain `source` via backfill; the rest
+            # recover it on the next scheduled crawl.
             tables = {
                 row[0]
                 for row in cursor.execute(

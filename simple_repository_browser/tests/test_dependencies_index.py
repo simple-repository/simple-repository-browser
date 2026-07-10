@@ -134,7 +134,7 @@ def test_v1_to_v2_nulls_existing_metadata_json():
     assert (
         c.execute("PRAGMA user_version").fetchone()[0] == fetch_projects.SCHEMA_VERSION
     )
-    assert fetch_projects.SCHEMA_VERSION == 2
+    assert fetch_projects.SCHEMA_VERSION == 3
     assert (
         c.execute(
             "SELECT metadata_json FROM projects WHERE canonical_name = 'acme'"
@@ -291,6 +291,52 @@ def test_backfill_from_cache_populates_shadow(con):
 
     # Second call is a no-op once the target row already has metadata_json.
     assert Crawler.backfill_metadata_from_cache(con, cache) == 0
+
+
+def test_backfill_uses_cached_private_metadata_for_source(con):
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, release_version) "
+        "VALUES ('acme','acme','1.0')"
+    )
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, release_version) "
+        "VALUES ('legacy','legacy','1.0')"
+    )
+    con.commit()
+
+    cache = {
+        # 4-tuple: private_metadata cached — source flows through.
+        ("pkg-info", "acme", "1.0"): (
+            None,
+            [],
+            PackageInfo(
+                summary="s", description="d", requires_dist=RequirementsSequence([])
+            ),
+            {"_source_repository": "cern-internal"},
+        ),
+        # 3-tuple: pre-fix cache entry — must still backfill (without source).
+        ("pkg-info", "legacy", "1.0"): (
+            None,
+            [],
+            PackageInfo(
+                summary="s", description="d", requires_dist=RequirementsSequence([])
+            ),
+        ),
+    }
+
+    assert Crawler.backfill_metadata_from_cache(con, cache) == 2
+    acme_blob = json.loads(
+        con.execute(
+            "SELECT metadata_json FROM projects WHERE canonical_name = 'acme'"
+        ).fetchone()[0]
+    )
+    legacy_blob = json.loads(
+        con.execute(
+            "SELECT metadata_json FROM projects WHERE canonical_name = 'legacy'"
+        ).fetchone()[0]
+    )
+    assert acme_blob["source"] == "cern-internal"
+    assert legacy_blob["source"] is None
 
 
 def test_search_source_and_has_docs(con):
