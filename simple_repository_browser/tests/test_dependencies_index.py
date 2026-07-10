@@ -117,6 +117,49 @@ def test_migrate_upgrades_pre_v1_db():
     )
 
 
+def test_v1_to_v2_nulls_existing_metadata_json():
+    c = sqlite3.connect(":memory:")
+    # Simulate a v1 DB with populated metadata_json.
+    fetch_projects.create_table(c)
+    c.execute("PRAGMA user_version = 1")
+    c.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) "
+        "VALUES ('acme','acme',?)",
+        (json.dumps({"requires_dist": []}),),
+    )
+    c.commit()
+
+    fetch_projects.migrate(c)
+
+    assert (
+        c.execute("PRAGMA user_version").fetchone()[0] == fetch_projects.SCHEMA_VERSION
+    )
+    assert fetch_projects.SCHEMA_VERSION == 2
+    assert (
+        c.execute(
+            "SELECT metadata_json FROM projects WHERE canonical_name = 'acme'"
+        ).fetchone()[0]
+        is None
+    )
+    # dependencies_idx cascades — nulling metadata_json fires the UPDATE trigger,
+    # which clears the shadow rows for that project.
+    assert (
+        c.execute(
+            "SELECT COUNT(*) FROM dependencies_idx WHERE canonical_name = 'acme'"
+        ).fetchone()[0]
+        == 0
+    )
+
+
+def test_v2_migrate_is_noop_on_fresh_db():
+    c = sqlite3.connect(":memory:")
+    fetch_projects.migrate(c)
+    assert (
+        c.execute("PRAGMA user_version").fetchone()[0] == fetch_projects.SCHEMA_VERSION
+    )
+    fetch_projects.migrate(c)  # second call must be a no-op
+
+
 def test_migrate_on_fresh_db_sets_version_and_creates_tables():
     c = sqlite3.connect(":memory:")
     fetch_projects.migrate(c)
@@ -248,3 +291,152 @@ def test_backfill_from_cache_populates_shadow(con):
 
     # Second call is a no-op once the target row already has metadata_json.
     assert Crawler.backfill_metadata_from_cache(con, cache) == 0
+
+
+def test_search_source_and_has_docs(con):
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "acme",
+            "acme",
+            json.dumps(
+                {
+                    "requires_dist": [],
+                    "project_urls": {"Documentation": "https://d"},
+                    "source": "some-source",
+                }
+            ),
+        ),
+    )
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "widget",
+            "widget",
+            json.dumps(
+                {
+                    "requires_dist": [],
+                    "project_urls": {"Homepage": "https://h"},
+                    "source": "other-source",
+                }
+            ),
+        ),
+    )
+    con.commit()
+
+    def _run(query):
+        builder = _search.query_to_sql(query)
+        sql, params = builder.build_complete_query(
+            "SELECT canonical_name FROM projects", limit=10, offset=0
+        )
+        return [r[0] for r in con.execute(sql, params).fetchall()]
+
+    assert _run("source:some-source") == ["acme"]
+    assert _run("source:Other-Source") == ["widget"]  # case-insensitive
+    assert _run("has:docs") == ["acme"]
+    assert _run("source:some-source AND has:docs") == ["acme"]
+    assert _run("source:other-source AND has:docs") == []
+
+
+def test_negation_excludes_uncrawled_rows(con):
+    # populated: has docs, depends on numpy, source=s
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, summary, metadata_json) VALUES (?,?,?,?)",
+        (
+            "populated",
+            "populated",
+            "hi",
+            json.dumps(
+                {
+                    "requires_dist": [
+                        {
+                            "name": "numpy",
+                            "extra": None,
+                            "specifier": "",
+                            "marker": None,
+                        }
+                    ],
+                    "project_urls": {"Documentation": "https://d"},
+                    "source": "s",
+                }
+            ),
+        ),
+    )
+    # crawled but doesn't have docs / doesn't depend on numpy
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, summary, metadata_json) VALUES (?,?,?,?)",
+        (
+            "bare",
+            "bare",
+            "hi",
+            json.dumps({"requires_dist": [], "project_urls": {}, "source": "other"}),
+        ),
+    )
+    # uncrawled: NULL metadata_json + NULL summary
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name) VALUES ('uncrawled','uncrawled')"
+    )
+    con.commit()
+
+    def _run(query):
+        builder = _search.query_to_sql(query)
+        sql, params = builder.build_complete_query(
+            "SELECT canonical_name FROM projects", limit=10, offset=0
+        )
+        return sorted(r[0] for r in con.execute(sql, params).fetchall())
+
+    # All four negated filters must exclude the uncrawled row.
+    assert _run("-has:docs") == ["bare"]
+    assert _run("-depends:numpy") == ["bare"]
+    assert _run("-source:s") == ["bare"]
+    assert _run("-summary:missing") == ["bare", "populated"]
+
+
+def test_has_docs_matches_case_variants(con):
+    # Core-metadata `Project-URL` labels aren't case-normalised, so
+    # `has:docs` must match any casing of "Documentation".
+    for name, label in [
+        ("cap", "Documentation"),
+        ("lower", "documentation"),
+        ("upper", "DOCUMENTATION"),
+    ]:
+        con.execute(
+            "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+            (
+                name,
+                name,
+                json.dumps(
+                    {
+                        "requires_dist": [],
+                        "project_urls": {label: "https://d"},
+                        "source": None,
+                    }
+                ),
+            ),
+        )
+    # Different label entirely — must not match.
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "other",
+            "other",
+            json.dumps(
+                {
+                    "requires_dist": [],
+                    "project_urls": {"Homepage": "https://h"},
+                    "source": None,
+                }
+            ),
+        ),
+    )
+    con.commit()
+
+    builder = _search.query_to_sql("has:docs")
+    sql, params = builder.build_complete_query(
+        "SELECT canonical_name FROM projects", limit=10, offset=0
+    )
+    assert sorted(r[0] for r in con.execute(sql, params).fetchall()) == [
+        "cap",
+        "lower",
+        "upper",
+    ]

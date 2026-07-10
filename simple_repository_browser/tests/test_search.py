@@ -110,6 +110,16 @@ from simple_repository_browser._search import Filter, FilterOn
                 Filter(FilterOn.depends_via_extra, "pytest"),
             ),
         ),
+        pytest.param("source:some-source", Filter(FilterOn.source, "some-source")),
+        pytest.param("source:MixedCase", Filter(FilterOn.source, "MixedCase")),
+        pytest.param("has:docs", Filter(FilterOn.has, "docs")),
+        pytest.param(
+            "source:some-source AND has:docs",
+            _search.And(
+                Filter(FilterOn.source, "some-source"),
+                Filter(FilterOn.has, "docs"),
+            ),
+        ),
     ],
 )
 def test_parse_query(query, expected_expression_graph):
@@ -168,19 +178,38 @@ def test_parse_query(query, expected_expression_graph):
         (
             "depends:NumPy",
             (
-                "EXISTS (SELECT 1 FROM dependencies_idx d "
+                "IIF(projects.metadata_json IS NULL, NULL, EXISTS ("
+                "SELECT 1 FROM dependencies_idx d "
                 "WHERE d.canonical_name = projects.canonical_name "
-                "AND d.dep_canonical_name = ? AND d.extra IS NULL)",
+                "AND d.dep_canonical_name = ? AND d.extra IS NULL))",
                 ("numpy",),
             ),
         ),
         (
             "depends-via-extra:PyTest",
             (
-                "EXISTS (SELECT 1 FROM dependencies_idx d "
+                "IIF(projects.metadata_json IS NULL, NULL, EXISTS ("
+                "SELECT 1 FROM dependencies_idx d "
                 "WHERE d.canonical_name = projects.canonical_name "
-                "AND d.dep_canonical_name = ? AND d.extra IS NOT NULL)",
+                "AND d.dep_canonical_name = ? AND d.extra IS NOT NULL))",
                 ("pytest",),
+            ),
+        ),
+        (
+            "source:Some-Source",
+            (
+                "LOWER(json_extract(projects.metadata_json, '$.source')) = ?",
+                ("some-source",),
+            ),
+        ),
+        (
+            "has:docs",
+            (
+                "IIF(projects.metadata_json IS NULL, NULL, "
+                "EXISTS (SELECT 1 FROM json_each("
+                "json_extract(projects.metadata_json, '$.project_urls')) "
+                "WHERE LOWER(key) = 'documentation'))",
+                (),
             ),
         ),
     ],
@@ -211,6 +240,11 @@ def test_build_sql_predicate(query, expected_predicate):
 def test_invalid_query(query, expected_exception):
     with expected_exception:
         result = _search.parse(query)
+
+
+def test_has_rejects_unknown_facet():
+    with pytest.raises(parsley.ParseError):
+        _search.parse("has:banana")
 
 
 class MockSimpleRepository:

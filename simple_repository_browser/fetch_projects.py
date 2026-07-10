@@ -86,7 +86,7 @@ def create_table(connection):
 
 # Bump when adding a migration step. Each step in `migrate` is guarded by
 # `if version < N` and cumulatively advances `PRAGMA user_version`.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def migrate(connection):
@@ -109,7 +109,20 @@ def migrate(connection):
                 }
                 if "metadata_json" not in cols:
                     cursor.execute("ALTER TABLE projects ADD COLUMN metadata_json text")
-            cursor.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        if version < 2:
+            # v2: metadata_json shape gained `source` and `project_urls`.
+            # Null the column so the crawler backfill / next reindex refills it
+            # against the new shape. Triggers cascade the delete into
+            # dependencies_idx automatically.
+            tables = {
+                row[0]
+                for row in cursor.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+            if "projects" in tables:
+                cursor.execute("UPDATE projects SET metadata_json = NULL")
+        cursor.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     create_table(connection)
 
 
