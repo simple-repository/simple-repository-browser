@@ -91,6 +91,25 @@ from simple_repository_browser._search import Filter, FilterOn
                 ),
             ),
         ),
+        pytest.param("depends:numpy", Filter(FilterOn.depends, "numpy")),
+        pytest.param(
+            "depends-via-extra:pytest",
+            Filter(FilterOn.depends_via_extra, "pytest"),
+        ),
+        pytest.param(
+            "depends:numpy AND name:pandas",
+            _search.And(
+                Filter(FilterOn.depends, "numpy"),
+                Filter(FilterOn.name, "pandas"),
+            ),
+        ),
+        pytest.param(
+            "depends:numpy OR depends-via-extra:pytest",
+            _search.Or(
+                Filter(FilterOn.depends, "numpy"),
+                Filter(FilterOn.depends_via_extra, "pytest"),
+            ),
+        ),
     ],
 )
 def test_parse_query(query, expected_expression_graph):
@@ -145,6 +164,24 @@ def test_parse_query(query, expected_expression_graph):
         (
             "summary:\"Some'; DROP TABLE gotcha; ' Description\"",
             ("summary LIKE ?", ("%Some'; DROP TABLE gotcha; ' Description%",)),
+        ),
+        (
+            "depends:NumPy",
+            (
+                "EXISTS (SELECT 1 FROM dependencies_idx d "
+                "WHERE d.canonical_name = projects.canonical_name "
+                "AND d.dep_canonical_name = ? AND d.extra IS NULL)",
+                ("numpy",),
+            ),
+        ),
+        (
+            "depends-via-extra:PyTest",
+            (
+                "EXISTS (SELECT 1 FROM dependencies_idx d "
+                "WHERE d.canonical_name = projects.canonical_name "
+                "AND d.dep_canonical_name = ? AND d.extra IS NOT NULL)",
+                ("pytest",),
+            ),
         ),
     ],
 )

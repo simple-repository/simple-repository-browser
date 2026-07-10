@@ -18,6 +18,8 @@ class FilterOn(Enum):
     name = "name"
     summary = "summary"
     name_or_summary = "name_or_summary"
+    depends = "depends"
+    depends_via_extra = "depends_via_extra"
 
 
 @dataclasses.dataclass
@@ -171,6 +173,10 @@ class SearchCompiler:
                 return cls.handle_filter_name(term, context)
             case FilterOn.summary:
                 return cls.handle_filter_summary(term, context)
+            case FilterOn.depends:
+                return cls.handle_filter_depends(term, context, via_extra=False)
+            case FilterOn.depends_via_extra:
+                return cls.handle_filter_depends(term, context, via_extra=True)
             case _:
                 raise ValueError(f"Unhandled filter on {term.filter_on}")
 
@@ -234,6 +240,28 @@ class SearchCompiler:
             value = term.value
         value = value.replace("*", "%")
         return "summary LIKE ?", (f"%{value}%",), context
+
+    @classmethod
+    def handle_filter_depends(
+        cls, term: Filter, context: SearchContext, *, via_extra: bool
+    ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
+        """Reverse-dependency lookup against the trigger-maintained shadow.
+
+        via_extra=False → unconditional deps (extra IS NULL).
+        via_extra=True  → guarded by any extra marker (extra IS NOT NULL).
+        """
+        value = term.value
+        if value.startswith('"'):
+            value = value[1:-1]
+        dep_name = normalise_name(value)
+        extra_predicate = "d.extra IS NOT NULL" if via_extra else "d.extra IS NULL"
+        sql = (
+            "EXISTS (SELECT 1 FROM dependencies_idx d "
+            "WHERE d.canonical_name = projects.canonical_name "
+            "AND d.dep_canonical_name = ? "
+            f"AND {extra_predicate})"
+        )
+        return sql, (dep_name,), context
 
     @classmethod
     def handle_filter_name_or_summary(
@@ -339,10 +367,13 @@ grammar = parsley.makeGrammar(
     # Anything that looks like a Python package name. Note that wildcard (*) is supported.
     name_like = <letter (letterOrDigit | '-' | '_' | '.' | '*')*>
 
-    # Allow specifying specific fields to filter on
+    # Allow specifying specific fields to filter on.
+    # Longer prefixes must come first (PEG semantics).
     filter_on = (
         'name:' -> FilterOn.name
         |'summary:' -> FilterOn.summary
+        |'depends-via-extra:' -> FilterOn.depends_via_extra
+        |'depends:' -> FilterOn.depends
         | -> FilterOn.name_or_summary
     )
 

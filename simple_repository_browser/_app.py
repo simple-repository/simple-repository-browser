@@ -46,7 +46,7 @@ class AppBuilder:
             timeout=5,
         )
         self.con.row_factory = sqlite3.Row
-        fetch_projects.create_table(self.con)
+        fetch_projects.migrate(self.con)
 
     def create_app(self) -> fastapi.FastAPI:
         _view = self.create_view()

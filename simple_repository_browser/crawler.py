@@ -15,6 +15,7 @@ from simple_repository.errors import PackageNotFoundError
 
 from . import fetch_projects
 from .fetch_description import PackageInfo, package_info
+from .metadata_serialization import pkg_info_to_metadata_json
 from .short_release_info import InvalidVersion, ReleaseInfoModel, ShortReleaseInfo
 
 
@@ -40,9 +41,52 @@ class Crawler:
         self._projects_db = projects_db
         self._cache = cache
         self._crawl_popular_projects = crawl_popular_projects
+        # Populate metadata_json for any project that already has a cached
+        # PackageInfo but whose row predates the metadata_json column. Cheap
+        # once populated (SELECT returns no rows).
+        backfilled = self.backfill_metadata_from_cache(projects_db, cache)
+        if backfilled:
+            logging.info(
+                f"Backfilled metadata_json for {backfilled} project(s) from diskcache"
+            )
         if os.environ.get("DISABLE_REPOSITORY_INDEXING") != "1":
             self._task = asyncio.create_task(self.run_reindex_periodically())
         self._release_info_model = release_info_model
+
+    @staticmethod
+    def backfill_metadata_from_cache(projects_db, cache) -> int:
+        """Populate `projects.metadata_json` for rows still NULL, from cached PackageInfo.
+
+        Returns the number of rows written. Safe to call on every startup —
+        idempotent once every project has a metadata_json blob.
+        """
+        needed = {
+            row[0]
+            for row in projects_db.execute(
+                "SELECT canonical_name FROM projects WHERE metadata_json IS NULL"
+            ).fetchall()
+        }
+        if not needed:
+            return 0
+        written = 0
+        for key in cache:
+            if not (isinstance(key, tuple) and len(key) == 3 and key[0] == "pkg-info"):
+                continue
+            _, name, _ = key
+            canonical = canonicalize_name(name)
+            if canonical not in needed:
+                continue
+            _, _, pkg_info = cache[key]
+            fetch_projects.update_metadata(
+                projects_db,
+                name=canonical,
+                metadata_json=pkg_info_to_metadata_json(pkg_info),
+            )
+            needed.discard(canonical)
+            written += 1
+            if not needed:
+                break
+        return written
 
     async def crawl_recursively(
         self,
@@ -180,13 +224,19 @@ class Crawler:
         self._cache[key] = info_file, releases[version].files, pkg_info
         release_info = releases[version]
         if "latest-release" in release_info.labels:
+            canonical = canonicalize_name(prj.name)
             fetch_projects.update_summary(
                 self._projects_db,
-                name=canonicalize_name(prj.name),
+                name=canonical,
                 summary=pkg_info.summary,
                 release_date=info_file.upload_time
                 or datetime.fromtimestamp(0, tz=timezone.utc),
                 release_version=str(version),
+            )
+            fetch_projects.update_metadata(
+                self._projects_db,
+                name=canonical,
+                metadata_json=pkg_info_to_metadata_json(pkg_info),
             )
 
         return info_file, pkg_info
