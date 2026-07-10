@@ -178,18 +178,20 @@ def test_parse_query(query, expected_expression_graph):
         (
             "depends:NumPy",
             (
-                "EXISTS (SELECT 1 FROM dependencies_idx d "
+                "IIF(projects.metadata_json IS NULL, NULL, EXISTS ("
+                "SELECT 1 FROM dependencies_idx d "
                 "WHERE d.canonical_name = projects.canonical_name "
-                "AND d.dep_canonical_name = ? AND d.extra IS NULL)",
+                "AND d.dep_canonical_name = ? AND d.extra IS NULL))",
                 ("numpy",),
             ),
         ),
         (
             "depends-via-extra:PyTest",
             (
-                "EXISTS (SELECT 1 FROM dependencies_idx d "
+                "IIF(projects.metadata_json IS NULL, NULL, EXISTS ("
+                "SELECT 1 FROM dependencies_idx d "
                 "WHERE d.canonical_name = projects.canonical_name "
-                "AND d.dep_canonical_name = ? AND d.extra IS NOT NULL)",
+                "AND d.dep_canonical_name = ? AND d.extra IS NOT NULL))",
                 ("pytest",),
             ),
         ),
@@ -203,7 +205,8 @@ def test_parse_query(query, expected_expression_graph):
         (
             "has:docs",
             (
-                "json_extract(projects.metadata_json, '$.project_urls.\"Documentation\"') IS NOT NULL",
+                "IIF(projects.metadata_json IS NULL, NULL, "
+                "json_extract(projects.metadata_json, '$.project_urls.\"Documentation\"') IS NOT NULL)",
                 (),
             ),
         ),

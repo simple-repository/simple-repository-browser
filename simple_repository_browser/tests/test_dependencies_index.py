@@ -336,3 +336,57 @@ def test_search_source_and_has_docs(con):
     assert _run("has:docs") == ["acme"]
     assert _run("source:some-source AND has:docs") == ["acme"]
     assert _run("source:other-source AND has:docs") == []
+
+
+def test_negation_excludes_uncrawled_rows(con):
+    # populated: has docs, depends on numpy, source=s
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, summary, metadata_json) VALUES (?,?,?,?)",
+        (
+            "populated",
+            "populated",
+            "hi",
+            json.dumps(
+                {
+                    "requires_dist": [
+                        {
+                            "name": "numpy",
+                            "extra": None,
+                            "specifier": "",
+                            "marker": None,
+                        }
+                    ],
+                    "project_urls": {"Documentation": "https://d"},
+                    "source": "s",
+                }
+            ),
+        ),
+    )
+    # crawled but doesn't have docs / doesn't depend on numpy
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, summary, metadata_json) VALUES (?,?,?,?)",
+        (
+            "bare",
+            "bare",
+            "hi",
+            json.dumps({"requires_dist": [], "project_urls": {}, "source": "other"}),
+        ),
+    )
+    # uncrawled: NULL metadata_json + NULL summary
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name) VALUES ('uncrawled','uncrawled')"
+    )
+    con.commit()
+
+    def _run(query):
+        builder = _search.query_to_sql(query)
+        sql, params = builder.build_complete_query(
+            "SELECT canonical_name FROM projects", limit=10, offset=0
+        )
+        return sorted(r[0] for r in con.execute(sql, params).fetchall())
+
+    # All four negated filters must exclude the uncrawled row.
+    assert _run("-has:docs") == ["bare"]
+    assert _run("-depends:numpy") == ["bare"]
+    assert _run("-source:s") == ["bare"]
+    assert _run("-summary:missing") == ["bare", "populated"]

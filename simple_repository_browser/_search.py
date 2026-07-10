@@ -261,11 +261,15 @@ class SearchCompiler:
             value = value[1:-1]
         dep_name = normalise_name(value)
         extra_predicate = "d.extra IS NOT NULL" if via_extra else "d.extra IS NULL"
+        # IIF returns NULL for uncrawled rows so both `depends:x` and `-depends:x`
+        # exclude them (WHERE NULL is false). A plain AND-guard would return 0,
+        # and `NOT 0` = TRUE would leak uncrawled rows into the negated form.
         sql = (
-            "EXISTS (SELECT 1 FROM dependencies_idx d "
+            "IIF(projects.metadata_json IS NULL, NULL, EXISTS ("
+            "SELECT 1 FROM dependencies_idx d "
             "WHERE d.canonical_name = projects.canonical_name "
             "AND d.dep_canonical_name = ? "
-            f"AND {extra_predicate})"
+            f"AND {extra_predicate}))"
         )
         return sql, (dep_name,), context
 
@@ -282,10 +286,14 @@ class SearchCompiler:
             context,
         )
 
+    # IIF returns NULL for uncrawled rows so both `has:x` and `-has:x` exclude
+    # them (WHERE NULL is false). A plain AND-guard would return 0, and
+    # `NOT 0` = TRUE would leak uncrawled rows into the negated form.
     _HAS_FACET_SQL = {
         "docs": (
+            "IIF(projects.metadata_json IS NULL, NULL, "
             "json_extract(projects.metadata_json, "
-            "'$.project_urls.\"Documentation\"') IS NOT NULL"
+            "'$.project_urls.\"Documentation\"') IS NOT NULL)"
         ),
     }
 
