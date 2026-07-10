@@ -117,6 +117,49 @@ def test_migrate_upgrades_pre_v1_db():
     )
 
 
+def test_v1_to_v2_nulls_existing_metadata_json():
+    c = sqlite3.connect(":memory:")
+    # Simulate a v1 DB with populated metadata_json.
+    fetch_projects.create_table(c)
+    c.execute("PRAGMA user_version = 1")
+    c.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) "
+        "VALUES ('acme','acme',?)",
+        (json.dumps({"requires_dist": []}),),
+    )
+    c.commit()
+
+    fetch_projects.migrate(c)
+
+    assert (
+        c.execute("PRAGMA user_version").fetchone()[0] == fetch_projects.SCHEMA_VERSION
+    )
+    assert fetch_projects.SCHEMA_VERSION == 2
+    assert (
+        c.execute(
+            "SELECT metadata_json FROM projects WHERE canonical_name = 'acme'"
+        ).fetchone()[0]
+        is None
+    )
+    # dependencies_idx cascades — nulling metadata_json fires the UPDATE trigger,
+    # which clears the shadow rows for that project.
+    assert (
+        c.execute(
+            "SELECT COUNT(*) FROM dependencies_idx WHERE canonical_name = 'acme'"
+        ).fetchone()[0]
+        == 0
+    )
+
+
+def test_v2_migrate_is_noop_on_fresh_db():
+    c = sqlite3.connect(":memory:")
+    fetch_projects.migrate(c)
+    assert (
+        c.execute("PRAGMA user_version").fetchone()[0] == fetch_projects.SCHEMA_VERSION
+    )
+    fetch_projects.migrate(c)  # second call must be a no-op
+
+
 def test_migrate_on_fresh_db_sets_version_and_creates_tables():
     c = sqlite3.connect(":memory:")
     fetch_projects.migrate(c)
