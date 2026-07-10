@@ -28,10 +28,18 @@ def _dep_entries(req: Requirement) -> list[dict]:
     ]
 
 
-def pkg_info_to_metadata_json(pkg_info: PackageInfo) -> str:
+def pkg_info_to_metadata_json(
+    pkg_info: PackageInfo, *, source: str | None = None
+) -> str:
     deps: list[dict] = []
     for req in pkg_info.requires_dist:
         if not isinstance(req, Requirement):
             continue
         deps.extend(_dep_entries(req))
-    return json.dumps({"requires_dist": deps})
+    return json.dumps(
+        {
+            "requires_dist": deps,
+            "project_urls": dict(pkg_info.project_urls),
+            "source": source.lower() if source else None,
+        }
+    )

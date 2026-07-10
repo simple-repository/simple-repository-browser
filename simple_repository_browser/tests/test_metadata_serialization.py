@@ -18,6 +18,31 @@ def _deps(info):
     return json.loads(pkg_info_to_metadata_json(info))["requires_dist"]
 
 
+def _blob(info, **kwargs):
+    return json.loads(pkg_info_to_metadata_json(info, **kwargs))
+
+
+def test_source_is_lowercased_when_provided():
+    assert _blob(_info([]), source="Some-Source")["source"] == "some-source"
+
+
+def test_source_defaults_to_null():
+    assert _blob(_info([]))["source"] is None
+
+
+def test_project_urls_are_copied_verbatim():
+    info = _info([])
+    info.project_urls = {"Documentation": "https://d", "Homepage": "https://h"}
+    assert _blob(info)["project_urls"] == {
+        "Documentation": "https://d",
+        "Homepage": "https://h",
+    }
+
+
+def test_empty_project_urls_yields_empty_dict():
+    assert _blob(_info([]))["project_urls"] == {}
+
+
 def test_core_dep_has_null_extra():
     assert _deps(_info([Requirement("numpy>=1")])) == [
         {"name": "numpy", "extra": None, "specifier": ">=1", "marker": None},
