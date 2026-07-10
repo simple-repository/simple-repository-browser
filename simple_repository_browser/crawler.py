@@ -19,6 +19,20 @@ from .metadata_serialization import pkg_info_to_metadata_json
 from .short_release_info import InvalidVersion, ReleaseInfoModel, ShortReleaseInfo
 
 
+def _serialize_metadata(
+    pkg_info: PackageInfo, project_private_metadata: typing.Mapping[str, typing.Any]
+) -> str:
+    """Serialize pkg_info to a metadata_json blob, pulling fields sourced from
+    the project's private metadata (e.g. ``_source_repository``).
+
+    Kept as the single choke point so the crawler's live-write path and the
+    startup backfill produce identical shapes from the same inputs.
+    """
+    source_repository = project_private_metadata.get("_source_repository")
+    assert isinstance(source_repository, str) or source_repository is None
+    return pkg_info_to_metadata_json(pkg_info, source=source_repository)
+
+
 class Crawler:
     """
     A crawler designed to populate and periodically reindex
@@ -76,11 +90,17 @@ class Crawler:
             canonical = canonicalize_name(name)
             if canonical not in needed:
                 continue
-            _, _, pkg_info = cache[key]
+            entry = cache[key]
+            # 3-tuple entries predate private_metadata caching; treat as empty.
+            if len(entry) == 4:
+                _, _, pkg_info, project_private_metadata = entry
+            else:
+                _, _, pkg_info = entry
+                project_private_metadata = {}
             fetch_projects.update_metadata(
                 projects_db,
                 name=canonical,
-                metadata_json=pkg_info_to_metadata_json(pkg_info),
+                metadata_json=_serialize_metadata(pkg_info, project_private_metadata),
             )
             needed.discard(canonical)
             written += 1
@@ -196,7 +216,12 @@ class Crawler:
     ) -> tuple[model.File, PackageInfo]:
         key = ("pkg-info", prj.name, str(version))
         if key in self._cache and not force_recache:
-            info_file, files_used_for_cache, pkg_info = self._cache[key]
+            entry = self._cache[key]
+            # Pre-existing cache entries were 3-tuples without private_metadata.
+            if len(entry) == 4:
+                info_file, files_used_for_cache, pkg_info, _ = entry
+            else:
+                info_file, files_used_for_cache, pkg_info = entry
 
             # Validate that the cached result covers all of the files, and that no new
             # files have been added since the cache was made. In that case, we re-cache.
@@ -221,7 +246,13 @@ class Crawler:
             releases[version].files, self._source, prj.name, self._http_client
         )
 
-        self._cache[key] = info_file, releases[version].files, pkg_info
+        project_private_metadata = dict(prj.private_metadata)
+        self._cache[key] = (
+            info_file,
+            releases[version].files,
+            pkg_info,
+            project_private_metadata,
+        )
         release_info = releases[version]
         if "latest-release" in release_info.labels:
             canonical = canonicalize_name(prj.name)
@@ -233,15 +264,10 @@ class Crawler:
                 or datetime.fromtimestamp(0, tz=timezone.utc),
                 release_version=str(version),
             )
-            source_repository = prj.private_metadata.get("_source_repository")
-            assert isinstance(source_repository, str) or source_repository is None
             fetch_projects.update_metadata(
                 self._projects_db,
                 name=canonical,
-                metadata_json=pkg_info_to_metadata_json(
-                    pkg_info,
-                    source=source_repository,
-                ),
+                metadata_json=_serialize_metadata(pkg_info, project_private_metadata),
             )
 
         return info_file, pkg_info
