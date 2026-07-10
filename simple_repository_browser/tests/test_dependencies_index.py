@@ -291,3 +291,48 @@ def test_backfill_from_cache_populates_shadow(con):
 
     # Second call is a no-op once the target row already has metadata_json.
     assert Crawler.backfill_metadata_from_cache(con, cache) == 0
+
+
+def test_search_source_and_has_docs(con):
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "acme",
+            "acme",
+            json.dumps(
+                {
+                    "requires_dist": [],
+                    "project_urls": {"Documentation": "https://d"},
+                    "source": "some-source",
+                }
+            ),
+        ),
+    )
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "widget",
+            "widget",
+            json.dumps(
+                {
+                    "requires_dist": [],
+                    "project_urls": {"Homepage": "https://h"},
+                    "source": "other-source",
+                }
+            ),
+        ),
+    )
+    con.commit()
+
+    def _run(query):
+        builder = _search.query_to_sql(query)
+        sql, params = builder.build_complete_query(
+            "SELECT canonical_name FROM projects", limit=10, offset=0
+        )
+        return [r[0] for r in con.execute(sql, params).fetchall()]
+
+    assert _run("source:some-source") == ["acme"]
+    assert _run("source:Other-Source") == ["widget"]  # case-insensitive
+    assert _run("has:docs") == ["acme"]
+    assert _run("source:some-source AND has:docs") == ["acme"]
+    assert _run("source:other-source AND has:docs") == []
