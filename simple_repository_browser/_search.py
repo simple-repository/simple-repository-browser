@@ -20,6 +20,8 @@ class FilterOn(Enum):
     name_or_summary = "name_or_summary"
     depends = "depends"
     depends_via_extra = "depends_via_extra"
+    source = "source"
+    has = "has"
 
 
 @dataclasses.dataclass
@@ -177,6 +179,10 @@ class SearchCompiler:
                 return cls.handle_filter_depends(term, context, via_extra=False)
             case FilterOn.depends_via_extra:
                 return cls.handle_filter_depends(term, context, via_extra=True)
+            case FilterOn.source:
+                return cls.handle_filter_source(term, context)
+            case FilterOn.has:
+                return cls.handle_filter_has(term, context)
             case _:
                 raise ValueError(f"Unhandled filter on {term.filter_on}")
 
@@ -262,6 +268,32 @@ class SearchCompiler:
             f"AND {extra_predicate})"
         )
         return sql, (dep_name,), context
+
+    @classmethod
+    def handle_filter_source(
+        cls, term: Filter, context: SearchContext
+    ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
+        value = term.value
+        if value.startswith('"'):
+            value = value[1:-1]
+        return (
+            "LOWER(json_extract(projects.metadata_json, '$.source')) = ?",
+            (value.lower(),),
+            context,
+        )
+
+    _HAS_FACET_SQL = {
+        "docs": (
+            "json_extract(projects.metadata_json, "
+            "'$.project_urls.\"Documentation\"') IS NOT NULL"
+        ),
+    }
+
+    @classmethod
+    def handle_filter_has(
+        cls, term: Filter, context: SearchContext
+    ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
+        return cls._HAS_FACET_SQL[term.value], (), context
 
     @classmethod
     def handle_filter_name_or_summary(
@@ -374,13 +406,18 @@ grammar = parsley.makeGrammar(
         |'summary:' -> FilterOn.summary
         |'depends-via-extra:' -> FilterOn.depends_via_extra
         |'depends:' -> FilterOn.depends
+        |'source:' -> FilterOn.source
         | -> FilterOn.name_or_summary
     )
 
     # Either a quoted string, or a name-like
     filter_value = (quoted_string | name_like):term -> term
 
-    filter = filter_on:filter_on filter_value:filter_value -> Filter(filter_on, filter_value)
+    # 'has:' takes a facet from a fixed allow-list so unknown facets fail parsing.
+    has_facet = ('docs' -> 'docs')
+    has_filter = 'has:' has_facet:facet -> Filter(FilterOn.has, facet)
+
+    filter = has_filter | filter_on:filter_on filter_value:filter_value -> Filter(filter_on, filter_value)
 
     AND_OR = (ws 'AND' ws -> And
              |ws 'OR' ws -> Or
