@@ -236,7 +236,10 @@ class Crawler:
             fetch_projects.update_metadata(
                 self._projects_db,
                 name=canonical,
-                metadata_json=pkg_info_to_metadata_json(pkg_info),
+                metadata_json=pkg_info_to_metadata_json(
+                    pkg_info,
+                    source=prj.private_metadata.get("_source_repository"),
+                ),
             )
 
         return info_file, pkg_info
