@@ -289,11 +289,16 @@ class SearchCompiler:
     # IIF returns NULL for uncrawled rows so both `has:x` and `-has:x` exclude
     # them (WHERE NULL is false). A plain AND-guard would return 0, and
     # `NOT 0` = TRUE would leak uncrawled rows into the negated form.
+    #
+    # `has:docs` iterates over project_urls with case-insensitive key matching
+    # because the core-metadata spec permits repeated `Project-URL` headers
+    # with any label casing (`Documentation`, `documentation`, etc.).
     _HAS_FACET_SQL = {
         "docs": (
             "IIF(projects.metadata_json IS NULL, NULL, "
-            "json_extract(projects.metadata_json, "
-            "'$.project_urls.\"Documentation\"') IS NOT NULL)"
+            "EXISTS (SELECT 1 FROM json_each("
+            "json_extract(projects.metadata_json, '$.project_urls')) "
+            "WHERE LOWER(key) = 'documentation'))"
         ),
     }
 

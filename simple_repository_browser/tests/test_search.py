@@ -206,7 +206,9 @@ def test_parse_query(query, expected_expression_graph):
             "has:docs",
             (
                 "IIF(projects.metadata_json IS NULL, NULL, "
-                "json_extract(projects.metadata_json, '$.project_urls.\"Documentation\"') IS NOT NULL)",
+                "EXISTS (SELECT 1 FROM json_each("
+                "json_extract(projects.metadata_json, '$.project_urls')) "
+                "WHERE LOWER(key) = 'documentation'))",
                 (),
             ),
         ),

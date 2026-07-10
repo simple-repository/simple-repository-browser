@@ -233,12 +233,14 @@ class Crawler:
                 or datetime.fromtimestamp(0, tz=timezone.utc),
                 release_version=str(version),
             )
+            source_repository = prj.private_metadata.get("_source_repository")
+            assert isinstance(source_repository, str) or source_repository is None
             fetch_projects.update_metadata(
                 self._projects_db,
                 name=canonical,
                 metadata_json=pkg_info_to_metadata_json(
                     pkg_info,
-                    source=prj.private_metadata.get("_source_repository"),
+                    source=source_repository,
                 ),
             )
 

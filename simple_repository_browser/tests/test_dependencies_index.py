@@ -390,3 +390,53 @@ def test_negation_excludes_uncrawled_rows(con):
     assert _run("-depends:numpy") == ["bare"]
     assert _run("-source:s") == ["bare"]
     assert _run("-summary:missing") == ["bare", "populated"]
+
+
+def test_has_docs_matches_case_variants(con):
+    # Core-metadata `Project-URL` labels aren't case-normalised, so
+    # `has:docs` must match any casing of "Documentation".
+    for name, label in [
+        ("cap", "Documentation"),
+        ("lower", "documentation"),
+        ("upper", "DOCUMENTATION"),
+    ]:
+        con.execute(
+            "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+            (
+                name,
+                name,
+                json.dumps(
+                    {
+                        "requires_dist": [],
+                        "project_urls": {label: "https://d"},
+                        "source": None,
+                    }
+                ),
+            ),
+        )
+    # Different label entirely — must not match.
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "other",
+            "other",
+            json.dumps(
+                {
+                    "requires_dist": [],
+                    "project_urls": {"Homepage": "https://h"},
+                    "source": None,
+                }
+            ),
+        ),
+    )
+    con.commit()
+
+    builder = _search.query_to_sql("has:docs")
+    sql, params = builder.build_complete_query(
+        "SELECT canonical_name FROM projects", limit=10, offset=0
+    )
+    assert sorted(r[0] for r in con.execute(sql, params).fetchall()) == [
+        "cap",
+        "lower",
+        "upper",
+    ]
