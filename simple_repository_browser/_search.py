@@ -21,6 +21,9 @@ class FilterOn(Enum):
     depends = "depends"
     depends_via_extra = "depends_via_extra"
     source = "source"
+    author = "author"
+    maintainer = "maintainer"
+    classifier = "classifier"
     has = "has"
 
 
@@ -181,6 +184,12 @@ class SearchCompiler:
                 return cls.handle_filter_depends(term, context, via_extra=True)
             case FilterOn.source:
                 return cls.handle_filter_source(term, context)
+            case FilterOn.author:
+                return cls.handle_filter_author(term, context)
+            case FilterOn.maintainer:
+                return cls.handle_filter_maintainer(term, context)
+            case FilterOn.classifier:
+                return cls.handle_filter_classifier(term, context)
             case FilterOn.has:
                 return cls.handle_filter_has(term, context)
             case _:
@@ -283,6 +292,48 @@ class SearchCompiler:
         return (
             "LOWER(json_extract(projects.metadata_json, '$.source')) = ?",
             (value.lower(),),
+            context,
+        )
+
+    @staticmethod
+    def _substring_like_pattern(value: str) -> str:
+        """`*` behaves as SQL LIKE `%` (matches `summary:` glob semantics)."""
+        if value.startswith('"'):
+            value = value[1:-1]
+        return f"%{value.replace('*', '%').lower()}%"
+
+    @classmethod
+    def handle_filter_author(
+        cls, term: Filter, context: SearchContext
+    ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
+        return (
+            "IIF(projects.metadata_json IS NULL, NULL, "
+            "LOWER(json_extract(projects.metadata_json, '$.author')) LIKE ?)",
+            (cls._substring_like_pattern(term.value),),
+            context,
+        )
+
+    @classmethod
+    def handle_filter_maintainer(
+        cls, term: Filter, context: SearchContext
+    ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
+        return (
+            "IIF(projects.metadata_json IS NULL, NULL, "
+            "LOWER(json_extract(projects.metadata_json, '$.maintainer')) LIKE ?)",
+            (cls._substring_like_pattern(term.value),),
+            context,
+        )
+
+    @classmethod
+    def handle_filter_classifier(
+        cls, term: Filter, context: SearchContext
+    ) -> tuple[str, tuple[typing.Any, ...], SearchContext]:
+        return (
+            "IIF(projects.metadata_json IS NULL, NULL, "
+            "EXISTS (SELECT 1 FROM json_each("
+            "json_extract(projects.metadata_json, '$.classifiers')) "
+            "WHERE LOWER(value) LIKE ?))",
+            (cls._substring_like_pattern(term.value),),
             context,
         )
 
@@ -420,6 +471,9 @@ grammar = parsley.makeGrammar(
         |'depends-via-extra:' -> FilterOn.depends_via_extra
         |'depends:' -> FilterOn.depends
         |'source:' -> FilterOn.source
+        |'author:' -> FilterOn.author
+        |'maintainer:' -> FilterOn.maintainer
+        |'classifier:' -> FilterOn.classifier
         | -> FilterOn.name_or_summary
     )
 

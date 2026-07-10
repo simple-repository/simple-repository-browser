@@ -41,5 +41,8 @@ def pkg_info_to_metadata_json(
             "requires_dist": deps,
             "project_urls": dict(pkg_info.project_urls),
             "source": source.lower() if source else None,
+            "author": pkg_info.author or None,
+            "maintainer": pkg_info.maintainer or None,
+            "classifiers": list(pkg_info.classifiers),
         }
     )
