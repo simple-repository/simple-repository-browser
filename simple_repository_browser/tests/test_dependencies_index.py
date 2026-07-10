@@ -121,3 +121,29 @@ def test_migrate_on_fresh_db_sets_version_and_creates_tables():
         row[0] for row in c.execute("SELECT name FROM sqlite_master WHERE type='table'")
     }
     assert {"projects", "dependencies_idx"} <= tables
+
+
+def test_update_metadata_writes_blob_and_triggers_shadow(con):
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name) VALUES ('acme', 'acme')"
+    )
+    con.commit()
+    fetch_projects.update_metadata(
+        con,
+        name="acme",
+        metadata_json=json.dumps(
+            {
+                "requires_dist": [
+                    {
+                        "name": "numpy",
+                        "extra": None,
+                        "specifier": "",
+                        "marker": None,
+                    },
+                ]
+            }
+        ),
+    )
+    assert con.execute(
+        "SELECT dep_canonical_name FROM dependencies_idx WHERE canonical_name = 'acme'"
+    ).fetchall() == [("numpy",)]

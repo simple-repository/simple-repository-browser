@@ -15,6 +15,7 @@ from simple_repository.errors import PackageNotFoundError
 
 from . import fetch_projects
 from .fetch_description import PackageInfo, package_info
+from .metadata_serialization import pkg_info_to_metadata_json
 from .short_release_info import InvalidVersion, ReleaseInfoModel, ShortReleaseInfo
 
 
@@ -180,13 +181,19 @@ class Crawler:
         self._cache[key] = info_file, releases[version].files, pkg_info
         release_info = releases[version]
         if "latest-release" in release_info.labels:
+            canonical = canonicalize_name(prj.name)
             fetch_projects.update_summary(
                 self._projects_db,
-                name=canonicalize_name(prj.name),
+                name=canonical,
                 summary=pkg_info.summary,
                 release_date=info_file.upload_time
                 or datetime.fromtimestamp(0, tz=timezone.utc),
                 release_version=str(version),
+            )
+            fetch_projects.update_metadata(
+                self._projects_db,
+                name=canonical,
+                metadata_json=pkg_info_to_metadata_json(pkg_info),
             )
 
         return info_file, pkg_info
