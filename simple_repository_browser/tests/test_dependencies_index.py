@@ -486,3 +486,64 @@ def test_has_docs_matches_case_variants(con):
         "lower",
         "upper",
     ]
+
+
+def test_search_author_maintainer_classifier(con):
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "acme",
+            "acme",
+            json.dumps(
+                {
+                    "requires_dist": [],
+                    "author": "Ada Lovelace <ada@example.com>",
+                    "maintainer": "Grace Hopper",
+                    "classifiers": [
+                        "Programming Language :: Python :: 3.11",
+                        "License :: OSI Approved :: MIT License",
+                    ],
+                }
+            ),
+        ),
+    )
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "widget",
+            "widget",
+            json.dumps(
+                {
+                    "requires_dist": [],
+                    "author": "Alan Turing",
+                    "maintainer": None,
+                    "classifiers": ["Programming Language :: Python :: 3.14"],
+                }
+            ),
+        ),
+    )
+    # uncrawled row must drop out of both positive and negated matches
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name) VALUES ('uncrawled','uncrawled')"
+    )
+    con.commit()
+
+    def _run(query):
+        builder = _search.query_to_sql(query)
+        sql, params = builder.build_complete_query(
+            "SELECT canonical_name FROM projects", limit=10, offset=0
+        )
+        return sorted(r[0] for r in con.execute(sql, params).fetchall())
+
+    # Substring + case-insensitive.
+    assert _run("author:ada") == ["acme"]
+    assert _run("author:TURING") == ["widget"]
+    # Glob: `*` -> SQL `%`.
+    assert _run('classifier:"python*3.14"') == ["widget"]
+    assert _run('classifier:"python :: 3"') == ["acme", "widget"]
+    # Maintainer null is not a match, and doesn't leak into the negated form.
+    assert _run("maintainer:hopper") == ["acme"]
+    assert _run("-maintainer:hopper") == []
+    # Positive and negated filters both exclude uncrawled rows.
+    assert _run("author:ada") == ["acme"]
+    assert _run("-author:ada") == ["widget"]

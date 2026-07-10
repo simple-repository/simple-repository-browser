@@ -126,9 +126,9 @@ def migrate(connection):
             # v3: crawler now caches project-level private_metadata alongside
             # PackageInfo, so the startup backfill can re-derive `source` (and
             # any future private-metadata-sourced field) without a full crawl.
-            # Null metadata_json again — projects whose cache was rewritten
-            # since this bump will regain `source` via backfill; the rest
-            # recover it on the next scheduled crawl.
+            # Same bump also adds `author`, `maintainer`, `classifiers` to the
+            # metadata_json shape. Null the column so backfill re-serializes
+            # against the new shape from cached PackageInfo.
             tables = {
                 row[0]
                 for row in cursor.execute(
