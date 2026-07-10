@@ -3,7 +3,13 @@ import sqlite3
 
 import pytest
 
-from simple_repository_browser import fetch_projects
+from simple_repository_browser import _search, fetch_projects
+from simple_repository_browser.crawler import Crawler
+from simple_repository_browser.fetch_description import (
+    PackageInfo,
+    Requirement,
+    RequirementsSequence,
+)
 
 
 @pytest.fixture
@@ -150,8 +156,6 @@ def test_update_metadata_writes_blob_and_triggers_shadow(con):
 
 
 def test_search_depends_and_depends_via_extra(con):
-    from simple_repository_browser import _search
-
     con.execute(
         "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
         (
@@ -203,3 +207,44 @@ def test_search_depends_and_depends_via_extra(con):
     assert _run("depends:pytest") == []  # pytest is only pulled in via extra
     assert _run("depends-via-extra:pytest") == ["widget"]
     assert _run("depends-via-extra:numpy") == []
+
+
+def test_backfill_from_cache_populates_shadow(con):
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, release_version) "
+        "VALUES ('acme','acme','1.0')"
+    )
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, release_version) "
+        "VALUES ('widget','widget','1.0')"
+    )
+    con.commit()
+
+    cache = {
+        ("pkg-info", "acme", "1.0"): (
+            None,
+            [],
+            PackageInfo(
+                summary="s",
+                description="d",
+                requires_dist=RequirementsSequence([Requirement("numpy>=1")]),
+            ),
+        ),
+        ("other-cache-key", "foo", "1.0"): "irrelevant",
+    }
+
+    count = Crawler.backfill_metadata_from_cache(con, cache)
+    assert count == 1
+    assert con.execute(
+        "SELECT dep_canonical_name FROM dependencies_idx WHERE canonical_name = 'acme'"
+    ).fetchall() == [("numpy",)]
+    # widget has no cached PackageInfo, so it remains NULL.
+    assert (
+        con.execute(
+            "SELECT metadata_json FROM projects WHERE canonical_name = 'widget'"
+        ).fetchone()[0]
+        is None
+    )
+
+    # Second call is a no-op once the target row already has metadata_json.
+    assert Crawler.backfill_metadata_from_cache(con, cache) == 0
