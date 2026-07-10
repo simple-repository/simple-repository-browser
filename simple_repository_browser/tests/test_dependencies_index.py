@@ -147,3 +147,59 @@ def test_update_metadata_writes_blob_and_triggers_shadow(con):
     assert con.execute(
         "SELECT dep_canonical_name FROM dependencies_idx WHERE canonical_name = 'acme'"
     ).fetchall() == [("numpy",)]
+
+
+def test_search_depends_and_depends_via_extra(con):
+    from simple_repository_browser import _search
+
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "acme",
+            "acme",
+            json.dumps(
+                {
+                    "requires_dist": [
+                        {
+                            "name": "numpy",
+                            "extra": None,
+                            "specifier": "",
+                            "marker": None,
+                        },
+                    ]
+                }
+            ),
+        ),
+    )
+    con.execute(
+        "INSERT INTO projects(canonical_name, preferred_name, metadata_json) VALUES (?,?,?)",
+        (
+            "widget",
+            "widget",
+            json.dumps(
+                {
+                    "requires_dist": [
+                        {
+                            "name": "pytest",
+                            "extra": "test",
+                            "specifier": "",
+                            "marker": "extra == 'test'",
+                        },
+                    ]
+                }
+            ),
+        ),
+    )
+    con.commit()
+
+    def _run(query):
+        builder = _search.query_to_sql(query)
+        sql, params = builder.build_complete_query(
+            "SELECT canonical_name FROM projects", limit=10, offset=0
+        )
+        return [r[0] for r in con.execute(sql, params).fetchall()]
+
+    assert _run("depends:numpy") == ["acme"]
+    assert _run("depends:pytest") == []  # pytest is only pulled in via extra
+    assert _run("depends-via-extra:pytest") == ["widget"]
+    assert _run("depends-via-extra:numpy") == []
