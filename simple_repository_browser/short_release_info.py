@@ -226,15 +226,21 @@ class ReleaseInfoModel:
 
     @classmethod
     def compute_latest_version(
-        cls, versions: dict[Version | InvalidVersion, list[typing.Any]]
+        cls,
+        versions: typing.Mapping[Version | InvalidVersion, typing.Sequence[model.File]],
     ) -> Version | InvalidVersion:
-        # Use the pip logic to determine the latest release. First, pick the greatest non-dev version,
-        # and if nothing, fall back to the greatest dev version. If no release is available return None.
+        # Use the pip logic to determine the latest release. Prefer releases
+        # with installable (non-yanked) files, then non dev/pre-releases, then
+        # the greatest version. Fully-yanked or fully-quarantined releases are
+        # only chosen when nothing else is available.
         sorted_versions = sorted(
             versions,
             key=lambda version: (
                 # Prioritise the releases with files (e.g. not quarantined).
                 len(versions[version]) > 0,
+                # Then, prefer releases with at least one non-yanked file
+                # (matches pip's behaviour of ignoring yanked candidates).
+                any(not f.yanked for f in versions[version]),
                 # Then, put the non dev-releases first.
                 not version.is_devrelease and not version.is_prerelease,
                 # Finally, order by the version.
