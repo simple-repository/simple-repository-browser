@@ -130,6 +130,25 @@ def test_compat_mtx__none_abi():
     assert mtx.platform_names == ("manylinux2014_x86_64", "win32", "win_amd64")
 
 
+def test_compat_mtx__invalid_wheel_tag_is_skipped(caplog):
+    # pydantic 0.18.1 shipped a wheel with the non-PEP 425 python tag "py36+",
+    # which raises InvalidVersion when interpreted. The offending file should
+    # be dropped from the matrix so the rest of the release page still renders.
+    files = [
+        model.File("pydantic-0.18.1-py36+-none-any.whl", "", {}),
+        model.File("pydantic-0.18.1-py3-none-any.whl", "", {}),
+    ]
+
+    with caplog.at_level(
+        "WARNING", logger="simple_repository_browser.compatibility_matrix"
+    ):
+        mtx = compatibility_matrix(tuple(files))
+
+    assert mtx.py_and_abi_names == ("Python 3",)
+    assert mtx.platform_names == ("any",)
+    assert any("py36+" in r.message for r in caplog.records)
+
+
 def test_compat_mtx__abi3_many_python():
     # A completely wild but real name. Specifying multiple Python targets makes no sense when
     # using abi3.

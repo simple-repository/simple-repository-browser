@@ -1,8 +1,11 @@
 import dataclasses
+import logging
 
-from packaging.utils import parse_wheel_filename
-from packaging.version import Version
+from packaging.utils import InvalidWheelFilename, parse_wheel_filename
+from packaging.version import InvalidVersion, Version
 from simple_repository import model
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -25,41 +28,52 @@ def compatibility_matrix(
     # Track the platform_names (we sort by name).
     platform_names = set()
 
-    interpreted_py_abi_tags: dict[tuple[str, str], InterpretedPyAndABITag] = {}
-
     for file in files:
         if not file.filename.lower().endswith(".whl"):
             continue
-        _, _, _, tags = parse_wheel_filename(file.filename)
+        try:
+            entries = _wheel_matrix_entries(file.filename)
+        except (InvalidWheelFilename, InvalidVersion) as err:
+            # e.g. pydantic 0.18.1 ships a "py36+" python tag which isn't
+            # PEP 425. Drop the file from the matrix rather than failing the
+            # whole page.
+            logger.warning(
+                "Skipping %s in compatibility matrix: %s", file.filename, err
+            )
+            continue
 
-        # Ensure that the tags have a consistent sort order. From
-        # packaging they come as a frozenset, so no such upstream guarantee is provided.
-        sorted_tags = sorted(
-            tags, key=lambda tag: (tag.platform, tag.abi, tag.interpreter)
-        )
-
-        for tag in sorted_tags:
-            inter_abi_key = (tag.interpreter, tag.abi)
-            if inter_abi_key not in interpreted_py_abi_tags:
-                interpreted_py_abi_tags[inter_abi_key] = interpret_py_and_abi_tag(
-                    tag.interpreter, tag.abi
-                )
-
-            tag_interp = interpreted_py_abi_tags[inter_abi_key]
-            compat_matrix[(tag_interp.nice_name, tag.platform)] = file
-
-            # Track the seen tags, and define a sort order.
+        for tag_interp, platform in entries:
+            compat_matrix[(tag_interp.nice_name, platform)] = file
             py_abi_names[tag_interp.nice_name] = (
                 tag_interp.python_implementation,
                 tag_interp.python_version,
                 tag_interp.nice_name,
             )
-            platform_names.add(tag.platform)
+            platform_names.add(platform)
 
     r_plat_names = tuple(sorted(platform_names))
     r_py_abi_names = tuple(sorted(py_abi_names, key=py_abi_names.__getitem__))
 
     return CompatibilityMatrixModel(compat_matrix, r_py_abi_names, r_plat_names)
+
+
+def _wheel_matrix_entries(
+    filename: str,
+) -> list[tuple["InterpretedPyAndABITag", str]]:
+    """Interpret a wheel's tags into (py/abi interpretation, platform) pairs.
+
+    Raises InvalidWheelFilename or InvalidVersion if the filename or one of
+    its tags can't be parsed.
+    """
+    _, _, _, tags = parse_wheel_filename(filename)
+
+    # parse_wheel_filename returns tags as a frozenset, so establish a stable order.
+    sorted_tags = sorted(tags, key=lambda tag: (tag.platform, tag.abi, tag.interpreter))
+
+    return [
+        (interpret_py_and_abi_tag(tag.interpreter, tag.abi), tag.platform)
+        for tag in sorted_tags
+    ]
 
 
 # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#python-tag
