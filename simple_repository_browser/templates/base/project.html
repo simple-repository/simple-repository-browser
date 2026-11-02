@@ -47,17 +47,15 @@
         <span>Newer version available ({{ latest_release.version }})</span>
     </a>
     {% endif %}
+    {% set release_date = file_info.upload_time or this_release.release_date %}
+    {% if (release_date and release_date.year > 1990) %}
     <br><br>
     <span data-source="release_date">
         Released:
-        {% set release_date=file_info.upload_time %}
-        {% if (release_date and release_date.year > 1990) %}
-            <!-- TODO: Show locale date -->
-            {{ release_date.strftime('%b %d, %Y') }}
-        {% else %}
-            Unknown
-        {% endif %}
+        <!-- TODO: Show locale date -->
+        {{ release_date.strftime('%b %d, %Y') }}
     </span>
+    {% endif %}
   </div>
 </div>
 {% endmacro %}
@@ -191,7 +189,7 @@
                       <i class="far fa-folder-open"></i>
                     </span>
                     {{ release_info.version }}
-                    {% if release_info.release_date %}
+                    {% if release_info.release_date and release_info.release_date.year > 1990 %}
                         <span style="float: right; text-decoration: none; font-size: smaller; color: gray;">
                             {{ release_info.release_date.strftime('%b %d, %Y') }}
                         </span>

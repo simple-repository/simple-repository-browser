@@ -39,6 +39,9 @@
         <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
           {% block navbar_right %}
             <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('packages') }}">Packages</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('about') }}">About</a>
             </li>
           {% endblock %}

@@ -93,7 +93,7 @@ class SearchContext:
 
     def with_exact_name(self, name: str) -> SearchContext:
         """Add an exact name match."""
-        if name in self.exact_names:
+        if not name.isascii() or name in self.exact_names:
             return self
         else:
             return dataclasses.replace(self, exact_names=self.exact_names + (name,))
